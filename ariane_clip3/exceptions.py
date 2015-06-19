@@ -8,4 +8,9 @@ class ArianeError(Exception):
 
 class ArianeConfError(ArianeError):
     def __repr__(self):
-        return self.args[0] + "is not defined !"
+        return self.args[0] + " is not defined !"
+
+
+class ArianeNotImplemented(ArianeError):
+    def __repr__(self):
+        return self.args[0] + " is not implemented !"
