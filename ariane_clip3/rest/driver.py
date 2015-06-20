@@ -18,6 +18,7 @@
 import requests
 
 from ariane_clip3 import exceptions
+from ariane_clip3.driver import DriverResponse
 
 __author__ = 'mffrench'
 
@@ -29,6 +30,11 @@ class Requester(object):
     """
 
     def __init__(self, my_args=None):
+        """
+        REST requester constructor
+        :param my_args: dict like {session, base_url, repository_path}
+        :return: self
+        """
         if my_args is None:
             raise exceptions.ArianeConfError('requester arguments')
         if 'session' not in my_args or my_args['session'] is None:
@@ -57,14 +63,29 @@ class Requester(object):
         if 'parameters' not in my_args:
             my_args['parameters'] = None
 
+        response = None
         if my_args['http_operation'] is "GET":
             if my_args['parameters'] is None:
-                return self.session.get(self.base_url+self.repository_path+my_args['operation_path'])
+                response = self.session.get(self.base_url+self.repository_path+my_args['operation_path'])
             else:
-                return self.session.get(self.base_url+self.repository_path+my_args['operation_path'],
+                response = self.session.get(self.base_url+self.repository_path+my_args['operation_path'],
                                         params=my_args['parameters'])
         else:
             raise exceptions.ArianeNotImplemented(my_args['http_operation'])
+
+
+        if response.status_code is 200:
+            return DriverResponse(
+                rc=0,
+                error_message=response.reason,
+                response_content=response.json()
+            )
+        else:
+            return DriverResponse(
+                rc=response.status_code,
+                error_message=response.reason,
+                response_content=response.json()
+            )
 
 
 class Driver(object):
@@ -74,6 +95,11 @@ class Driver(object):
     """
 
     def __init__(self, my_args=None):
+        """
+        REST driver constructor
+        :param my_args: some dict like {base_url, user, password}
+        :return:
+        """
         if my_args is None:
             raise exceptions.ArianeConfError("rest driver arguments")
         if 'base_url' not in my_args or my_args['base_url'] is None or not my_args['base_url']:

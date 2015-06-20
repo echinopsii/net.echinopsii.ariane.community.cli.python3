@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import json
 import socket
 import threading
 import uuid
@@ -23,6 +24,7 @@ import logging
 import pika
 
 from ariane_clip3 import exceptions
+from ariane_clip3.driver import DriverResponse
 
 
 LOGGER = logging.getLogger(__name__)
@@ -35,7 +37,13 @@ class Requester(object):
     RabbitMQ requester implementation
     :param my_args: dict like {connection, request_q}
     """
+
     def __init__(self, my_args=None):
+        """
+        RabbitMQ requester constructor
+        :param my_args: dict like {connection, request_q}
+        :return: self
+        """
         if my_args is None:
             raise exceptions.ArianeConfError("requestor arguments")
         if 'connection' not in my_args or my_args['connection'] is None:
@@ -103,7 +111,12 @@ class Requester(object):
 
         while self.response is None:
             self.connection.process_data_events()
-        return self.response
+
+        return DriverResponse(
+            rc=json.loads(self.response['headers'].decode("UTF-8"))['RC'],
+            error_message=json.loads(self.response['headers'].decode("UTF-8"))['SERVER_ERROR_MESSAGE'],
+            response_content=json.loads(self.response['body'].decode("UTF-8"))
+        )
 
 
 class Service(object):
@@ -111,7 +124,13 @@ class Service(object):
     RabbitMQ service implementation.
     :param my_args: dict like {connection, service_q, treatment_callback[, service_name]}
     """
+
     def __init__(self, my_args=None):
+        """
+        RabbitMQ service constructor
+        :param my_args: dict like {connection, service_q, treatment_callback[, service_name]}
+        :return: self
+        """
         if my_args is None:
             raise exceptions.ArianeConfError("service arguments")
         if 'connection' not in my_args or my_args['connection'] is None:
@@ -167,6 +186,12 @@ class Driver(object):
     """
 
     def __init__(self, my_args=None):
+        """
+        RabbitMQ driver constructor
+        :param my_args: dict like {user, password, host[, port, vhost, client_properties]}. Default = None
+        :return: selft
+        """
+
         default_port = 5672
         default_vhost = "/"
         default_client_properties = {
