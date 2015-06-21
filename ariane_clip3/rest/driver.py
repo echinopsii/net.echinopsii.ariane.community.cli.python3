@@ -18,7 +18,7 @@
 import requests
 
 from ariane_clip3 import exceptions
-from ariane_clip3.driver import DriverResponse
+from ariane_clip3.driver_common import DriverResponse
 
 __author__ = 'mffrench'
 
@@ -56,7 +56,7 @@ class Requester(object):
         """
         if my_args is None:
             raise exceptions.ArianeConfError('requester call arguments')
-        if 'http_operation' not in my_args or my_args('http_operation') is None or not my_args('http_operation'):
+        if 'http_operation' not in my_args or my_args['http_operation'] is None or not my_args['http_operation']:
             raise exceptions.ArianeConfError('requester call http_operation')
         if 'operation_path' not in my_args or my_args['operation_path'] is None: #can be empty
             raise exceptions.ArianeConfError('requester call operation_path')
@@ -120,7 +120,7 @@ class Driver(object):
         :return:
         """
         self.session = requests.Session()
-        self.session.auth(self.user, self.password)
+        self.session.auth = (self.user, self.password)
 
     def stop(self):
         """

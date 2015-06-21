@@ -24,7 +24,7 @@ import logging
 import pika
 
 from ariane_clip3 import exceptions
-from ariane_clip3.driver import DriverResponse
+from ariane_clip3.driver_common import DriverResponse
 
 
 LOGGER = logging.getLogger(__name__)

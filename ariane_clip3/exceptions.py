@@ -14,3 +14,7 @@ class ArianeConfError(ArianeError):
 class ArianeNotImplemented(ArianeError):
     def __repr__(self):
         return self.args[0] + " is not implemented !"
+
+class ArianeCallParametersError(ArianeError):
+    def __repr__(self):
+        return self.args[0] + " are not defined !"
