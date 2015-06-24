@@ -54,15 +54,35 @@ class DriverConfTest(unittest.TestCase):
                                        gps_latitude='4.2423521',
                                        gps_longitude='32.234235')
             rm_datacenter.save()
-        ret = rm_datacenter.remove()
-        self.assertIsNone(ret)
+        self.assertIsNone(rm_datacenter.remove())
 
     def test_datacenter_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
+        new_datacenter = Datacenter(requester=service.datacenter_service.requester,
+                                    name='my_new_datacenter',
+                                    description='my new datacenter',
+                                    address='somewhere',
+                                    zip_code='082487',
+                                    town='paris',
+                                    country='france',
+                                    gps_latitude='4.2423521',
+                                    gps_longitude='32.234235')
+        new_datacenter.save()
         ret = service.datacenter_service.get_datacenters()
-        for datacenter in ret:
-            print(datacenter)
+        self.assertGreaterEqual(ret.__len__(), 1)
 
     def test_datacenter_find(self):
-        pass
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        service = DirectoryService(args)
+        new_datacenter = Datacenter(requester=service.datacenter_service.requester,
+                                    name='my_new_datacenter',
+                                    description='my new datacenter',
+                                    address='somewhere',
+                                    zip_code='082487',
+                                    town='paris',
+                                    country='france',
+                                    gps_latitude='4.2423521',
+                                    gps_longitude='32.234235')
+        new_datacenter.save()
+        self.assertIsNotNone(service.datacenter_service.find_datacenter(dc_name="my_new_datacenter"))

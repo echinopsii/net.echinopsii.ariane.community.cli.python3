@@ -61,9 +61,10 @@ class DatacenterService(object):
             if response.rc is 0:
                 ret = Datacenter.json_2_datacenter(self.requester, response.response_content)
             else:
+                err_msg = 'Error while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + '). ' +\
+                          'Reason: ' + str(response.error_message)
                 LOGGER.error(
-                    'Error while finding datacenter (id:' + id + ', name:' + dc_name + '). '
-                    'Reason: ' + str(response.error_message)
+                    err_msg
                 )
 
         return ret
@@ -77,8 +78,10 @@ class DatacenterService(object):
             for datacenter in response.response_content['datacenters']:
                 ret.append(Datacenter.json_2_datacenter(self.requester, datacenter))
         else:
+            err_msg = response.error_message
             LOGGER.error(
-                'Error while getting datacenters. Reason: ' + str(response.error_message)
+                'Error while getting datacenters. '
+                #'Reason: ' + err_msg
             )
         return ret
 
@@ -126,7 +129,7 @@ class Datacenter(object):
         self.country = json_obj['datacenterCountry']
         self.gpsLatitude = json_obj['datacenterGPSLat']
         self.gpsLongitude = json_obj['datacenterGPSLng']
-        self.routing_area_ids = json_obj['datacenterRoutinAreasID']
+        self.routing_area_ids = json_obj['datacenterRoutingAreasID']
         self.subnet_ids = json_obj['datacenterSubnetsID']
 
     def __init__(self, requester, dcid=None, name=None, description=None, address=None, zip_code=None, town=None,

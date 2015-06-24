@@ -73,16 +73,23 @@ class Requester(object):
             raise exceptions.ArianeNotImplemented(my_args['http_operation'])
 
         if response.status_code is 200:
-            return DriverResponse(
-                rc=0,
-                error_message=response.reason,
-                response_content=response.json()
-            )
+            try:
+                return DriverResponse(
+                    rc=0,
+                    error_message=response.reason,
+                    response_content=response.json()
+                )
+            except ValueError as e:
+                return DriverResponse(
+                    rc=0,
+                    error_message=response.reason,
+                    response_content=response.text
+                )
         else:
             return DriverResponse(
                 rc=response.status_code,
                 error_message=response.reason,
-                response_content=response.json()
+                response_content=response.text
             )
 
 
