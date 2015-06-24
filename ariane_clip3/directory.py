@@ -1,3 +1,20 @@
+# Ariane CLI Python 3
+# Ariane Core Directory API
+#
+# Copyright (C) 2015 echinopsii
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import json
 import logging
 from ariane_clip3 import driver_factory
@@ -46,7 +63,7 @@ class DatacenterService(object):
             else:
                 LOGGER.error(
                     'Error while finding datacenter (id:' + id + ', name:' + dc_name + '). '
-                    'Reason: ' + response.error_message
+                    'Reason: ' + str(response.error_message)
                 )
 
         return ret
@@ -61,7 +78,7 @@ class DatacenterService(object):
                 ret.append(Datacenter.json_2_datacenter(self.requester, datacenter))
         else:
             LOGGER.error(
-                'Error while getting datacenters. Reason: ' + response.error_message
+                'Error while getting datacenters. Reason: ' + str(response.error_message)
             )
         return ret
 
@@ -69,37 +86,53 @@ class DatacenterService(object):
 class Datacenter(object):
 
     @staticmethod
-    def json_2_datacenter(requester, json):
+    def json_2_datacenter(requester, json_obj):
         return Datacenter(requester=requester,
-                          id=json['datacenterID'],
-                          name=json['datacenterName'],
-                          description=json['datacenterDescription'],
-                          address=json['datacenterAddress'],
-                          zip_code=json['datacenterZipCode'],
-                          town=json['datacenterTown'],
-                          country=json['datacenterCountry'],
-                          gps_latitude=json['datacenterGPSLat'],
-                          gps_longitude=json['datacenterGPSLng'],
-                          routing_area_ids=json['datacenterRoutingAreasID'],
-                          subnet_ids=json['datacenterSubnetsID'])
+                          dcid=json_obj['datacenterID'],
+                          name=json_obj['datacenterName'],
+                          description=json_obj['datacenterDescription'],
+                          address=json_obj['datacenterAddress'],
+                          zip_code=json_obj['datacenterZipCode'],
+                          town=json_obj['datacenterTown'],
+                          country=json_obj['datacenterCountry'],
+                          gps_latitude=json_obj['datacenterGPSLat'],
+                          gps_longitude=json_obj['datacenterGPSLng'],
+                          routing_area_ids=json_obj['datacenterRoutingAreasID'],
+                          subnet_ids=json_obj['datacenterSubnetsID'])
 
-    def __sync__(self, json):
-        self.id = json['datacenterID']
-        self.name = json['datacenterName']
-        self.description = json['datacenterDescription']
-        self.address = json['datacenterAddress']
-        self.zip_code = json['datacenterZipCode']
-        self.town = json['datacenterTown']
-        self.country = json['datacenterCountry']
-        self.gpsLatitude = json['datacenterGPSLat']
-        self.gpsLongitude = json['datacenterGPSLng']
-        self.routing_area_ids = json['datacenterRounginAreasID']
-        self.subnet_ids = json['datacenterSubnetsID']
+    def datacenter_2_json(self):
+        json_obj = {
+            'datacenterID': self.id,
+            'datacenterName': self.name,
+            'datacenterDescription': self.description,
+            'datacenterAddress': self.address,
+            'datacenterZipCode': self.zipCode,
+            'datacenterTown': self.town,
+            'datacenterCountry': self.country,
+            'datacenterGPSLat': self.gpsLatitude,
+            'datacenterGPSLng': self.gpsLongitude,
+            'datacenterRoutingAreasID': self.routing_area_ids,
+            'datacenterSubnetsID': self.subnet_ids
+        }
+        return json.dumps(json_obj)
 
-    def __init__(self, requester, id=None, name=None, description=None, address=None, zip_code=None, town=None,
+    def __sync__(self, json_obj):
+        self.id = json_obj['datacenterID']
+        self.name = json_obj['datacenterName']
+        self.description = json_obj['datacenterDescription']
+        self.address = json_obj['datacenterAddress']
+        self.zip_code = json_obj['datacenterZipCode']
+        self.town = json_obj['datacenterTown']
+        self.country = json_obj['datacenterCountry']
+        self.gpsLatitude = json_obj['datacenterGPSLat']
+        self.gpsLongitude = json_obj['datacenterGPSLng']
+        self.routing_area_ids = json_obj['datacenterRoutinAreasID']
+        self.subnet_ids = json_obj['datacenterSubnetsID']
+
+    def __init__(self, requester, dcid=None, name=None, description=None, address=None, zip_code=None, town=None,
                  country=None, gps_latitude=None, gps_longitude=None, routing_area_ids=None, subnet_ids=None):
         self.requester = requester
-        self.id = id
+        self.id = dcid
         self.name = name
         self.description = description
         self.address = address
@@ -116,7 +149,7 @@ class Datacenter(object):
         self.subnets_2_rm = []
 
     def __str__(self):
-        return str(json.dumps(self.__dict__))
+        return str(self.__dict__)
 
     def save(self):
         if self.id is None:
@@ -171,7 +204,8 @@ class Datacenter(object):
                 response = self.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' full address. Reason: ' + response.error_message
+                        'Error while updating datacenter ' + self.name + ' full address. Reason: ' +
+                        response.error_message
                     )
                     ok = False
 
@@ -219,7 +253,7 @@ class Datacenter(object):
                 return self
             else:
                 return None
-            
+
 
 class RoutingAreaService(object):
     pass
@@ -227,9 +261,9 @@ class RoutingAreaService(object):
 
 class RoutingArea(object):
 
-    def __init__(self, requester, id=None):
+    def __init__(self, requester, raid=None):
         self.requester = requester
-        self.id = id
+        self.id = raid
 
     def save(self):
         pass
@@ -241,9 +275,9 @@ class SubnetService(object):
 
 class Subnet(object):
 
-    def __init__(self, requester, id):
+    def __init__(self, requester, subnetid):
         self.requester = requester
-        self.id = id
+        self.id = subnetid
 
     def save(self):
         pass

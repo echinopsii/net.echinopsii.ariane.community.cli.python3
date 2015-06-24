@@ -58,21 +58,19 @@ class Requester(object):
             raise exceptions.ArianeConfError('requester call arguments')
         if 'http_operation' not in my_args or my_args['http_operation'] is None or not my_args['http_operation']:
             raise exceptions.ArianeConfError('requester call http_operation')
-        if 'operation_path' not in my_args or my_args['operation_path'] is None: #can be empty
+        if 'operation_path' not in my_args or my_args['operation_path'] is None:  # can be empty
             raise exceptions.ArianeConfError('requester call operation_path')
         if 'parameters' not in my_args:
             my_args['parameters'] = None
 
-        response = None
         if my_args['http_operation'] is "GET":
             if my_args['parameters'] is None:
-                response = self.session.get(self.base_url+self.repository_path+my_args['operation_path'])
+                response = self.session.get(self.base_url + self.repository_path + my_args['operation_path'])
             else:
-                response = self.session.get(self.base_url+self.repository_path+my_args['operation_path'],
-                                        params=my_args['parameters'])
+                response = self.session.get(self.base_url + self.repository_path + my_args['operation_path'],
+                                            params=my_args['parameters'])
         else:
             raise exceptions.ArianeNotImplemented(my_args['http_operation'])
-
 
         if response.status_code is 200:
             return DriverResponse(
@@ -134,7 +132,7 @@ class Driver(object):
         not implemented
         :return:
         """
-        raise exceptions.ArianeNotImplemented(self.__class__.__name__+".make_service")
+        raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_service")
 
     def make_requester(self, my_args=None):
         """
@@ -148,4 +146,3 @@ class Driver(object):
         my_args['base_url'] = self.base_url
 
         return Requester(my_args)
-
