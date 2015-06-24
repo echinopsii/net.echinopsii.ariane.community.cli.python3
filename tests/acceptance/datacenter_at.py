@@ -22,7 +22,7 @@ from ariane_clip3.directory import DirectoryService, Datacenter
 __author__ = 'mffrench'
 
 
-class DriverConfTest(unittest.TestCase):
+class DatacenterTest(unittest.TestCase):
 
     def test_new_datacenter(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
