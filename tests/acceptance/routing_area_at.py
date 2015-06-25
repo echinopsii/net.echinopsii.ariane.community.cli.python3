@@ -33,18 +33,17 @@ class RoutingAreaTest(unittest.TestCase):
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         self.assertIsNotNone(new_routing_area.id)
+        new_routing_area.remove()
 
     def test_remove_routing_area_by_name(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        rm_routing_area = service.routing_area_service.find_routing_area(ra_name="my_new_routing_area")
-        if rm_routing_area is None:
-            rm_routing_area = RoutingArea(requester=service.routing_area_service.requester,
-                                          name='my_new_routing_area',
-                                          description='my new routing area',
-                                          type=RoutingArea.RA_TYPE_LAN,
-                                          multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
-            rm_routing_area.save()
+        rm_routing_area = RoutingArea(requester=service.routing_area_service.requester,
+                                      name='my_new_routing_area',
+                                      description='my new routing area',
+                                      type=RoutingArea.RA_TYPE_LAN,
+                                      multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
+        rm_routing_area.save()
         self.assertIsNone(rm_routing_area.remove())
 
     def test_routing_area_get(self):
@@ -58,6 +57,7 @@ class RoutingAreaTest(unittest.TestCase):
         new_routing_area.save()
         ret = service.routing_area_service.get_routing_areas()
         self.assertGreaterEqual(ret.__len__(), 1)
+        new_routing_area.remove()
 
     def test_routing_area_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
@@ -69,3 +69,4 @@ class RoutingAreaTest(unittest.TestCase):
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         self.assertIsNotNone(service.routing_area_service.find_routing_area(ra_name="my_new_routing_area"))
+        new_routing_area.remove()

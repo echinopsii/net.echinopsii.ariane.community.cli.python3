@@ -38,22 +38,21 @@ class DatacenterTest(unittest.TestCase):
                                     gps_longitude='32.234235')
         new_datacenter.save()
         self.assertIsNotNone(new_datacenter.id)
+        new_datacenter.remove()
 
     def test_remove_datacenter_by_name(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        rm_datacenter = service.datacenter_service.find_datacenter(dc_name="my_new_datacenter")
-        if rm_datacenter is None:
-            rm_datacenter = Datacenter(requester=service.datacenter_service.requester,
-                                       name='my_new_datacenter',
-                                       description='my new datacenter',
-                                       address='somewhere',
-                                       zip_code='082487',
-                                       town='paris',
-                                       country='france',
-                                       gps_latitude='4.2423521',
-                                       gps_longitude='32.234235')
-            rm_datacenter.save()
+        rm_datacenter = Datacenter(requester=service.datacenter_service.requester,
+                                   name='my_new_datacenter',
+                                   description='my new datacenter',
+                                   address='somewhere',
+                                   zip_code='082487',
+                                   town='paris',
+                                   country='france',
+                                   gps_latitude='4.2423521',
+                                   gps_longitude='32.234235')
+        rm_datacenter.save()
         self.assertIsNone(rm_datacenter.remove())
 
     def test_datacenter_get(self):
@@ -71,6 +70,7 @@ class DatacenterTest(unittest.TestCase):
         new_datacenter.save()
         ret = service.datacenter_service.get_datacenters()
         self.assertGreaterEqual(ret.__len__(), 1)
+        new_datacenter.remove()
 
     def test_datacenter_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
@@ -86,3 +86,4 @@ class DatacenterTest(unittest.TestCase):
                                     gps_longitude='32.234235')
         new_datacenter.save()
         self.assertIsNotNone(service.datacenter_service.find_datacenter(dc_name="my_new_datacenter"))
+        new_datacenter.remove()

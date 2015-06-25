@@ -33,6 +33,7 @@ class DirectoryService(object):
         self.datacenter_service = DatacenterService(self.driver)
         self.routing_area_service = RoutingAreaService(self.driver)
         self.subnet_service = SubnetService(self.driver)
+        self.os_type_service = OSTypeService(self.driver)
 
 
 class DatacenterService(object):
@@ -498,6 +499,7 @@ class Subnet(object):
                       description=json_obj['subnetDescription'],
                       ip=json_obj['subnetIP'],
                       mask=json_obj['subnetMask'],
+                      routing_area_id=json_obj['subnetRoutingAreaID'],
                       subnet_dc_ids=json_obj['subnetDatacentersID'],
                       subnet_osi_ids=json_obj['subnetOSInstancesID'])
 
@@ -508,6 +510,7 @@ class Subnet(object):
             'subnetDescription': self.description,
             'subnetIP': self.ip,
             'subnetMask': self.mask,
+            'subnetRoutingAreaID': self.routing_area_id,
             'subnetDatacentersID': self.subnet_dc_ids,
             'subnetOSInstancesID': self.subnet_osi_ids
         }
@@ -519,6 +522,7 @@ class Subnet(object):
         self.description = json_obj['subnetDescription']
         self.ip = json_obj['subnetIP']
         self.mask = json_obj['subnetMask']
+        self.routing_area_id = json_obj['subnetRoutingAreaID']
         self.subnet_dc_ids = json_obj['subnetDatacentersID']
         self.subnet_osi_ids = json_obj['subnetOSInstancesID']
 
@@ -639,11 +643,15 @@ class Subnet(object):
                 return None
 
 
-class IPAddressService(object):
-    pass
+#class IPAddressService(object):
+#    pass
 
 
-class IPAddress(object):
+#class IPAddress(object):
+#    pass
+
+
+class OSInstanceService(object):
     pass
 
 
@@ -651,8 +659,164 @@ class OSInstance(object):
     pass
 
 
+class OSTypeService(object):
+    def __init__(self, directory_driver):
+        self.driver = directory_driver
+        args = {'repository_path': 'rest/directories/common/infrastructure/system/ostypes/'}
+        self.requester = self.driver.make_requester(args)
+
+    def find_ostype(self, ost_id=None, ost_name=None):
+        if (ost_id is None or not ost_id) and (ost_name is None or not ost_name):
+            raise exceptions.ArianeCallParametersError('id and name')
+
+        if (ost_id is not None and ost_id) and (ost_name is not None and ost_name):
+            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            ost_name = None
+
+        params = None
+        if ost_id is not None and ost_id:
+            params = {'id': ost_id}
+        elif ost_name is not None and ost_name:
+            params = {'name': ost_name}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                ret = OSType.json_2_ostype(self.requester, response.response_content)
+            else:
+                err_msg = 'Error while finding OS Type (id:' + str(ost_id) + ', name:' + str(ost_name) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(
+                    err_msg
+                )
+
+        return ret
+
+    def get_ostypes(self):
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = self.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for subnet in response.response_content['osTypes']:
+                ret.append(OSType.json_2_ostype(self.requester, subnet))
+        else:
+            err_msg = 'Error while getting OS Types. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+
+        return ret
+
+
 class OSType(object):
-    pass
+    @staticmethod
+    def json_2_ostype(requester, json_obj):
+        return OSType(requester=requester,
+                      ostid=json_obj['osTypeID'],
+                      name=json_obj['osTypeName'],
+                      architecture=json_obj['osTypeArchitecture'],
+                      os_type_company_id=json_obj['osTypeCompanyID'],
+                      os_type_os_instance_ids=json_obj['osTypeOSInstancesID'])
+
+    def ostype_2_json(self):
+        json_obj = {
+            'osTypeID': self.id,
+            'osTypeName': self.name,
+            'osTypeArchitecture': self.architecture,
+            'osTypeCompanyID': self.company_id,
+            'osTypeOSInstancesID': self.ost_osi_ids
+        }
+        return json.dumps(json_obj)
+
+    def __sync__(self, json_obj):
+        self.id = json_obj['osTypeID']
+        self.name = json_obj['osTypeName']
+        self.architecture = json_obj['osTypeArchitecture']
+        self.company_id = json_obj['osTypeCompanyID']
+        self.ost_osi_ids = json_obj['osTypeOSInstancesID']
+
+    def __init__(self, requester, ostid=None, name=None, architecture=None,
+                 os_type_company_id=None, os_type_os_instance_ids=None):
+        self.requester = requester
+        self.id = ostid
+        self.name = name
+        self.architecture = architecture
+        self.company_id = os_type_company_id
+        self.ost_osi_ids = os_type_os_instance_ids
+        self.ost_osi_2_add = []
+        self.ost_osi_2_rm = []
+
+    def save(self):
+        if self.id is None:
+            params = {
+                'name': self.name,
+                'architecture': self.architecture
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                self.__sync__(response.response_content)
+            else:
+                LOGGER.error(
+                    'Error while saving os type' + self.name + '. Reason: ' + str(response.error_message)
+                )
+        else:
+            params = {
+                'id': self.id,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            ok = True
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'architecture': self.architecture
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/architecture', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating os type ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'companyID': self.architecture
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating os type ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+
+    def remove(self):
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting os type ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 
 class Application(object):
