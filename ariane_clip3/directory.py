@@ -652,11 +652,130 @@ class Subnet(object):
 
 
 class OSInstanceService(object):
+    def __init__(self, directory_driver):
+        self.driver = directory_driver
+        args = {'repository_path': 'rest/directories/common/infrastructure/system/ostypes/'}
+        self.requester = self.driver.make_requester(args)
+
+    def find_osinstance(self, osi_id=None, osi_name=None):
+        if (osi_id is None or not osi_id) and (osi_name is None or not osi_name):
+            raise exceptions.ArianeCallParametersError('id and name')
+
+        if (osi_id is not None and osi_id) and (osi_name is not None and osi_name):
+            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            osi_name = None
+
+        params = None
+        if osi_id is not None and osi_id:
+            params = {'id': osi_id}
+        elif osi_name is not None and osi_name:
+            params = {'name': osi_name}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                ret = OSInstance.json_2_osinstance(self.requester, response.response_content)
+            else:
+                err_msg = 'Error while finding OS Instance (id:' + str(osi_id) + ', name:' + str(osi_name) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(
+                    err_msg
+                )
+
+        return ret
+
+    def get_osinstances(self):
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = self.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for subnet in response.response_content['osInstances']:
+                ret.append(OSInstance.json_2_osinstance(self.requester, subnet))
+        else:
+            err_msg = 'Error while getting os instances. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
     pass
 
 
 class OSInstance(object):
-    pass
+    @staticmethod
+    def json_2_osinstance(requester, json_obj):
+        return OSInstance(requester=requester,
+                          osiid=json_obj['osInstanceID'],
+                          name=json_obj['osInstanceName'],
+                          description=json_obj['osInstanceDescription'],
+                          admin_gate_url=json_obj['osInstanceAdminGateURI'],
+                          osi_embedding_osi_id=json_obj['osInstanceEmbeddingOSInstanceID'],
+                          osi_ost_id=json_obj['osInstanceOSTypeID'],
+                          osi_embedded_osi_ids=json_obj['osInstanceEmbeddedOSInstancesID'],
+                          osi_application_ids=json_obj['osInstanceApplicationsID'],
+                          osi_environment_ids=json_obj['osInstanceEnvironmentsID'],
+                          osi_subnet_ids=json_obj['osInstanceSubnetsID'],
+                          osi_team_ids=json_obj['osInstanceTeamsID'])
+
+    def osinstance_2_json(self):
+        json_obj = {
+            'osInstanceID': self.id,
+            'osInstanceName': self.name,
+            'osInstanceDescription': self.description,
+            'osInstanceAdminGateURI': self.admin_gate_url,
+            'osInstanceEmbeddingOSInstanceID': self.osi_embedding_osi_id,
+            'osInstanceOSTypeID': self.osi_ost_id,
+            'osInstanceEmbeddedOSInstancesID': self.osi_embedded_osi_ids,
+            'osInstanceApplicationsID': self.osi_application_ids,
+            'osInstanceEnvironmentsID': self.osi_environment_ids,
+            'osInstanceSubnetID': self.osi_subnet_ids,
+            'osInstanceTeamsID': self.osi_team_ids
+        }
+        return json.dumps(json_obj)
+
+    def __sync__(self, json_obj):
+        self.id = json_obj['osInstanceID']
+        self.name = json_obj['osInstanceName']
+        self.description = json_obj['osInstanceDescription']
+        self.admin_gate_url = json_obj['osInstanceAdminGateURI']
+        self.osi_ost_id = json_obj['osInstanceOSTypeID']
+        self.osi_embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
+        self.osi_application_ids = json_obj['osInstanceApplicationsID']
+        self.osi_environment_ids = json_obj['osInstanceEnvironmentsID']
+        self.osi_subnet_ids = json_obj['osInstanceSubnetsID']
+        self.osi_team_ids = json_obj['osInstanceTeamsID']
+
+    def __init__(self, requester, osiid=None, name=None, description=None, admin_gate_url=None,
+                 osi_embedding_osi_id=None, osi_ost_id=None, osi_embedded_osi_ids=None, osi_application_ids=None,
+                 osi_environment_ids=None, osi_subnet_ids=None, osi_team_ids=None):
+        self.requester = requester
+        self.id = osiid
+        self.name = name
+        self.description = description
+        self.admin_gate_url = admin_gate_url
+        self.osi_embedding_osi_id = osi_embedding_osi_id
+        self.osi_ost_id = osi_ost_id
+        self.osi_embedded_osi_ids = osi_embedded_osi_ids
+        self.osi_embedded_osi_2_add = []
+        self.osi_embedded_osi_2_rm = []
+        self.osi_application_ids = osi_application_ids
+        self.osi_application_2_add = []
+        self.osi_application_2_rm = []
+        self.osi_environment_ids = osi_environment_ids
+        self.osi_environment_2_add = []
+        self.osi_environment_2_rm = []
+        self.osi_subnet_ids = osi_subnet_ids
+        self.osi_subnet_2_add = []
+        self.osi_subnet_2_rm = []
+        self.osi_team_ids = osi_team_ids
+        self.osi_team_2_add = []
+        self.osi_team_2_rm = []
+
+    def save(self):
+        pass
+
+    def remove(self):
+        pass
 
 
 class OSTypeService(object):
