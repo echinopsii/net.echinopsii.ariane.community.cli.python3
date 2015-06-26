@@ -36,7 +36,7 @@ class ApplicationTest(unittest.TestCase):
         self.assertIsNotNone(new_application.id)
         new_application.remove()
 
-    def test_remove_datacenter_by_name(self):
+    def test_remove_application(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
         rm_application = Application(requester=service.application_service.requester,
@@ -47,7 +47,7 @@ class ApplicationTest(unittest.TestCase):
         rm_application.save()
         self.assertIsNone(rm_application.remove())
 
-    def test_datacenter_get(self):
+    def test_application_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
         new_application = Application(requester=service.application_service.requester,
@@ -60,7 +60,7 @@ class ApplicationTest(unittest.TestCase):
         self.assertGreaterEqual(ret.__len__(), 1)
         new_application.remove()
 
-    def test_datacenter_find(self):
+    def test_application_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
         new_application = Application(requester=service.application_service.requester,

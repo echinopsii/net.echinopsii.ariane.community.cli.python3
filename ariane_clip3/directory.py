@@ -36,6 +36,7 @@ class DirectoryService(object):
         self.os_instance_service = OSInstanceService(self.driver)
         self.os_type_service = OSTypeService(self.driver)
         self.application_service = ApplicationService(self.driver)
+        self.company_service = CompanyService(self.driver)
 
 
 class DatacenterService(object):
@@ -1256,9 +1257,158 @@ class Application(object):
                 return None
 
 
-class Company(object):
-    pass
+class CompanyService(object):
+    def __init__(self, directory_driver):
+        self.driver = directory_driver
+        args = {'repository_path': 'rest/directories/common/organisation/companies/'}
+        self.requester = self.driver.make_requester(args)
 
+    def find_company(self, cmp_id=None, cmp_name=None):
+        if (cmp_id is None or not cmp_id) and (cmp_name is None or not cmp_name):
+            raise exceptions.ArianeCallParametersError('id and name')
+
+        if (cmp_id is not None and cmp_id) and (cmp_name is not None and cmp_name):
+            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            cmp_name = None
+
+        params = None
+        if cmp_id is not None and cmp_id:
+            params = {'id': cmp_id}
+        elif cmp_name is not None and cmp_name:
+            params = {'name': cmp_name}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                ret = Company.json_2_company(self.requester, response.response_content)
+            else:
+                err_msg = 'Error while finding company (id:' + str(cmp_id) + ', name:' + str(cmp_name) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(
+                    err_msg
+                )
+
+        return ret
+
+    def get_companies(self):
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = self.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for company in response.response_content['companies']:
+                ret.append(Company.json_2_company(self.requester, company))
+        else:
+            err_msg = 'Error while getting companies. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+
+class Company(object):
+    @staticmethod
+    def json_2_company(requester, json_obj):
+        return Company(requester=requester,
+                       cmpid=json_obj['companyID'],
+                       name=json_obj['companyName'],
+                       description=json_obj['companyDescription'],
+                       application_ids=json_obj['companyApplicationsID'],
+                       ost_ids=json_obj['companyOSTypesID'])
+
+    def company_2_json(self):
+        json_obj = {
+            'companyID': self.id,
+            'companyName': self.name,
+            'companyDescription': self.description,
+            'companyApplicationsID': self.cmp_applications_ids,
+            'companyOSTypesID': self.cmp_ost_ids
+        }
+        return json.dumps(json_obj)
+
+    def __sync__(self, json_obj):
+        self.id = json_obj['companyID']
+        self.name = json_obj['companyName']
+        self.description = json_obj['companyDescription']
+        self.cmp_applications_ids = json_obj['companyApplicationsID']
+        self.cmp_ost_ids = json_obj['companyOSTypesID']
+
+    def __init__(self, requester, cmpid=None, name=None, description=None,
+                 application_ids=None, ost_ids=None):
+        self.requester = requester
+        self.id = cmpid
+        self.name = name
+        self.description = description
+        self.cmp_applications_ids = application_ids
+        self.cmp_applications_2_add = []
+        self.cmp_applications_2_rm = []
+        self.cmp_ost_2_add = []
+        self.cmp_ost_2_rm = []
+        self.cmp_ost_ids = ost_ids
+        self.cmp_ost_2_add = []
+        self.cmp_ost_2_rm = []
+
+    def save(self):
+        ok = True
+        if self.id is None:
+            params = {
+                'name': self.name,
+                'description': self.description,
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                self.__sync__(response.response_content)
+            else:
+                LOGGER.error(
+                    'Error while saving company' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                ok = False
+        else:
+            params = {
+                'id': self.id,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating application ' + self.name + ' name. Reason: ' + str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'description': self.description
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating application ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+        return self
+
+    def remove(self):
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting company ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 class Environment(object):
     pass
