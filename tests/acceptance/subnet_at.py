@@ -1,5 +1,5 @@
 # Ariane CLI Python 3
-# routing area acceptance tests
+# Subnet acceptance tests
 #
 # Copyright (C) 2015 echinopsii
 #

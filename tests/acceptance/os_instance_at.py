@@ -1,5 +1,5 @@
 # Ariane CLI Python 3
-# routing area acceptance tests
+# OS Instance acceptance tests
 #
 # Copyright (C) 2015 echinopsii
 #
