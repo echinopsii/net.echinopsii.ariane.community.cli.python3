@@ -33,6 +33,7 @@ class DirectoryService(object):
         self.datacenter_service = DatacenterService(self.driver)
         self.routing_area_service = RoutingAreaService(self.driver)
         self.subnet_service = SubnetService(self.driver)
+        self.os_instance_service = OSInstanceService(self.driver)
         self.os_type_service = OSTypeService(self.driver)
 
 
@@ -625,6 +626,8 @@ class Subnet(object):
                         str(response.error_message)
                     )
 
+        return self
+
     def remove(self):
         if self.id is None:
             return None
@@ -654,7 +657,7 @@ class Subnet(object):
 class OSInstanceService(object):
     def __init__(self, directory_driver):
         self.driver = directory_driver
-        args = {'repository_path': 'rest/directories/common/infrastructure/system/ostypes/'}
+        args = {'repository_path': 'rest/directories/common/infrastructure/system/osinstances/'}
         self.requester = self.driver.make_requester(args)
 
     def find_osinstance(self, osi_id=None, osi_name=None):
@@ -708,7 +711,7 @@ class OSInstance(object):
                           osiid=json_obj['osInstanceID'],
                           name=json_obj['osInstanceName'],
                           description=json_obj['osInstanceDescription'],
-                          admin_gate_url=json_obj['osInstanceAdminGateURI'],
+                          admin_gate_uri=json_obj['osInstanceAdminGateURI'],
                           osi_embedding_osi_id=json_obj['osInstanceEmbeddingOSInstanceID'],
                           osi_ost_id=json_obj['osInstanceOSTypeID'],
                           osi_embedded_osi_ids=json_obj['osInstanceEmbeddedOSInstancesID'],
@@ -722,7 +725,7 @@ class OSInstance(object):
             'osInstanceID': self.id,
             'osInstanceName': self.name,
             'osInstanceDescription': self.description,
-            'osInstanceAdminGateURI': self.admin_gate_url,
+            'osInstanceAdminGateURI': self.admin_gate_uri,
             'osInstanceEmbeddingOSInstanceID': self.osi_embedding_osi_id,
             'osInstanceOSTypeID': self.osi_ost_id,
             'osInstanceEmbeddedOSInstancesID': self.osi_embedded_osi_ids,
@@ -737,7 +740,7 @@ class OSInstance(object):
         self.id = json_obj['osInstanceID']
         self.name = json_obj['osInstanceName']
         self.description = json_obj['osInstanceDescription']
-        self.admin_gate_url = json_obj['osInstanceAdminGateURI']
+        self.admin_gate_uri = json_obj['osInstanceAdminGateURI']
         self.osi_ost_id = json_obj['osInstanceOSTypeID']
         self.osi_embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
         self.osi_application_ids = json_obj['osInstanceApplicationsID']
@@ -745,14 +748,14 @@ class OSInstance(object):
         self.osi_subnet_ids = json_obj['osInstanceSubnetsID']
         self.osi_team_ids = json_obj['osInstanceTeamsID']
 
-    def __init__(self, requester, osiid=None, name=None, description=None, admin_gate_url=None,
+    def __init__(self, requester, osiid=None, name=None, description=None, admin_gate_uri=None,
                  osi_embedding_osi_id=None, osi_ost_id=None, osi_embedded_osi_ids=None, osi_application_ids=None,
                  osi_environment_ids=None, osi_subnet_ids=None, osi_team_ids=None):
         self.requester = requester
         self.id = osiid
         self.name = name
         self.description = description
-        self.admin_gate_url = admin_gate_url
+        self.admin_gate_uri = admin_gate_uri
         self.osi_embedding_osi_id = osi_embedding_osi_id
         self.osi_ost_id = osi_ost_id
         self.osi_embedded_osi_ids = osi_embedded_osi_ids
@@ -772,10 +775,105 @@ class OSInstance(object):
         self.osi_team_2_rm = []
 
     def save(self):
-        pass
+        ok = True
+        if self.id is None:
+            params = {
+                'name': self.name,
+                'description': self.description,
+                'adminGateURI': self.admin_gate_uri
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                self.__sync__(response.response_content)
+            else:
+                LOGGER.error(
+                    'Error while saving OS instance' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                ok = False
+        else:
+            params = {
+                'id': self.id,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: ' + str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'description': self.description
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'adminGateURI': self.admin_gate_uri
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/admingateuri', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+
+        if ok and self.osi_ost_id is not None:
+            params = {
+                'id': self.id,
+                'ostID': self.osi_ost_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/ostype', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+
+        if ok and self.osi_embedding_osi_id is not None:
+            params = {
+                'id': self.id,
+                'osiID': self.osi_embedding_osi_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/embeddingOSInstance', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+
+        return self
 
     def remove(self):
-        pass
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting OS instance ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 
 class OSTypeService(object):
