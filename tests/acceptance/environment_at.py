@@ -45,7 +45,7 @@ class EnvironmentTest(unittest.TestCase):
         rm_environment.save()
         self.assertIsNone(rm_environment.remove())
 
-    def test_company_get(self):
+    def test_environment_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
         new_environment = Environment(requester=service.environment_service.requester,
@@ -57,7 +57,7 @@ class EnvironmentTest(unittest.TestCase):
         self.assertGreaterEqual(ret.__len__(), 1)
         new_environment.remove()
 
-    def test_company_find(self):
+    def test_environment_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
         new_environment = Environment(requester=service.environment_service.requester,

@@ -38,6 +38,7 @@ class DirectoryService(object):
         self.application_service = ApplicationService(self.driver)
         self.company_service = CompanyService(self.driver)
         self.environment_service = EnvironmentService(self.driver)
+        self.team_service = TeamService(self.driver)
 
 
 class DatacenterService(object):
@@ -1477,7 +1478,7 @@ class Environment(object):
             'environmentName': self.name,
             'environmentDescription': self.description,
             'environmentColorCode': self.color_code,
-            'environmentOSInstancesID': self.cmp_osi_ids
+            'environmentOSInstancesID': self.env_osi_ids
         }
         return json.dumps(json_obj)
 
@@ -1486,7 +1487,7 @@ class Environment(object):
         self.name = json_obj['environmentName']
         self.description = json_obj['environmentDescription']
         self.color_code = json_obj['environmentColorCode']
-        self.cmp_osi_ids = json_obj['environmentOSInstancesID']
+        self.env_osi_ids = json_obj['environmentOSInstancesID']
 
     def __init__(self, requester, envid=None, name=None, description=None,
                  color_code=None, osi_ids=None):
@@ -1495,9 +1496,9 @@ class Environment(object):
         self.name = name
         self.description = description
         self.color_code = color_code
-        self.cmp_osi_ids = osi_ids
-        self.cmp_osi_2_add = []
-        self.cmp_osi_2_rm = []
+        self.env_osi_ids = osi_ids
+        self.env_osi_2_add = []
+        self.env_osi_2_rm = []
 
     def save(self):
         ok = True
@@ -1576,5 +1577,170 @@ class Environment(object):
                 return None
 
 
+class TeamService(object):
+    def __init__(self, directory_driver):
+        self.driver = directory_driver
+        args = {'repository_path': 'rest/directories/common/organisation/teams/'}
+        self.requester = self.driver.make_requester(args)
+
+    def find_team(self, team_id=None, team_name=None):
+        if (team_id is None or not team_id) and (team_name is None or not team_name):
+            raise exceptions.ArianeCallParametersError('id and name')
+
+        if (team_id is not None and team_id) and (team_name is not None and team_name):
+            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            team_name = None
+
+        params = None
+        if team_id is not None and team_id:
+            params = {'id': team_id}
+        elif team_name is not None and team_name:
+            params = {'name': team_name}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                ret = Team.json_2_team(self.requester, response.response_content)
+            else:
+                err_msg = 'Error while finding team (id:' + str(team_id) + ', name:' + str(team_name) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(
+                    err_msg
+                )
+
+        return ret
+
+    def get_teams(self):
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = self.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for company in response.response_content['teams']:
+                ret.append(Team.json_2_team(self.requester, company))
+        else:
+            err_msg = 'Error while getting teams. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+
 class Team(object):
-    pass
+
+    @staticmethod
+    def json_2_team(requester, json_obj):
+        return Team(requester=requester,
+                    teamid=json_obj['teamID'],
+                    name=json_obj['teamName'],
+                    description=json_obj['teamDescription'],
+                    color_code=json_obj['teamColorCode'],
+                    app_ids=json_obj['teamApplicationsID'],
+                    osi_ids=json_obj['teamOSInstancesID'])
+
+    def team_2_json(self):
+        json_obj = {
+            'teamID': self.id,
+            'teamName': self.name,
+            'teamDescription': self.description,
+            'teamColorCode': self.color_code,
+            'teamOSInstancesID': self.team_osi_ids
+        }
+        return json.dumps(json_obj)
+
+    def __sync__(self, json_obj):
+        self.id = json_obj['teamID']
+        self.name = json_obj['teamName']
+        self.description = json_obj['teamDescription']
+        self.color_code = json_obj['teamColorCode']
+        self.team_osi_ids = json_obj['teamOSInstancesID']
+
+    def __init__(self, requester, teamid=None, name=None, description=None,
+                 color_code=None, app_ids=None, osi_ids=None):
+        self.requester = requester
+        self.id = teamid
+        self.name = name
+        self.description = description
+        self.color_code = color_code
+        self.team_app_ids = app_ids
+        self.team_app_2_add = []
+        self.team_app_2_rm = []
+        self.team_osi_ids = osi_ids
+        self.team_osi_2_add = []
+        self.team_osi_2_rm = []
+
+    def save(self):
+        ok = True
+        if self.id is None:
+            params = {
+                'name': self.name,
+                'description': self.description,
+                'colorCode': self.color_code
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                self.__sync__(response.response_content)
+            else:
+                LOGGER.error(
+                    'Error while saving team ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                ok = False
+        else:
+            params = {
+                'id': self.id,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating team ' + self.name + ' name. Reason: ' + str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'description': self.description
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'colorCode': self.color_code
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+
+        return self
+
+    def remove(self):
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting team ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
