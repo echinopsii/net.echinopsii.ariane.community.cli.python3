@@ -37,6 +37,7 @@ class DirectoryService(object):
         self.os_type_service = OSTypeService(self.driver)
         self.application_service = ApplicationService(self.driver)
         self.company_service = CompanyService(self.driver)
+        self.environment_service = EnvironmentService(self.driver)
 
 
 class DatacenterService(object):
@@ -1342,8 +1343,8 @@ class Company(object):
         self.cmp_applications_ids = application_ids
         self.cmp_applications_2_add = []
         self.cmp_applications_2_rm = []
-        self.cmp_ost_2_add = []
-        self.cmp_ost_2_rm = []
+        self.cmp_applications_2_add = []
+        self.cmp_applications_2_rm = []
         self.cmp_ost_ids = ost_ids
         self.cmp_ost_2_add = []
         self.cmp_ost_2_rm = []
@@ -1373,7 +1374,7 @@ class Company(object):
             response = self.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while updating application ' + self.name + ' name. Reason: ' + str(response.error_message)
+                    'Error while updating company ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -1386,7 +1387,7 @@ class Company(object):
                 response = self.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: ' +
+                        'Error while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1410,8 +1411,169 @@ class Company(object):
             else:
                 return None
 
+
+class EnvironmentService(object):
+    def __init__(self, directory_driver):
+        self.driver = directory_driver
+        args = {'repository_path': 'rest/directories/common/organisation/environments/'}
+        self.requester = self.driver.make_requester(args)
+
+    def find_environment(self, env_id=None, env_name=None):
+        if (env_id is None or not env_id) and (env_name is None or not env_name):
+            raise exceptions.ArianeCallParametersError('id and name')
+
+        if (env_id is not None and env_id) and (env_name is not None and env_name):
+            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            env_name = None
+
+        params = None
+        if env_id is not None and env_id:
+            params = {'id': env_id}
+        elif env_name is not None and env_name:
+            params = {'name': env_name}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                ret = Environment.json_2_environment(self.requester, response.response_content)
+            else:
+                err_msg = 'Error while finding environment (id:' + str(env_id) + ', name:' + str(env_name) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(
+                    err_msg
+                )
+
+        return ret
+
+    def get_environments(self):
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = self.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for company in response.response_content['environments']:
+                ret.append(Environment.json_2_environment(self.requester, company))
+        else:
+            err_msg = 'Error while getting environments. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+
 class Environment(object):
-    pass
+    @staticmethod
+    def json_2_environment(requester, json_obj):
+        return Environment(requester=requester,
+                           envid=json_obj['environmentID'],
+                           name=json_obj['environmentName'],
+                           description=json_obj['environmentDescription'],
+                           color_code=json_obj['environmentColorCode'],
+                           osi_ids=json_obj['environmentOSInstancesID'])
+
+    def environment_2_json(self):
+        json_obj = {
+            'environmentID': self.id,
+            'environmentName': self.name,
+            'environmentDescription': self.description,
+            'environmentColorCode': self.color_code,
+            'environmentOSInstancesID': self.cmp_osi_ids
+        }
+        return json.dumps(json_obj)
+
+    def __sync__(self, json_obj):
+        self.id = json_obj['environmentID']
+        self.name = json_obj['environmentName']
+        self.description = json_obj['environmentDescription']
+        self.color_code = json_obj['environmentColorCode']
+        self.cmp_osi_ids = json_obj['environmentOSInstancesID']
+
+    def __init__(self, requester, envid=None, name=None, description=None,
+                 color_code=None, osi_ids=None):
+        self.requester = requester
+        self.id = envid
+        self.name = name
+        self.description = description
+        self.color_code = color_code
+        self.cmp_osi_ids = osi_ids
+        self.cmp_osi_2_add = []
+        self.cmp_osi_2_rm = []
+
+    def save(self):
+        ok = True
+        if self.id is None:
+            params = {
+                'name': self.name,
+                'description': self.description,
+                'colorCode': self.color_code
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is 0:
+                self.__sync__(response.response_content)
+            else:
+                LOGGER.error(
+                    'Error while saving environment ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                ok = False
+        else:
+            params = {
+                'id': self.id,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating environment ' + self.name + ' name. Reason: ' + str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'description': self.description
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating environment ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'colorCode': self.color_code
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
+                response = self.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating environment ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+
+        return self
+
+    def remove(self):
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = self.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting environment ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 
 class Team(object):
