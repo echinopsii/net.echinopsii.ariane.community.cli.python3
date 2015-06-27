@@ -65,7 +65,7 @@ class OSInstanceTest(unittest.TestCase):
 
     def test_osinstance_link_to_subnet(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
+        DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
                                        ra_type=RoutingArea.RA_TYPE_LAN,
@@ -104,3 +104,37 @@ class OSInstanceTest(unittest.TestCase):
         new_osinstance.remove()
         new_subnet.remove()
         new_routing_area.remove()
+
+    def test_osinstance_link_to_embedded_osinstance(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+        new_emb_osinstance = OSInstance(name='my_new_emb_osi',
+                                        description='my new emb osi',
+                                        admin_gate_uri='ssh://admingateuri')
+        new_osinstance = OSInstance(name='my_new_osi',
+                                    description='my new osi',
+                                    admin_gate_uri='ssh://admingateuri')
+        new_osinstance.add_embedded_osi(new_emb_osinstance, sync=False)
+        self.assertTrue(new_emb_osinstance in new_osinstance.embedded_osi_2_add)
+        self.assertIsNone(new_osinstance.embedded_osi_ids)
+        self.assertIsNone(new_emb_osinstance.embedding_osi_id)
+        new_osinstance.save()
+        self.assertTrue(new_emb_osinstance not in new_osinstance.embedded_osi_2_add)
+        self.assertTrue(new_emb_osinstance.id in new_osinstance.embedded_osi_ids)
+        self.assertTrue(new_emb_osinstance.embedding_osi_id == new_osinstance.id)
+        new_osinstance.del_embedded_osi(new_emb_osinstance, sync=False)
+        self.assertTrue(new_emb_osinstance in new_osinstance.embedded_osi_2_rm)
+        self.assertTrue(new_emb_osinstance.id in new_osinstance.embedded_osi_ids)
+        self.assertTrue(new_emb_osinstance.embedding_osi_id == new_osinstance.id)
+        new_osinstance.save()
+        self.assertTrue(new_emb_osinstance not in new_osinstance.embedded_osi_2_rm)
+        self.assertTrue(new_emb_osinstance.id not in new_osinstance.embedded_osi_ids)
+        self.assertIsNone(new_emb_osinstance.embedding_osi_id)
+        new_osinstance.add_embedded_osi(new_emb_osinstance)
+        self.assertTrue(new_emb_osinstance.id in new_osinstance.embedded_osi_ids)
+        self.assertTrue(new_emb_osinstance.embedding_osi_id == new_osinstance.id)
+        new_osinstance.del_embedded_osi(new_emb_osinstance)
+        self.assertTrue(new_emb_osinstance.id not in new_osinstance.embedded_osi_ids)
+        self.assertIsNone(new_emb_osinstance.embedding_osi_id)
+        new_emb_osinstance.remove()
+        new_osinstance.remove()

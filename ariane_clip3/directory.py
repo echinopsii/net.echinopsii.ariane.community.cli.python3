@@ -1367,7 +1367,14 @@ class OSInstance(object):
             self.name = json_obj['osInstanceName']
             self.description = json_obj['osInstanceDescription']
             self.admin_gate_uri = json_obj['osInstanceAdminGateURI']
-            self.ost_id = json_obj['osInstanceOSTypeID']
+            if json_obj['osInstanceOSTypeID'] == -1:
+                self.ost_id = None
+            else:
+                self.ost_id = json_obj['osInstanceOSTypeID']
+            if json_obj['osInstanceEmbeddingOSInstanceID'] == -1:
+                self.embedding_osi_id = None
+            else:
+                self.embedding_osi_id = json_obj['osInstanceEmbeddingOSInstanceID']
             self.embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
             self.application_ids = json_obj['osInstanceApplicationsID']
             self.environment_ids = json_obj['osInstanceEnvironmentsID']
@@ -1453,6 +1460,60 @@ class OSInstance(object):
                     subnet.name + ' id is None'
                 )
 
+    def add_embedded_osi(self, e_osi, sync=True):
+        if not sync:
+            self.embedded_osi_2_add.append(e_osi)
+        else:
+            if e_osi.id is None:
+                e_osi.save()
+            if self.id is not None and e_osi.id is not None:
+                params = {
+                    'id': self.id,
+                    'osiID': e_osi.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/add', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.embedded_osi_ids.append(e_osi.id)
+                    e_osi.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                    e_osi.name + ' id is None'
+                )
+
+    def del_embedded_osi(self, e_osi, sync=True):
+        if not sync:
+            self.embedded_osi_2_rm.append(e_osi)
+        else:
+            if e_osi.id is None:
+                e_osi.save()
+            if self.id is not None and e_osi.id is not None:
+                params = {
+                    'id': self.id,
+                    'osiID': e_osi.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/delete', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.embedded_osi_ids.remove(e_osi.id)
+                    e_osi.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                    e_osi.name + ' id is None'
+                )
+
     def save(self):
         ok = True
         if self.id is None:
@@ -1509,7 +1570,7 @@ class OSInstance(object):
                         str(response.error_message)
                     )
 
-        if ok and self.ost_id is not None and self.ost_id != -1:
+        if ok and self.ost_id is not None:
             params = {
                 'id': self.id,
                 'ostID': self.ost_id
@@ -1626,7 +1687,7 @@ class OSInstance(object):
                     break
 
         if ok and self.embedded_osi_2_rm.__len__() > 0:
-            for embedded_osi in self.embedded_osi_2_add:
+            for embedded_osi in self.embedded_osi_2_rm:
                 if embedded_osi.id is None:
                     embedded_osi.__sync__()
                 if embedded_osi.id is not None:
@@ -1645,7 +1706,7 @@ class OSInstance(object):
                         ok = False
                         break
                     else:
-                        self.embedded_osi_2_add.remove(embedded_osi)
+                        self.embedded_osi_2_rm.remove(embedded_osi)
                         embedded_osi.__sync__()
                 else:
                     LOGGER.error(
@@ -1677,12 +1738,14 @@ class OSInstance(object):
 
 
 class OSTypeService(object):
-    def __init__(self, directory_driver):
-        self.driver = directory_driver
-        args = {'repository_path': 'rest/directories/common/infrastructure/system/ostypes/'}
-        self.requester = self.driver.make_requester(args)
+    requester = None
 
-    def find_ostype(self, ost_id=None, ost_name=None):
+    def __init__(self, directory_driver):
+        args = {'repository_path': 'rest/directories/common/infrastructure/system/ostypes/'}
+        OSTypeService.requester = directory_driver.make_requester(args)
+
+    @staticmethod
+    def find_ostype(ost_id=None, ost_name=None):
         if (ost_id is None or not ost_id) and (ost_name is None or not ost_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -1699,9 +1762,9 @@ class OSTypeService(object):
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = self.requester.call(args)
+            response = OSTypeService.requester.call(args)
             if response.rc is 0:
-                ret = OSType.json_2_ostype(self.requester, response.response_content)
+                ret = OSType.json_2_ostype(response.response_content)
             else:
                 err_msg = 'Error while finding OS Type (id:' + str(ost_id) + ', name:' + str(ost_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -1711,14 +1774,15 @@ class OSTypeService(object):
 
         return ret
 
-    def get_ostypes(self):
+    @staticmethod
+    def get_ostypes():
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = self.requester.call(args)
+        response = OSTypeService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
-            for subnet in response.response_content['osTypes']:
-                ret.append(OSType.json_2_ostype(self.requester, subnet))
+            for os_type in response.response_content['osTypes']:
+                ret.append(OSType.json_2_ostype(os_type))
         else:
             err_msg = 'Error while getting OS Types. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -1728,9 +1792,8 @@ class OSTypeService(object):
 
 class OSType(object):
     @staticmethod
-    def json_2_ostype(requester, json_obj):
-        return OSType(requester=requester,
-                      ostid=json_obj['osTypeID'],
+    def json_2_ostype(json_obj):
+        return OSType(ostid=json_obj['osTypeID'],
                       name=json_obj['osTypeName'],
                       architecture=json_obj['osTypeArchitecture'],
                       os_type_company_id=json_obj['osTypeCompanyID'],
@@ -1747,15 +1810,24 @@ class OSType(object):
         return json.dumps(json_obj)
 
     def __sync__(self, json_obj):
-        self.id = json_obj['osTypeID']
-        self.name = json_obj['osTypeName']
-        self.architecture = json_obj['osTypeArchitecture']
-        self.company_id = json_obj['osTypeCompanyID']
-        self.ost_osi_ids = json_obj['osTypeOSInstancesID']
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.name is not None:
+            params = {'name': self.name}
 
-    def __init__(self, requester, ostid=None, name=None, architecture=None,
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = OSTypeService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['osTypeID']
+            self.name = json_obj['osTypeName']
+            self.architecture = json_obj['osTypeArchitecture']
+            self.company_id = json_obj['osTypeCompanyID']
+            self.ost_osi_ids = json_obj['osTypeOSInstancesID']
+
+    def __init__(self, ostid=None, name=None, architecture=None,
                  os_type_company_id=None, os_type_os_instance_ids=None):
-        self.requester = requester
         self.id = ostid
         self.name = name
         self.architecture = architecture
@@ -1772,7 +1844,7 @@ class OSType(object):
                 'architecture': self.architecture
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = self.requester.call(args)
+            response = OSTypeService.requester.call(args)
             if response.rc is 0:
                 self.__sync__(response.response_content)
             else:
@@ -1786,7 +1858,7 @@ class OSType(object):
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = self.requester.call(args)
+            response = OSTypeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -1799,12 +1871,13 @@ class OSType(object):
                     'architecture': self.architecture
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/architecture', 'parameters': params}
-                response = self.requester.call(args)
+                response = OSTypeService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating os type ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
+                    ok = False
 
         if ok and self.company_id is not None:
             params = {
@@ -1812,7 +1885,7 @@ class OSType(object):
                 'companyID': self.company_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
-            response = self.requester.call(args)
+            response = OSTypeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -1826,7 +1899,7 @@ class OSType(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = self.requester.call(args)
+            response = OSTypeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while deleting os type ' + self.name + '. Reason: ' + str(response.error_message)
