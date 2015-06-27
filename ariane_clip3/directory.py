@@ -69,7 +69,7 @@ class DatacenterService(object):
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = DatacenterService.requester.call(args)
             if response.rc is 0:
-                ret = Datacenter.json_2_datacenter(DatacenterService.requester, response.response_content)
+                ret = Datacenter.json_2_datacenter(response.response_content)
             else:
                 err_msg = 'Error while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + '). ' +\
                           'Reason: ' + str(response.error_message)
@@ -84,7 +84,7 @@ class DatacenterService(object):
         if response.rc is 0:
             ret = []
             for datacenter in response.response_content['datacenters']:
-                ret.append(Datacenter.json_2_datacenter(DatacenterService.requester, datacenter))
+                ret.append(Datacenter.json_2_datacenter(datacenter))
         else:
             err_msg = 'Error while getting datacenters. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -423,10 +423,12 @@ class Datacenter(object):
 
 
 class RoutingAreaService(object):
+    requester = None
+
     def __init__(self, directory_driver):
         self.driver = directory_driver
         args = {'repository_path': 'rest/directories/common/infrastructure/network/routingareas/'}
-        self.requester = self.driver.make_requester(args)
+        RoutingAreaService.requester = self.driver.make_requester(args)
 
     def find_routing_area(self, ra_id=None, ra_name=None):
         if (ra_id is None or not ra_id) and (ra_name is None or not ra_name):
@@ -445,9 +447,9 @@ class RoutingAreaService(object):
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = self.requester.call(args)
+            response = RoutingAreaService.requester.call(args)
             if response.rc is 0:
-                ret = RoutingArea.json_2_routing_area(self.requester, response.response_content)
+                ret = RoutingArea.json_2_routing_area(response.response_content)
             else:
                 err_msg = 'Error while finding routing area (id:' + str(ra_id) + ', name:' + str(ra_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -459,12 +461,12 @@ class RoutingAreaService(object):
 
     def get_routing_areas(self):
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = self.requester.call(args)
+        response = RoutingAreaService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
             for routing_area in response.response_content['routingAreas']:
-                ret.append(RoutingArea.json_2_routing_area(self.requester, routing_area))
+                ret.append(RoutingArea.json_2_routing_area(routing_area))
         else:
             err_msg = 'Error while getting routing areas. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -482,9 +484,8 @@ class RoutingArea(object):
     RA_MULTICAST_NOLIMIT = "NOLIMIT"
 
     @staticmethod
-    def json_2_routing_area(requester, json_obj):
-        return RoutingArea(requester=requester,
-                           raid=json_obj['routingAreaID'],
+    def json_2_routing_area(json_obj):
+        return RoutingArea(raid=json_obj['routingAreaID'],
                            name=json_obj['routingAreaName'],
                            description=json_obj['routingAreaDescription'],
                            type=json_obj['routingAreaType'],
@@ -513,9 +514,8 @@ class RoutingArea(object):
         self.routing_area_dc_ids = json_obj['routingAreaDatacentersID']
         self.routing_area_subnet_ids = json_obj['routingAreaSubnetsID']
 
-    def __init__(self, requester, raid=None, name=None, description=None, type=None, multicast=None,
+    def __init__(self, raid=None, name=None, description=None, type=None, multicast=None,
                  routing_area_dc_ids=None, routing_area_subnet_ids=None):
-        self.requester = requester
         self.id = raid
         self.name = name
         self.description = description
@@ -537,7 +537,7 @@ class RoutingArea(object):
                 'multicast': self.multicast
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = self.requester.call(args)
+            response = RoutingAreaService.requester.call(args)
             if response.rc is 0:
                 self.__sync__(response.response_content)
             else:
@@ -551,7 +551,7 @@ class RoutingArea(object):
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             ok = True
-            response = self.requester.call(args)
+            response = RoutingAreaService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating routing area ' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -564,7 +564,7 @@ class RoutingArea(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = self.requester.call(args)
+                response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating routing area ' + self.name + ' name. Reason: ' +
@@ -577,7 +577,7 @@ class RoutingArea(object):
                     'type': self.type
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
-                response = self.requester.call(args)
+                response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating routing area ' + self.name + ' name. Reason: ' +
@@ -590,7 +590,7 @@ class RoutingArea(object):
                     'multicast': self.multicast
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/multicast', 'parameters': params}
-                response = self.requester.call(args)
+                response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating routing area ' + self.name + ' name. Reason: ' +
@@ -606,7 +606,7 @@ class RoutingArea(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = self.requester.call(args)
+            response = RoutingAreaService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while deleting routing area ' + self.name + '. Reason: ' + str(response.error_message)

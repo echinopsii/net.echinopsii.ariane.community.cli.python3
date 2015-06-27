@@ -25,9 +25,8 @@ class RoutingAreaTest(unittest.TestCase):
 
     def test_new_routing_area(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        new_routing_area = RoutingArea(requester=service.routing_area_service.requester,
-                                       name='my_new_routing_area',
+        DirectoryService(args)
+        new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
                                        type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
@@ -37,9 +36,8 @@ class RoutingAreaTest(unittest.TestCase):
 
     def test_remove_routing_area_by_name(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        rm_routing_area = RoutingArea(requester=service.routing_area_service.requester,
-                                      name='my_new_routing_area',
+        DirectoryService(args)
+        rm_routing_area = RoutingArea(name='my_new_routing_area',
                                       description='my new routing area',
                                       type=RoutingArea.RA_TYPE_LAN,
                                       multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
@@ -49,8 +47,7 @@ class RoutingAreaTest(unittest.TestCase):
     def test_routing_area_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_routing_area = RoutingArea(requester=service.routing_area_service.requester,
-                                       name='my_new_routing_area',
+        new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
                                        type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
@@ -62,8 +59,7 @@ class RoutingAreaTest(unittest.TestCase):
     def test_routing_area_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_routing_area = RoutingArea(requester=service.routing_area_service.requester,
-                                       name='my_new_routing_area',
+        new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
                                        type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)

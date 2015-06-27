@@ -26,7 +26,7 @@ class DatacenterTest(unittest.TestCase):
 
     def test_new_datacenter(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
+        DirectoryService(args)
         new_datacenter = Datacenter(name='my_new_datacenter',
                                     description='my new datacenter',
                                     address='somewhere',
@@ -41,7 +41,7 @@ class DatacenterTest(unittest.TestCase):
 
     def test_remove_datacenter(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
+        DirectoryService(args)
         rm_datacenter = Datacenter(name='my_new_datacenter',
                                    description='my new datacenter',
                                    address='somewhere',
@@ -87,7 +87,7 @@ class DatacenterTest(unittest.TestCase):
 
     def test_datacenter_link_to_routing_area(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
+        DirectoryService(args)
         new_datacenter = Datacenter(name='my_new_datacenter',
                                     description='my new datacenter',
                                     address='somewhere',
@@ -97,8 +97,7 @@ class DatacenterTest(unittest.TestCase):
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
         new_datacenter.save()
-        new_routing_area = RoutingArea(requester=service.routing_area_service.requester,
-                                       name='my_new_routing_area',
+        new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
                                        type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
@@ -134,8 +133,7 @@ class DatacenterTest(unittest.TestCase):
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
         new_datacenter.save()
-        new_routing_area = RoutingArea(requester=service.routing_area_service.requester,
-                                       name='my_new_routing_area',
+        new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
                                        type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
