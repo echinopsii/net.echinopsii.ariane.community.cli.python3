@@ -42,10 +42,12 @@ class DirectoryService(object):
 
 
 class DatacenterService(object):
+    requester = None
+
     def __init__(self, directory_driver):
         self.driver = directory_driver
         args = {'repository_path': 'rest/directories/common/infrastructure/network/datacenters/'}
-        self.requester = self.driver.make_requester(args)
+        DatacenterService.requester = self.driver.make_requester(args)
 
     def find_datacenter(self, dc_id=None, dc_name=None):
 
@@ -65,9 +67,9 @@ class DatacenterService(object):
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = self.requester.call(args)
+            response = DatacenterService.requester.call(args)
             if response.rc is 0:
-                ret = Datacenter.json_2_datacenter(self.requester, response.response_content)
+                ret = Datacenter.json_2_datacenter(DatacenterService.requester, response.response_content)
             else:
                 err_msg = 'Error while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + '). ' +\
                           'Reason: ' + str(response.error_message)
@@ -77,12 +79,12 @@ class DatacenterService(object):
 
     def get_datacenters(self):
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = self.requester.call(args)
+        response = DatacenterService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
             for datacenter in response.response_content['datacenters']:
-                ret.append(Datacenter.json_2_datacenter(self.requester, datacenter))
+                ret.append(Datacenter.json_2_datacenter(DatacenterService.requester, datacenter))
         else:
             err_msg = 'Error while getting datacenters. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -92,9 +94,8 @@ class DatacenterService(object):
 class Datacenter(object):
 
     @staticmethod
-    def json_2_datacenter(requester, json_obj):
-        return Datacenter(requester=requester,
-                          dcid=json_obj['datacenterID'],
+    def json_2_datacenter(json_obj):
+        return Datacenter(dcid=json_obj['datacenterID'],
                           name=json_obj['datacenterName'],
                           description=json_obj['datacenterDescription'],
                           address=json_obj['datacenterAddress'],
@@ -122,22 +123,32 @@ class Datacenter(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self, json_obj):
-        self.id = json_obj['datacenterID']
-        self.name = json_obj['datacenterName']
-        self.description = json_obj['datacenterDescription']
-        self.address = json_obj['datacenterAddress']
-        self.zip_code = json_obj['datacenterZipCode']
-        self.town = json_obj['datacenterTown']
-        self.country = json_obj['datacenterCountry']
-        self.gpsLatitude = json_obj['datacenterGPSLat']
-        self.gpsLongitude = json_obj['datacenterGPSLng']
-        self.routing_area_ids = json_obj['datacenterRoutingAreasID']
-        self.subnet_ids = json_obj['datacenterSubnetsID']
+    def __sync__(self):
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.name is not None:
+            params = {'name': self.name}
 
-    def __init__(self, requester, dcid=None, name=None, description=None, address=None, zip_code=None, town=None,
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = DatacenterService.requester.call(args)
+            if response.rc is 0:
+                json_obj = response.response_content
+                self.id = json_obj['datacenterID']
+                self.name = json_obj['datacenterName']
+                self.description = json_obj['datacenterDescription']
+                self.address = json_obj['datacenterAddress']
+                self.zip_code = json_obj['datacenterZipCode']
+                self.town = json_obj['datacenterTown']
+                self.country = json_obj['datacenterCountry']
+                self.gpsLatitude = json_obj['datacenterGPSLat']
+                self.gpsLongitude = json_obj['datacenterGPSLng']
+                self.routing_area_ids = json_obj['datacenterRoutingAreasID']
+                self.subnet_ids = json_obj['datacenterSubnetsID']
+
+    def __init__(self, dcid=None, name=None, description=None, address=None, zip_code=None, town=None,
                  country=None, gps_latitude=None, gps_longitude=None, routing_area_ids=None, subnet_ids=None):
-        self.requester = requester
         self.id = dcid
         self.name = name
         self.description = description
@@ -157,7 +168,88 @@ class Datacenter(object):
     def __str__(self):
         return str(self.__dict__)
 
+    def add_routing_area(self, routing_area, sync=True):
+        if not sync:
+            self.routing_areas_2_add.append(routing_area)
+        else:
+            if routing_area.id is None:
+                routing_area.save()
+            params = {
+                'id': self.id,
+                'routingareaID': routing_area.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
+            response = DatacenterService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.routing_area_ids.append(routing_area.id)
+
+    def del_routing_area(self, routing_area, sync=True):
+        if not sync:
+            self.routing_areas_2_rm.append(routing_area)
+        else:
+            if routing_area.id is None:
+                routing_area.save()
+            params = {
+                'id': self.id,
+                'routingareaID': routing_area.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete', 'parameters': params}
+            response = DatacenterService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.routing_area_ids.remove(routing_area.id)
+
+    def add_subnet(self, subnet, sync=True):
+        if not sync:
+            self.subnets_2_add.append(subnet)
+        else:
+            if subnet.id is None:
+                subnet.save()
+            params = {
+                'id': self.id,
+                'subnetID': subnet.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
+            response = DatacenterService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.subnet_ids.append(subnet.id)
+
+    def del_subnet(self, subnet, sync=True):
+        if not sync:
+            self.subnets_2_rm.append(subnet)
+        else:
+            if subnet.id is None:
+                subnet.save()
+            params = {
+                'id': self.id,
+                'subnetID': subnet.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
+            response = DatacenterService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.subnet_ids.remove(subnet.id)
+
     def save(self):
+        ok = True
         if self.id is None:
             params = {
                 'name': self.name, 'address': self.address, 'zipCode': self.zipCode, 'town': self.town,
@@ -165,21 +257,17 @@ class Datacenter(object):
                 'description': self.description
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = self.requester.call(args)
-            if response.rc is 0:
-                self.__sync__(response.response_content)
-            else:
-                LOGGER.error(
-                    'Error while saving datacenter' + self.name + '. Reason: ' + str(response.error_message)
-                )
+            response = DatacenterService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while saving datacenter' + self.name + '. Reason: ' + str(response.error_message))
+                ok = False
         else:
             params = {
                 'id': self.id,
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            ok = True
-            response = self.requester.call(args)
+            response = DatacenterService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating datacenter' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -195,7 +283,7 @@ class Datacenter(object):
                     'country': self.country
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/fullAddress', 'parameters': params}
-                response = self.requester.call(args)
+                response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' full address. Reason: ' +
@@ -210,7 +298,7 @@ class Datacenter(object):
                     'gpsLongitude': self.gpsLongitude
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/gpsCoord', 'parameters': params}
-                response = self.requester.call(args)
+                response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' gps coord. Reason: ' +
@@ -224,12 +312,95 @@ class Datacenter(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = self.requester.call(args)
+                response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
+                    ok = False
+
+        if ok and self.routing_areas_2_add.__len__() > 0:
+            for routing_area in self.routing_areas_2_add:
+                if routing_area.id is None:
+                    routing_area.save()
+                params = {
+                    'id': self.id,
+                    'routingareaID': routing_area.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
+                response = DatacenterService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+                else:
+                    self.routing_areas_2_add.remove(routing_area)
+
+        if ok and self.routing_areas_2_rm.__len__() > 0:
+            for routing_area in self.routing_areas_2_rm:
+                if routing_area.id is None:
+                    routing_area.save()
+                params = {
+                    'id': self.id,
+                    'routingareaID': routing_area.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete', 'parameters': params}
+                response = DatacenterService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+                else:
+                    self.routing_areas_2_rm.remove(routing_area)
+
+        if ok and self.subnets_2_add.__len__() > 0:
+            for subnet in self.subnets_2_add:
+                if subnet.id is None:
+                    subnet.save()
+                params = {
+                    'id': self.id,
+                    'subnetID': subnet.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
+                response = DatacenterService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+                else:
+                    self.subnets_2_add.remove(subnet)
+
+        if ok and self.subnets_2_rm.__len__() > 0:
+            for subnet in self.subnets_2_rm:
+                if subnet.id is None:
+                    subnet.save()
+                params = {
+                    'id': self.id,
+                    'subnetID': subnet.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
+                response = DatacenterService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+                else:
+                    self.subnets_2_rm.remove(subnet)
+
+        self.__sync__()
 
         return self
 
@@ -241,7 +412,7 @@ class Datacenter(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = self.requester.call(args)
+            response = DatacenterService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while deleting datacenter ' + self.name + '. Reason: ' + str(response.error_message)
