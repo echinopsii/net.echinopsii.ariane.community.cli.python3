@@ -97,7 +97,7 @@ class DatacenterTest(unittest.TestCase):
                                     gps_longitude='32.234235')
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_datacenter.add_routing_area(new_routing_area, sync=False)
         self.assertTrue(new_routing_area in new_datacenter.routing_areas_2_add)
@@ -129,7 +129,7 @@ class DatacenterTest(unittest.TestCase):
         DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         new_subnet = Subnet(name='my_new_subnet',

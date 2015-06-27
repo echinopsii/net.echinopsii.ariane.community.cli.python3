@@ -28,7 +28,7 @@ class SubnetTest(unittest.TestCase):
         DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         new_subnet = Subnet(name='my_new_subnet',
@@ -46,7 +46,7 @@ class SubnetTest(unittest.TestCase):
         DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         rm_subnet = Subnet(name='my_new_subnet',
@@ -63,7 +63,7 @@ class SubnetTest(unittest.TestCase):
         service = DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         new_subnet = Subnet(name='my_new_subnet',
@@ -82,7 +82,7 @@ class SubnetTest(unittest.TestCase):
         service = DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         new_subnet = Subnet(name='my_new_subnet',
@@ -100,7 +100,7 @@ class SubnetTest(unittest.TestCase):
         DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         new_subnet = Subnet(name='my_new_subnet',
@@ -147,7 +147,7 @@ class SubnetTest(unittest.TestCase):
         DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         new_subnet = Subnet(name='my_new_subnet',
@@ -161,25 +161,25 @@ class SubnetTest(unittest.TestCase):
         new_subnet.add_os_instance(new_osinstance, sync=False)
         self.assertTrue(new_osinstance in new_subnet.osi_2_add)
         self.assertIsNone(new_subnet.osi_ids)
-        self.assertIsNone(new_osinstance.osi_subnet_ids)
+        self.assertIsNone(new_osinstance.subnet_ids)
         new_subnet.save()
         self.assertTrue(new_osinstance not in new_subnet.osi_2_add)
         self.assertTrue(new_osinstance.id in new_subnet.osi_ids)
-        self.assertTrue(new_subnet.id in new_osinstance.osi_subnet_ids)
+        self.assertTrue(new_subnet.id in new_osinstance.subnet_ids)
         new_subnet.del_os_instance(new_osinstance, sync=False)
         self.assertTrue(new_osinstance in new_subnet.osi_2_rm)
         self.assertTrue(new_osinstance.id in new_subnet.osi_ids)
-        self.assertTrue(new_subnet.id in new_osinstance.osi_subnet_ids)
+        self.assertTrue(new_subnet.id in new_osinstance.subnet_ids)
         new_subnet.save()
         self.assertTrue(new_osinstance not in new_subnet.osi_2_rm)
         self.assertTrue(new_osinstance.id not in new_subnet.osi_ids)
-        self.assertTrue(new_subnet.id not in new_osinstance.osi_subnet_ids)
+        self.assertTrue(new_subnet.id not in new_osinstance.subnet_ids)
         new_subnet.add_os_instance(new_osinstance)
         self.assertTrue(new_osinstance.id in new_subnet.osi_ids)
-        self.assertTrue(new_subnet.id in new_osinstance.osi_subnet_ids)
+        self.assertTrue(new_subnet.id in new_osinstance.subnet_ids)
         new_subnet.del_os_instance(new_osinstance)
         self.assertTrue(new_osinstance.id not in new_subnet.osi_ids)
-        self.assertTrue(new_subnet.id not in new_osinstance.osi_subnet_ids)
+        self.assertTrue(new_subnet.id not in new_osinstance.subnet_ids)
         new_osinstance.remove()
         new_subnet.remove()
         new_routing_area.remove()

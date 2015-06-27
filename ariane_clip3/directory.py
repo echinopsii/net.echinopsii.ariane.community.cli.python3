@@ -45,11 +45,11 @@ class DatacenterService(object):
     requester = None
 
     def __init__(self, directory_driver):
-        self.driver = directory_driver
         args = {'repository_path': 'rest/directories/common/infrastructure/network/datacenters/'}
-        DatacenterService.requester = self.driver.make_requester(args)
+        DatacenterService.requester = directory_driver.make_requester(args)
 
-    def find_datacenter(self, dc_id=None, dc_name=None):
+    @staticmethod
+    def find_datacenter(dc_id=None, dc_name=None):
 
         if (dc_id is None or not dc_id) and (dc_name is None or not dc_name):
             raise exceptions.ArianeCallParametersError('id and name')
@@ -77,7 +77,8 @@ class DatacenterService(object):
 
         return ret
 
-    def get_datacenters(self):
+    @staticmethod
+    def get_datacenters():
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = DatacenterService.requester.call(args)
         ret = None
@@ -172,7 +173,7 @@ class Datacenter(object):
         if not sync:
             self.routing_areas_2_add.append(routing_area)
         else:
-            if routing_area.id is None:
+            if self.id is not None and routing_area.id is None:
                 routing_area.save()
             if self.id is not None and routing_area.id is not None:
                 params = {
@@ -199,7 +200,7 @@ class Datacenter(object):
         if not sync:
             self.routing_areas_2_rm.append(routing_area)
         else:
-            if routing_area.id is None:
+            if self.id is not None and routing_area.id is None:
                 routing_area.__sync__()
             if self.id is not None and routing_area.id is not None:
                 params = {
@@ -388,7 +389,8 @@ class Datacenter(object):
                         'id': self.id,
                         'routingareaID': routing_area.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete', 'parameters': params}
+                    args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete',
+                            'parameters': params}
                     response = DatacenterService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.error(
@@ -453,7 +455,7 @@ class Datacenter(object):
                             'Error while updating datacenter ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        ok = False
+                        #ok = False
                         break
                     else:
                         self.subnets_2_rm.remove(subnet)
@@ -463,7 +465,7 @@ class Datacenter(object):
                         'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
-                    ok = False
+                    #ok = False
                     break
 
         self.__sync__()
@@ -492,11 +494,11 @@ class RoutingAreaService(object):
     requester = None
 
     def __init__(self, directory_driver):
-        self.driver = directory_driver
         args = {'repository_path': 'rest/directories/common/infrastructure/network/routingareas/'}
-        RoutingAreaService.requester = self.driver.make_requester(args)
+        RoutingAreaService.requester = directory_driver.make_requester(args)
 
-    def find_routing_area(self, ra_id=None, ra_name=None):
+    @staticmethod
+    def find_routing_area(ra_id=None, ra_name=None):
         if (ra_id is None or not ra_id) and (ra_name is None or not ra_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -525,7 +527,8 @@ class RoutingAreaService(object):
 
         return ret
 
-    def get_routing_areas(self):
+    @staticmethod
+    def get_routing_areas():
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = RoutingAreaService.requester.call(args)
         ret = None
@@ -554,7 +557,7 @@ class RoutingArea(object):
         return RoutingArea(raid=json_obj['routingAreaID'],
                            name=json_obj['routingAreaName'],
                            description=json_obj['routingAreaDescription'],
-                           type=json_obj['routingAreaType'],
+                           ra_type=json_obj['routingAreaType'],
                            multicast=json_obj['routingAreaMulticast'],
                            routing_area_dc_ids=json_obj['routingAreaDatacentersID'],
                            routing_area_subnet_ids=json_obj['routingAreaSubnetsID'])
@@ -591,12 +594,12 @@ class RoutingArea(object):
                 self.dc_ids = json_obj['routingAreaDatacentersID']
                 self.subnet_ids = json_obj['routingAreaSubnetsID']
 
-    def __init__(self, raid=None, name=None, description=None, type=None, multicast=None,
+    def __init__(self, raid=None, name=None, description=None, ra_type=None, multicast=None,
                  routing_area_dc_ids=None, routing_area_subnet_ids=None):
         self.id = raid
         self.name = name
         self.description = description
-        self.type = type
+        self.type = ra_type
         self.multicast = multicast
         self.dc_ids = routing_area_dc_ids
         self.dc_2_add = []
@@ -768,14 +771,15 @@ class RoutingArea(object):
                         'id': self.id,
                         'datacenterID': datacenter.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
+                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete',
+                            'parameters': params}
                     response = RoutingAreaService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.error(
                             'Error while updating routing area ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        ok = False
+                        #ok = False
                         break
                     else:
                         self.dc_2_rm.remove(datacenter)
@@ -785,7 +789,7 @@ class RoutingArea(object):
                         'Error while updating routing area ' + self.name + ' name. Reason: datacenter ' +
                         datacenter.name + ' id is None'
                     )
-                    ok = False
+                    #ok = False
                     break
         self.__sync__()
         return self
@@ -812,11 +816,11 @@ class SubnetService(object):
     requester = None
 
     def __init__(self, directory_driver):
-        self.driver = directory_driver
         args = {'repository_path': 'rest/directories/common/infrastructure/network/subnets/'}
-        SubnetService.requester = self.driver.make_requester(args)
+        SubnetService.requester = directory_driver.make_requester(args)
 
-    def find_subnet(self, sb_id=None, sb_name=None):
+    @staticmethod
+    def find_subnet(sb_id=None, sb_name=None):
         if (sb_id is None or not sb_id) and (sb_name is None or not sb_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -845,7 +849,8 @@ class SubnetService(object):
 
         return ret
 
-    def get_subnets(self):
+    @staticmethod
+    def get_subnets():
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = SubnetService.requester.call(args)
         ret = None
@@ -994,7 +999,7 @@ class Subnet(object):
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
-                    os_instance.osi_subnet_ids.append(self.id)
+                    os_instance.subnet_ids.append(self.id)
             else:
                 LOGGER.error(
                     'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
@@ -1021,7 +1026,7 @@ class Subnet(object):
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
-                    os_instance.osi_subnet_ids.remove(self.id)
+                    os_instance.subnet_ids.remove(self.id)
             else:
                 LOGGER.error(
                     'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
@@ -1154,7 +1159,8 @@ class Subnet(object):
                         'id': self.id,
                         'datacenterID': datacenter.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
+                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete',
+                            'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.error(
@@ -1212,14 +1218,15 @@ class Subnet(object):
                         'id': self.id,
                         'osiID': osi.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
+                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete',
+                            'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.error(
                             'Error while updating subnet ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        ok = False
+                        #ok = False
                         break
                     else:
                         self.osi_2_rm.remove(osi)
@@ -1229,7 +1236,7 @@ class Subnet(object):
                         'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
-                    ok = False
+                    #ok = False
                     break
 
         self.__sync__()
@@ -1265,11 +1272,11 @@ class OSInstanceService(object):
     requester = None
 
     def __init__(self, directory_driver):
-        self.driver = directory_driver
         args = {'repository_path': 'rest/directories/common/infrastructure/system/osinstances/'}
-        OSInstanceService.requester = self.driver.make_requester(args)
+        OSInstanceService.requester = directory_driver.make_requester(args)
 
-    def find_osinstance(self, osi_id=None, osi_name=None):
+    @staticmethod
+    def find_osinstance(osi_id=None, osi_name=None):
         if (osi_id is None or not osi_id) and (osi_name is None or not osi_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -1298,7 +1305,8 @@ class OSInstanceService(object):
 
         return ret
 
-    def get_osinstances(self):
+    @staticmethod
+    def get_osinstances():
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = OSInstanceService.requester.call(args)
         ret = None
@@ -1334,13 +1342,13 @@ class OSInstance(object):
             'osInstanceName': self.name,
             'osInstanceDescription': self.description,
             'osInstanceAdminGateURI': self.admin_gate_uri,
-            'osInstanceEmbeddingOSInstanceID': self.osi_embedding_osi_id,
-            'osInstanceOSTypeID': self.osi_ost_id,
-            'osInstanceEmbeddedOSInstancesID': self.osi_embedded_osi_ids,
-            'osInstanceApplicationsID': self.osi_application_ids,
-            'osInstanceEnvironmentsID': self.osi_environment_ids,
-            'osInstanceSubnetID': self.osi_subnet_ids,
-            'osInstanceTeamsID': self.osi_team_ids
+            'osInstanceEmbeddingOSInstanceID': self.embedding_osi_id,
+            'osInstanceOSTypeID': self.ost_id,
+            'osInstanceEmbeddedOSInstancesID': self.embedded_osi_ids,
+            'osInstanceApplicationsID': self.application_ids,
+            'osInstanceEnvironmentsID': self.environment_ids,
+            'osInstanceSubnetID': self.subnet_ids,
+            'osInstanceTeamsID': self.team_ids
         }
         return json.dumps(json_obj)
 
@@ -1359,12 +1367,12 @@ class OSInstance(object):
             self.name = json_obj['osInstanceName']
             self.description = json_obj['osInstanceDescription']
             self.admin_gate_uri = json_obj['osInstanceAdminGateURI']
-            self.osi_ost_id = json_obj['osInstanceOSTypeID']
-            self.osi_embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
-            self.osi_application_ids = json_obj['osInstanceApplicationsID']
-            self.osi_environment_ids = json_obj['osInstanceEnvironmentsID']
-            self.osi_subnet_ids = json_obj['osInstanceSubnetsID']
-            self.osi_team_ids = json_obj['osInstanceTeamsID']
+            self.ost_id = json_obj['osInstanceOSTypeID']
+            self.embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
+            self.application_ids = json_obj['osInstanceApplicationsID']
+            self.environment_ids = json_obj['osInstanceEnvironmentsID']
+            self.subnet_ids = json_obj['osInstanceSubnetsID']
+            self.team_ids = json_obj['osInstanceTeamsID']
 
     def __init__(self, osiid=None, name=None, description=None, admin_gate_uri=None,
                  osi_embedding_osi_id=None, osi_ost_id=None, osi_embedded_osi_ids=None, osi_application_ids=None,
@@ -1373,23 +1381,77 @@ class OSInstance(object):
         self.name = name
         self.description = description
         self.admin_gate_uri = admin_gate_uri
-        self.osi_embedding_osi_id = osi_embedding_osi_id
-        self.osi_ost_id = osi_ost_id
-        self.osi_embedded_osi_ids = osi_embedded_osi_ids
-        self.osi_embedded_osi_2_add = []
-        self.osi_embedded_osi_2_rm = []
-        self.osi_application_ids = osi_application_ids
-        self.osi_application_2_add = []
-        self.osi_application_2_rm = []
-        self.osi_environment_ids = osi_environment_ids
-        self.osi_environment_2_add = []
-        self.osi_environment_2_rm = []
-        self.osi_subnet_ids = osi_subnet_ids
-        self.osi_subnet_2_add = []
-        self.osi_subnet_2_rm = []
-        self.osi_team_ids = osi_team_ids
-        self.osi_team_2_add = []
-        self.osi_team_2_rm = []
+        self.embedding_osi_id = osi_embedding_osi_id
+        self.ost_id = osi_ost_id
+        self.embedded_osi_ids = osi_embedded_osi_ids
+        self.embedded_osi_2_add = []
+        self.embedded_osi_2_rm = []
+        self.application_ids = osi_application_ids
+        self.application_2_add = []
+        self.application_2_rm = []
+        self.environment_ids = osi_environment_ids
+        self.environment_2_add = []
+        self.environment_2_rm = []
+        self.subnet_ids = osi_subnet_ids
+        self.subnets_2_add = []
+        self.subnets_2_rm = []
+        self.team_ids = osi_team_ids
+        self.team_2_add = []
+        self.team_2_rm = []
+
+    def add_subnet(self, subnet, sync=True):
+        if not sync:
+            self.subnets_2_add.append(subnet)
+        else:
+            if subnet.id is None:
+                subnet.save()
+            if self.id is not None and subnet.id is not None:
+                params = {
+                    'id': self.id,
+                    'subnetID': subnet.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.subnet_ids.append(subnet.id)
+                    subnet.osi_ids.append(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                    subnet.name + ' id is None'
+                )
+
+    def del_subnet(self, subnet, sync=True):
+        if not sync:
+            self.subnets_2_rm.append(subnet)
+        else:
+            if subnet.id is None:
+                subnet.save()
+            if self.id is not None and subnet.id is not None:
+                params = {
+                    'id': self.id,
+                    'subnetID': subnet.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.subnet_ids.remove(subnet.id)
+                    subnet.osi_ids.remove(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                    subnet.name + ' id is None'
+                )
 
     def save(self):
         ok = True
@@ -1447,10 +1509,10 @@ class OSInstance(object):
                         str(response.error_message)
                     )
 
-        if ok and self.osi_ost_id is not None:
+        if ok and self.ost_id is not None and self.ost_id != -1:
             params = {
                 'id': self.id,
-                'ostID': self.osi_ost_id
+                'ostID': self.ost_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/ostype', 'parameters': params}
             response = OSInstanceService.requester.call(args)
@@ -1460,10 +1522,10 @@ class OSInstance(object):
                     str(response.error_message)
                 )
 
-        if ok and self.osi_embedding_osi_id is not None:
+        if ok and self.embedding_osi_id is not None:
             params = {
                 'id': self.id,
-                'osiID': self.osi_embedding_osi_id
+                'osiID': self.embedding_osi_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/embeddingOSInstance', 'parameters': params}
             response = OSInstanceService.requester.call(args)
@@ -1472,6 +1534,127 @@ class OSInstance(object):
                     'Error while updating OS instance ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
+
+        if ok and self.subnets_2_add.__len__() > 0:
+            for subnet in self.subnets_2_add:
+                if subnet.id is None:
+                    subnet.save()
+                if subnet.id is not None:
+                    params = {
+                        'id': self.id,
+                        'subnetID': subnet.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.subnets_2_add.remove(subnet)
+                        subnet.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                        subnet.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.subnets_2_rm.__len__() > 0:
+            for subnet in self.subnets_2_rm:
+                if subnet.id is None:
+                    subnet.__sync__()
+                if subnet.id is not None:
+                    params = {
+                        'id': self.id,
+                        'subnetID': subnet.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.subnets_2_rm.remove(subnet)
+                        subnet.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                        subnet.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.embedded_osi_2_add.__len__() > 0:
+            for embedded_osi in self.embedded_osi_2_add:
+                if embedded_osi.id is None:
+                    embedded_osi.save()
+                if embedded_osi.id is not None:
+                    params = {
+                        'id': self.id,
+                        'osiID': embedded_osi.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/add',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.embedded_osi_2_add.remove(embedded_osi)
+                        embedded_osi.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                        embedded_osi.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.embedded_osi_2_rm.__len__() > 0:
+            for embedded_osi in self.embedded_osi_2_add:
+                if embedded_osi.id is None:
+                    embedded_osi.__sync__()
+                if embedded_osi.id is not None:
+                    params = {
+                        'id': self.id,
+                        'osiID': embedded_osi.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/delete',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.embedded_osi_2_add.remove(embedded_osi)
+                        embedded_osi.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                        embedded_osi.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
         self.__sync__()
         return self
 

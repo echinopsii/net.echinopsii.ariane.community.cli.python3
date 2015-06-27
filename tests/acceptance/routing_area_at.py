@@ -28,7 +28,7 @@ class RoutingAreaTest(unittest.TestCase):
         DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         self.assertIsNotNone(new_routing_area.id)
@@ -39,7 +39,7 @@ class RoutingAreaTest(unittest.TestCase):
         DirectoryService(args)
         rm_routing_area = RoutingArea(name='my_new_routing_area',
                                       description='my new routing area',
-                                      type=RoutingArea.RA_TYPE_LAN,
+                                      ra_type=RoutingArea.RA_TYPE_LAN,
                                       multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         rm_routing_area.save()
         self.assertIsNone(rm_routing_area.remove())
@@ -49,7 +49,7 @@ class RoutingAreaTest(unittest.TestCase):
         service = DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         ret = service.routing_area_service.get_routing_areas()
@@ -61,7 +61,7 @@ class RoutingAreaTest(unittest.TestCase):
         service = DirectoryService(args)
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.save()
         self.assertIsNotNone(service.routing_area_service.find_routing_area(ra_name="my_new_routing_area"))
@@ -80,7 +80,7 @@ class RoutingAreaTest(unittest.TestCase):
                                     gps_longitude='32.234235')
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
         new_routing_area.add_datacenter(new_datacenter, sync=False)
         self.assertTrue(new_datacenter in new_routing_area.dc_2_add)
