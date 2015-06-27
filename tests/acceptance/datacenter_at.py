@@ -1,5 +1,5 @@
 # Ariane CLI Python 3
-# Datacenter acceptence tests
+# Datacenter acceptance tests
 #
 # Copyright (C) 2015 echinopsii
 #
@@ -15,9 +15,8 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import json
 import unittest
-from ariane_clip3.directory import DirectoryService, Datacenter, RoutingArea, DatacenterService, Subnet
+from ariane_clip3.directory import DirectoryService, Datacenter, RoutingArea, Subnet
 
 __author__ = 'mffrench'
 
@@ -96,28 +95,32 @@ class DatacenterTest(unittest.TestCase):
                                     country='france',
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
-        new_datacenter.save()
         new_routing_area = RoutingArea(name='my_new_routing_area',
                                        description='my new routing area',
                                        type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
-        new_routing_area.save()
         new_datacenter.add_routing_area(new_routing_area, sync=False)
-        self.assertTrue(new_datacenter.routing_areas_2_add.__len__() == 1)
-        self.assertTrue(new_routing_area.id not in new_datacenter.routing_area_ids)
+        self.assertTrue(new_routing_area in new_datacenter.routing_areas_2_add)
+        self.assertIsNone(new_datacenter.routing_area_ids)
+        self.assertIsNone(new_routing_area.dc_ids)
         new_datacenter.save()
-        self.assertTrue(new_datacenter.routing_areas_2_add.__len__() == 0)
+        self.assertTrue(new_routing_area not in new_datacenter.routing_areas_2_add)
         self.assertTrue(new_routing_area.id in new_datacenter.routing_area_ids)
+        self.assertTrue(new_datacenter.id in new_routing_area.dc_ids)
         new_datacenter.del_routing_area(new_routing_area, sync=False)
-        self.assertTrue(new_datacenter.routing_areas_2_rm.__len__() == 1)
+        self.assertTrue(new_routing_area in new_datacenter.routing_areas_2_rm)
         self.assertTrue(new_routing_area.id in new_datacenter.routing_area_ids)
+        self.assertTrue(new_datacenter.id in new_routing_area.dc_ids)
         new_datacenter.save()
-        self.assertTrue(new_datacenter.routing_areas_2_rm.__len__() == 0)
+        self.assertTrue(new_routing_area not in new_datacenter.routing_areas_2_rm)
         self.assertTrue(new_routing_area.id not in new_datacenter.routing_area_ids)
+        self.assertTrue(new_datacenter.id not in new_routing_area.dc_ids)
         new_datacenter.add_routing_area(new_routing_area)
         self.assertTrue(new_routing_area.id in new_datacenter.routing_area_ids)
+        self.assertTrue(new_datacenter.id in new_routing_area.dc_ids)
         new_datacenter.del_routing_area(new_routing_area)
         self.assertTrue(new_routing_area.id not in new_datacenter.routing_area_ids)
+        self.assertTrue(new_datacenter.id not in new_routing_area.dc_ids)
         new_routing_area.remove()
         new_datacenter.remove()
 
@@ -146,16 +149,16 @@ class DatacenterTest(unittest.TestCase):
                             routing_area_id=new_routing_area.id)
         new_subnet.save()
         new_datacenter.add_subnet(new_subnet, sync=False)
-        self.assertTrue(new_datacenter.subnets_2_add.__len__() == 1)
+        self.assertTrue(new_subnet in new_datacenter.subnets_2_add)
         self.assertTrue(new_subnet.id not in new_datacenter.subnet_ids)
         new_datacenter.save()
-        self.assertTrue(new_datacenter.subnets_2_add.__len__() == 0)
+        self.assertTrue(new_subnet not in new_datacenter.subnets_2_add)
         self.assertTrue(new_subnet.id in new_datacenter.subnet_ids)
         new_datacenter.del_subnet(new_subnet, sync=False)
-        self.assertTrue(new_datacenter.subnets_2_rm.__len__() == 1)
+        self.assertTrue(new_subnet in new_datacenter.subnets_2_rm)
         self.assertTrue(new_subnet.id in new_datacenter.subnet_ids)
         new_datacenter.save()
-        self.assertTrue(new_datacenter.subnets_2_rm.__len__() == 0)
+        self.assertTrue(new_subnet not in new_datacenter.subnets_2_rm)
         self.assertTrue(new_subnet.id not in new_datacenter.subnet_ids)
         new_datacenter.add_subnet(new_subnet)
         self.assertTrue(new_subnet.id in new_datacenter.subnet_ids)
