@@ -25,9 +25,8 @@ class OSInstanceTest(unittest.TestCase):
 
     def test_new_osinstance(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        new_osinstance = OSInstance(requester=service.os_instance_service.requester,
-                                    name='my_new_osi',
+        DirectoryService(args)
+        new_osinstance = OSInstance(name='my_new_osi',
                                     description='my new osi',
                                     admin_gate_uri='ssh://admingateuri')
         new_osinstance.save()
@@ -36,9 +35,8 @@ class OSInstanceTest(unittest.TestCase):
 
     def test_remove_osinstance_by_name(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        rm_osinstance = OSInstance(requester=service.os_instance_service.requester,
-                                   name='my_new_osi',
+        DirectoryService(args)
+        rm_osinstance = OSInstance(name='my_new_osi',
                                    description='my new osi',
                                    admin_gate_uri='ssh://admingateuri')
         rm_osinstance.save()
@@ -47,8 +45,7 @@ class OSInstanceTest(unittest.TestCase):
     def test_osinstance_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_osinstance = OSInstance(requester=service.os_instance_service.requester,
-                                    name='my_new_osi',
+        new_osinstance = OSInstance(name='my_new_osi',
                                     description='my new osi',
                                     admin_gate_uri='ssh://admingateuri')
         new_osinstance.save()
@@ -59,8 +56,7 @@ class OSInstanceTest(unittest.TestCase):
     def test_osinstance_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_osinstance = OSInstance(requester=service.os_instance_service.requester,
-                                    name='my_new_osi',
+        new_osinstance = OSInstance(name='my_new_osi',
                                     description='my new osi',
                                     admin_gate_uri='ssh://admingateuri')
         new_osinstance.save()

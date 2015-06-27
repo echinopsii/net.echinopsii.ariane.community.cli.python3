@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.directory import DirectoryService, RoutingArea, Subnet, Datacenter
+from ariane_clip3.directory import DirectoryService, RoutingArea, Subnet, Datacenter, OSInstance
 
 __author__ = 'mffrench'
 
@@ -141,3 +141,45 @@ class SubnetTest(unittest.TestCase):
         new_subnet.remove()
         new_routing_area.remove()
         new_datacenter.remove()
+
+    def test_subnet_link_to_os_instance(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+        new_routing_area = RoutingArea(name='my_new_routing_area',
+                                       description='my new routing area',
+                                       type=RoutingArea.RA_TYPE_LAN,
+                                       multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
+        new_routing_area.save()
+        new_subnet = Subnet(name='my_new_subnet',
+                            description='my new subnet',
+                            ip='192.168.12.3',
+                            mask='255.255.255.0',
+                            routing_area_id=new_routing_area.id)
+        new_osinstance = OSInstance(name='my_new_osi',
+                                    description='my new osi',
+                                    admin_gate_uri='ssh://admingateuri')
+        new_subnet.add_os_instance(new_osinstance, sync=False)
+        self.assertTrue(new_osinstance in new_subnet.osi_2_add)
+        self.assertIsNone(new_subnet.osi_ids)
+        self.assertIsNone(new_osinstance.osi_subnet_ids)
+        new_subnet.save()
+        self.assertTrue(new_osinstance not in new_subnet.osi_2_add)
+        self.assertTrue(new_osinstance.id in new_subnet.osi_ids)
+        self.assertTrue(new_subnet.id in new_osinstance.osi_subnet_ids)
+        new_subnet.del_os_instance(new_osinstance, sync=False)
+        self.assertTrue(new_osinstance in new_subnet.osi_2_rm)
+        self.assertTrue(new_osinstance.id in new_subnet.osi_ids)
+        self.assertTrue(new_subnet.id in new_osinstance.osi_subnet_ids)
+        new_subnet.save()
+        self.assertTrue(new_osinstance not in new_subnet.osi_2_rm)
+        self.assertTrue(new_osinstance.id not in new_subnet.osi_ids)
+        self.assertTrue(new_subnet.id not in new_osinstance.osi_subnet_ids)
+        new_subnet.add_os_instance(new_osinstance)
+        self.assertTrue(new_osinstance.id in new_subnet.osi_ids)
+        self.assertTrue(new_subnet.id in new_osinstance.osi_subnet_ids)
+        new_subnet.del_os_instance(new_osinstance)
+        self.assertTrue(new_osinstance.id not in new_subnet.osi_ids)
+        self.assertTrue(new_subnet.id not in new_osinstance.osi_subnet_ids)
+        new_osinstance.remove()
+        new_subnet.remove()
+        new_routing_area.remove()
