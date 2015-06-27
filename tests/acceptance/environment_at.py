@@ -26,9 +26,8 @@ class EnvironmentTest(unittest.TestCase):
 
     def test_new_environment(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        new_environment = Environment(requester=service.environment_service.requester,
-                                      name='my_new_env',
+        DirectoryService(args)
+        new_environment = Environment(name='my_new_env',
                                       description='my new env',
                                       color_code='0000')
         new_environment.save()
@@ -37,9 +36,8 @@ class EnvironmentTest(unittest.TestCase):
 
     def test_remove_environment(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        rm_environment = Environment(requester=service.environment_service.requester,
-                                     name='my_new_env',
+        DirectoryService(args)
+        rm_environment = Environment(name='my_new_env',
                                      description='my new env',
                                      color_code='0000')
         rm_environment.save()
@@ -48,8 +46,7 @@ class EnvironmentTest(unittest.TestCase):
     def test_environment_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_environment = Environment(requester=service.environment_service.requester,
-                                      name='my_new_env',
+        new_environment = Environment(name='my_new_env',
                                       description='my new env',
                                       color_code='0000')
         new_environment.save()
@@ -60,8 +57,7 @@ class EnvironmentTest(unittest.TestCase):
     def test_environment_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_environment = Environment(requester=service.environment_service.requester,
-                                      name='my_new_env',
+        new_environment = Environment(name='my_new_env',
                                       description='my new env',
                                       color_code='0000')
         new_environment.save()

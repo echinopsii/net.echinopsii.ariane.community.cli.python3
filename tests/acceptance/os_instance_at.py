@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application
+from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application, Environment
 
 __author__ = 'mffrench'
 
@@ -173,3 +173,37 @@ class OSInstanceTest(unittest.TestCase):
         self.assertTrue(osinstance.id not in application.osi_ids)
         application.remove()
         osinstance.remove()
+
+    def test_osinstance_link_to_environment(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+        osinstance = OSInstance(name='my_new_osi',
+                                description='my new osi',
+                                admin_gate_uri='ssh://admingateuri')
+        environment = Environment(name='my_new_env',
+                                  description='my new env',
+                                  color_code='0000')
+        osinstance.add_environment(environment, sync=False)
+        self.assertTrue(environment in osinstance.environment_2_add)
+        self.assertIsNone(osinstance.environment_ids)
+        self.assertIsNone(environment.osi_ids)
+        osinstance.save()
+        self.assertTrue(environment not in osinstance.environment_2_add)
+        self.assertTrue(environment.id in osinstance.environment_ids)
+        self.assertTrue(osinstance.id in environment.osi_ids)
+        osinstance.del_environment(environment, sync=False)
+        self.assertTrue(environment in osinstance.environment_2_rm)
+        self.assertTrue(environment.id in osinstance.environment_ids)
+        self.assertTrue(osinstance.id in environment.osi_ids)
+        osinstance.save()
+        self.assertTrue(environment not in osinstance.environment_2_rm)
+        self.assertTrue(environment.id not in osinstance.environment_ids)
+        self.assertTrue(osinstance.id not in environment.osi_ids)
+        osinstance.add_environment(environment)
+        self.assertTrue(environment.id in osinstance.environment_ids)
+        self.assertTrue(osinstance.id in environment.osi_ids)
+        osinstance.del_environment(environment)
+        self.assertTrue(environment.id not in osinstance.environment_ids)
+        self.assertTrue(osinstance.id not in environment.osi_ids)
+        osinstance.remove()
+        environment.remove()
