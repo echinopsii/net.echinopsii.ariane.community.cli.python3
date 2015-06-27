@@ -3268,6 +3268,60 @@ class Team(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def add_os_instance(self, os_instance, sync=True):
+        if not sync:
+            self.osi_2_add.append(os_instance)
+        else:
+            if os_instance.id is None:
+                os_instance.save()
+            if self.id is not None and os_instance.id is not None:
+                params = {
+                    'id': self.id,
+                    'osiID': os_instance.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
+                response = TeamService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.osi_ids.append(os_instance.id)
+                    os_instance.team_ids.append(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                    os_instance.name + ' id is None or self.id is None'
+                )
+
+    def del_os_instance(self, os_instance, sync=True):
+        if not sync:
+            self.osi_2_rm.append(os_instance)
+        else:
+            if os_instance.id is None:
+                os_instance.__sync__()
+            if self.id is not None and os_instance.id is not None:
+                params = {
+                    'id': self.id,
+                    'osiID': os_instance.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
+                response = TeamService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.osi_ids.remove(os_instance.id)
+                    os_instance.team_ids.remove(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                    os_instance.name + ' id is None or self.id is None'
+                )
+
     def save(self):
         ok = True
         if self.id is None:
@@ -3324,6 +3378,66 @@ class Team(object):
                         'Error while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
+
+        if ok and self.osi_2_add.__len__() > 0:
+            for osi in self.osi_2_add:
+                if osi.id is None:
+                    osi.save()
+                if osi.id is not None:
+                    params = {
+                        'id': self.id,
+                        'osiID': osi.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
+                    response = TeamService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.osi_2_add.remove(osi)
+                        osi.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                        osi.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.osi_2_rm.__len__() > 0:
+            for osi in self.osi_2_rm:
+                if osi.id is None:
+                    osi.__sync__()
+                if osi.id is not None:
+                    params = {
+                        'id': self.id,
+                        'osiID': osi.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete',
+                            'parameters': params}
+                    response = TeamService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        #ok = False
+                        break
+                    else:
+                        self.osi_2_rm.remove(osi)
+                        osi.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                        osi.name + ' id is None'
+                    )
+                    #ok = False
+                    break
+
         self.__sync__()
         return self
 

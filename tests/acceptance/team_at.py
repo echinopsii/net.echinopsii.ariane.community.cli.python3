@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import json
 import unittest
-from ariane_clip3.directory import DirectoryService, Team
+from ariane_clip3.directory import DirectoryService, Team, OSInstance
 
 __author__ = 'mffrench'
 
@@ -63,3 +63,37 @@ class TeamTest(unittest.TestCase):
         new_team.save()
         self.assertIsNotNone(service.team_service.find_team(team_name="my_new_team"))
         new_team.remove()
+
+    def test_team_link_to_osinstance(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+        team = Team(name='my_new_team',
+                    description='my new team',
+                    color_code='0000')
+        osinstance = OSInstance(name='my_new_osi',
+                                description='my new osi',
+                                admin_gate_uri='ssh://admingateuri')
+        team.add_os_instance(osinstance, sync=False)
+        self.assertTrue(osinstance in team.osi_2_add)
+        self.assertIsNone(osinstance.team_ids)
+        self.assertIsNone(team.osi_ids)
+        team.save()
+        self.assertTrue(osinstance not in team.osi_2_add)
+        self.assertTrue(team.id in osinstance.team_ids)
+        self.assertTrue(osinstance.id in team.osi_ids)
+        team.del_os_instance(osinstance, sync=False)
+        self.assertTrue(osinstance in team.osi_2_rm)
+        self.assertTrue(team.id in osinstance.team_ids)
+        self.assertTrue(osinstance.id in team.osi_ids)
+        team.save()
+        self.assertTrue(osinstance not in team.osi_2_rm)
+        self.assertTrue(team.id not in osinstance.team_ids)
+        self.assertTrue(osinstance.id not in team.osi_ids)
+        team.add_os_instance(osinstance)
+        self.assertTrue(team.id in osinstance.team_ids)
+        self.assertTrue(osinstance.id in team.osi_ids)
+        team.del_os_instance(osinstance)
+        self.assertTrue(team.id not in osinstance.team_ids)
+        self.assertTrue(osinstance.id not in team.osi_ids)
+        osinstance.remove()
+        team.remove()
