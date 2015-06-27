@@ -26,9 +26,8 @@ class ApplicationTest(unittest.TestCase):
 
     def test_new_application(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        new_application = Application(requester=service.application_service.requester,
-                                      name='my_new_app',
+        DirectoryService(args)
+        new_application = Application(name='my_new_app',
                                       description='my new app',
                                       short_name='app',
                                       color_code='082487')
@@ -38,9 +37,8 @@ class ApplicationTest(unittest.TestCase):
 
     def test_remove_application(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        rm_application = Application(requester=service.application_service.requester,
-                                     name='my_new_app',
+        DirectoryService(args)
+        rm_application = Application(name='my_new_app',
                                      description='my new app',
                                      short_name='app',
                                      color_code='082487')
@@ -50,8 +48,7 @@ class ApplicationTest(unittest.TestCase):
     def test_application_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_application = Application(requester=service.application_service.requester,
-                                      name='my_new_app',
+        new_application = Application(name='my_new_app',
                                       description='my new app',
                                       short_name='app',
                                       color_code='082487')
@@ -63,8 +60,7 @@ class ApplicationTest(unittest.TestCase):
     def test_application_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_application = Application(requester=service.application_service.requester,
-                                      name='my_new_app',
+        new_application = Application(name='my_new_app',
                                       description='my new app',
                                       short_name='app',
                                       color_code='082487')

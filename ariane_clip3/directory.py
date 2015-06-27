@@ -1514,6 +1514,60 @@ class OSInstance(object):
                     e_osi.name + ' id is None'
                 )
 
+    def add_application(self, application, sync=True):
+        if not sync:
+            self.application_2_add.append(application)
+        else:
+            if application.id is None:
+                application.save()
+            if self.id is not None and application.id is not None:
+                params = {
+                    'id': self.id,
+                    'applicationID': application.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.application_ids.append(application.id)
+                    application.osi_ids.append(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                    application.name + ' id is None'
+                )
+
+    def del_application(self, application, sync=True):
+        if not sync:
+            self.application_2_rm.append(application)
+        else:
+            if application.id is None:
+                application.save()
+            if self.id is not None and application.id is not None:
+                params = {
+                    'id': self.id,
+                    'applicationID': application.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.application_ids.remove(application.id)
+                    application.osi_ids.remove(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                    application.name + ' id is None'
+                )
+
     def save(self):
         ok = True
         if self.id is None:
@@ -1712,6 +1766,66 @@ class OSInstance(object):
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
                         embedded_osi.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.application_2_add.__len__() > 0:
+            for application in self.application_2_add:
+                if application.id is None:
+                    application.save()
+                if application.id is not None:
+                    params = {
+                        'id': self.id,
+                        'applicationID': application.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/add',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.application_2_add.remove(application)
+                        application.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                        application.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.application_2_rm.__len__() > 0:
+            for application in self.application_2_rm:
+                if application.id is None:
+                    application.__sync__()
+                if application.id is not None:
+                    params = {
+                        'id': self.id,
+                        'applicationID': application.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.application_2_rm.remove(application)
+                        application.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                        application.name + ' id is None'
                     )
                     ok = False
                     break
@@ -2030,12 +2144,14 @@ class OSType(object):
 
 
 class ApplicationService(object):
-    def __init__(self, directory_driver):
-        self.driver = directory_driver
-        args = {'repository_path': 'rest/directories/common/organisation/applications/'}
-        self.requester = self.driver.make_requester(args)
+    requester = None
 
-    def find_application(self, app_id=None, app_name=None):
+    def __init__(self, directory_driver):
+        args = {'repository_path': 'rest/directories/common/organisation/applications/'}
+        ApplicationService.requester = directory_driver.make_requester(args)
+
+    @staticmethod
+    def find_application(app_id=None, app_name=None):
         if (app_id is None or not app_id) and (app_name is None or not app_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -2052,9 +2168,9 @@ class ApplicationService(object):
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = self.requester.call(args)
+            response = ApplicationService.requester.call(args)
             if response.rc is 0:
-                ret = Application.json_2_application(self.requester, response.response_content)
+                ret = Application.json_2_application(response.response_content)
             else:
                 err_msg = 'Error while finding application (id:' + str(app_id) + ', name:' + str(app_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -2064,14 +2180,15 @@ class ApplicationService(object):
 
         return ret
 
-    def get_applications(self):
+    @staticmethod
+    def get_applications():
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = self.requester.call(args)
+        response = ApplicationService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
             for application in response.response_content['applications']:
-                ret.append(Application.json_2_application(self.requester, application))
+                ret.append(Application.json_2_application(application))
         else:
             err_msg = 'Error while getting applications. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -2080,9 +2197,8 @@ class ApplicationService(object):
 
 class Application(object):
     @staticmethod
-    def json_2_application(requester, json_obj):
-        return Application(requester=requester,
-                           appid=json_obj['applicationID'],
+    def json_2_application(json_obj):
+        return Application(appid=json_obj['applicationID'],
                            name=json_obj['applicationName'],
                            description=json_obj['applicationDescription'],
                            short_name=json_obj['applicationShortName'],
@@ -2100,23 +2216,38 @@ class Application(object):
             'applicationColorCode': self.color_code,
             'applicationCompanyID': self.company_id,
             'applicationTeamID': self.team_id,
-            'applicationOSInstancesID': self.app_osi_ids
+            'applicationOSInstancesID': self.osi_ids
         }
         return json.dumps(json_obj)
 
-    def __sync__(self, json_obj):
-        self.id = json_obj['applicationID']
-        self.name = json_obj['applicationName']
-        self.description = json_obj['applicationDescription']
-        self.short_name = json_obj['applicationShortName']
-        self.color_code = json_obj['applicationColorCode']
-        self.company_id = json_obj['applicationCompanyID']
-        self.team_id = json_obj['applicationTeamID']
-        self.app_osi_ids = json_obj['applicationOSInstancesID']
+    def __sync__(self):
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.name is not None:
+            params = {'name': self.name}
 
-    def __init__(self, requester, appid=None, name=None, description=None, short_name=None, color_code=None,
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = ApplicationService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['applicationID']
+            self.name = json_obj['applicationName']
+            self.description = json_obj['applicationDescription']
+            self.short_name = json_obj['applicationShortName']
+            self.color_code = json_obj['applicationColorCode']
+            if json_obj['applicationCompanyID'] == -1:
+                self.company_id = None
+            else:
+                self.company_id = json_obj['applicationCompanyID']
+            if json_obj['applicationTeamID'] == -1:
+                self.team_id = None
+            else:
+                self.team_id = json_obj['applicationTeamID']
+            self.osi_ids = json_obj['applicationOSInstancesID']
+
+    def __init__(self, appid=None, name=None, description=None, short_name=None, color_code=None,
                  company_id=None, team_id=None, osi_ids=None):
-        self.requester = requester
         self.id = appid
         self.name = name
         self.description = description
@@ -2124,7 +2255,7 @@ class Application(object):
         self.color_code = color_code
         self.company_id = company_id
         self.team_id = team_id
-        self.app_osi_ids = osi_ids
+        self.osi_ids = osi_ids
         self.app_osi_2_add = []
         self.app_osi_2_rm = []
 
@@ -2138,9 +2269,9 @@ class Application(object):
                 'colorCode': self.color_code
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = self.requester.call(args)
+            response = ApplicationService.requester.call(args)
             if response.rc is 0:
-                self.__sync__(response.response_content)
+                self.id = response.response_content['applicationID']
             else:
                 LOGGER.error(
                     'Error while saving application' + self.name + '. Reason: ' + str(response.error_message)
@@ -2152,7 +2283,7 @@ class Application(object):
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = self.requester.call(args)
+            response = ApplicationService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating application ' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -2165,7 +2296,7 @@ class Application(object):
                     'shortName': self.short_name
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/shortName', 'parameters': params}
-                response = self.requester.call(args)
+                response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating application ' + self.name + ' name. Reason: ' +
@@ -2179,7 +2310,7 @@ class Application(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = self.requester.call(args)
+                response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating application ' + self.name + ' name. Reason: ' +
@@ -2193,7 +2324,7 @@ class Application(object):
                     'colorCode': self.color_code
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
-                response = self.requester.call(args)
+                response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating application ' + self.name + ' name. Reason: ' +
@@ -2207,7 +2338,7 @@ class Application(object):
                 'companyID': self.company_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
-            response = self.requester.call(args)
+            response = ApplicationService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating application ' + self.name + ' name. Reason: ' +
@@ -2221,13 +2352,14 @@ class Application(object):
                 'teamID': self.team_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/team', 'parameters': params}
-            response = self.requester.call(args)
+            response = ApplicationService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating application ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
 
+        self.__sync__()
         return self
 
     def remove(self):
@@ -2238,7 +2370,7 @@ class Application(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = self.requester.call(args)
+            response = ApplicationService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while deleting application ' + self.name + '. Reason: ' + str(response.error_message)

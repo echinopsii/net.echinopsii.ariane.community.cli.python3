@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet
+from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application
 
 __author__ = 'mffrench'
 
@@ -138,3 +138,38 @@ class OSInstanceTest(unittest.TestCase):
         self.assertIsNone(new_emb_osinstance.embedding_osi_id)
         new_emb_osinstance.remove()
         new_osinstance.remove()
+
+    def test_osinstance_link_to_application(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+        osinstance = OSInstance(name='my_new_osi',
+                                description='my new osi',
+                                admin_gate_uri='ssh://admingateuri')
+        application = Application(name='my_new_app',
+                                  description='my new app',
+                                  short_name='app',
+                                  color_code='082487')
+        osinstance.add_application(application, sync=False)
+        self.assertTrue(application in osinstance.application_2_add)
+        self.assertIsNone(osinstance.application_ids)
+        self.assertIsNone(application.osi_ids)
+        osinstance.save()
+        self.assertTrue(application not in osinstance.application_2_add)
+        self.assertTrue(application.id in osinstance.application_ids)
+        self.assertTrue(osinstance.id in application.osi_ids)
+        osinstance.del_application(application, sync=False)
+        self.assertTrue(application in osinstance.application_2_rm)
+        self.assertTrue(application.id in osinstance.application_ids)
+        self.assertTrue(osinstance.id in application.osi_ids)
+        osinstance.save()
+        self.assertTrue(application not in osinstance.application_2_rm)
+        self.assertTrue(application.id not in osinstance.application_ids)
+        self.assertTrue(osinstance.id not in application.osi_ids)
+        osinstance.add_application(application)
+        self.assertTrue(application.id in osinstance.application_ids)
+        self.assertTrue(osinstance.id in application.osi_ids)
+        osinstance.del_application(application)
+        self.assertTrue(application.id not in osinstance.application_ids)
+        self.assertTrue(osinstance.id not in application.osi_ids)
+        application.remove()
+        osinstance.remove()
