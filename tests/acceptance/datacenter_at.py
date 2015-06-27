@@ -126,7 +126,17 @@ class DatacenterTest(unittest.TestCase):
 
     def test_datacenter_link_to_subnet(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
+        DirectoryService(args)
+        new_routing_area = RoutingArea(name='my_new_routing_area',
+                                       description='my new routing area',
+                                       type=RoutingArea.RA_TYPE_LAN,
+                                       multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
+        new_routing_area.save()
+        new_subnet = Subnet(name='my_new_subnet',
+                            description='my new subnet',
+                            ip='192.168.12.3',
+                            mask='255.255.255.0',
+                            routing_area_id=new_routing_area.id)
         new_datacenter = Datacenter(name='my_new_datacenter',
                                     description='my new datacenter',
                                     address='somewhere',
@@ -135,35 +145,28 @@ class DatacenterTest(unittest.TestCase):
                                     country='france',
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
-        new_datacenter.save()
-        new_routing_area = RoutingArea(name='my_new_routing_area',
-                                       description='my new routing area',
-                                       type=RoutingArea.RA_TYPE_LAN,
-                                       multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
-        new_routing_area.save()
-        new_subnet = Subnet(requester=service.subnet_service.requester,
-                            name='my_new_subnet',
-                            description='my new subnet',
-                            ip='192.168.12.3',
-                            mask='255.255.255.0',
-                            routing_area_id=new_routing_area.id)
-        new_subnet.save()
         new_datacenter.add_subnet(new_subnet, sync=False)
         self.assertTrue(new_subnet in new_datacenter.subnets_2_add)
-        self.assertTrue(new_subnet.id not in new_datacenter.subnet_ids)
+        self.assertIsNone(new_datacenter.subnet_ids)
+        self.assertIsNone(new_subnet.dc_ids)
         new_datacenter.save()
         self.assertTrue(new_subnet not in new_datacenter.subnets_2_add)
         self.assertTrue(new_subnet.id in new_datacenter.subnet_ids)
+        self.assertTrue(new_datacenter.id in new_subnet.dc_ids)
         new_datacenter.del_subnet(new_subnet, sync=False)
         self.assertTrue(new_subnet in new_datacenter.subnets_2_rm)
         self.assertTrue(new_subnet.id in new_datacenter.subnet_ids)
+        self.assertTrue(new_datacenter.id in new_subnet.dc_ids)
         new_datacenter.save()
         self.assertTrue(new_subnet not in new_datacenter.subnets_2_rm)
         self.assertTrue(new_subnet.id not in new_datacenter.subnet_ids)
+        self.assertTrue(new_datacenter.id not in new_subnet.dc_ids)
         new_datacenter.add_subnet(new_subnet)
         self.assertTrue(new_subnet.id in new_datacenter.subnet_ids)
+        self.assertTrue(new_datacenter.id in new_subnet.dc_ids)
         new_datacenter.del_subnet(new_subnet)
         self.assertTrue(new_subnet.id not in new_datacenter.subnet_ids)
+        self.assertTrue(new_datacenter.id not in new_subnet.dc_ids)
         new_subnet.remove()
         new_routing_area.remove()
         new_datacenter.remove()

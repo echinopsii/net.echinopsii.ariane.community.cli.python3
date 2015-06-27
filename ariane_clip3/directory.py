@@ -242,6 +242,7 @@ class Datacenter(object):
                     )
                 else:
                     self.subnet_ids.append(subnet.id)
+                    subnet.dc_ids.append(self.id)
             else:
                 LOGGER.error(
                     'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
@@ -268,6 +269,7 @@ class Datacenter(object):
                     )
                 else:
                     self.subnet_ids.remove(subnet.id)
+                    subnet.dc_ids.remove(self.id)
             else:
                 LOGGER.error(
                     'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
@@ -426,6 +428,7 @@ class Datacenter(object):
                         break
                     else:
                         self.subnets_2_add.remove(subnet)
+                        subnet.__sync__()
                 else:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
@@ -437,7 +440,7 @@ class Datacenter(object):
         if ok and self.subnets_2_rm.__len__() > 0:
             for subnet in self.subnets_2_rm:
                 if subnet.id is None:
-                    subnet.save()
+                    subnet.__sync__()
                 if subnet.id is not None:
                     params = {
                         'id': self.id,
@@ -454,6 +457,7 @@ class Datacenter(object):
                         break
                     else:
                         self.subnets_2_rm.remove(subnet)
+                        subnet.__sync__()
                 else:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
@@ -805,10 +809,12 @@ class RoutingArea(object):
 
 
 class SubnetService(object):
+    requester = None
+
     def __init__(self, directory_driver):
         self.driver = directory_driver
         args = {'repository_path': 'rest/directories/common/infrastructure/network/subnets/'}
-        self.requester = self.driver.make_requester(args)
+        SubnetService.requester = self.driver.make_requester(args)
 
     def find_subnet(self, sb_id=None, sb_name=None):
         if (sb_id is None or not sb_id) and (sb_name is None or not sb_name):
@@ -827,9 +833,9 @@ class SubnetService(object):
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = self.requester.call(args)
+            response = SubnetService.requester.call(args)
             if response.rc is 0:
-                ret = Subnet.json_2_subnet(self.requester, response.response_content)
+                ret = Subnet.json_2_subnet(response.response_content)
             else:
                 err_msg = 'Error while finding subnet (id:' + str(sb_id) + ', name:' + str(sb_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -841,12 +847,12 @@ class SubnetService(object):
 
     def get_subnets(self):
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = self.requester.call(args)
+        response = SubnetService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
             for subnet in response.response_content['subnets']:
-                ret.append(Subnet.json_2_subnet(self.requester, subnet))
+                ret.append(Subnet.json_2_subnet(subnet))
         else:
             err_msg = 'Error while getting subnets. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -856,9 +862,8 @@ class SubnetService(object):
 class Subnet(object):
 
     @staticmethod
-    def json_2_subnet(requester, json_obj):
-        return Subnet(requester=requester,
-                      subnetid=json_obj['subnetID'],
+    def json_2_subnet(json_obj):
+        return Subnet(subnetid=json_obj['subnetID'],
                       name=json_obj['subnetName'],
                       description=json_obj['subnetDescription'],
                       ip=json_obj['subnetIP'],
@@ -875,38 +880,102 @@ class Subnet(object):
             'subnetIP': self.ip,
             'subnetMask': self.mask,
             'subnetRoutingAreaID': self.routing_area_id,
-            'subnetDatacentersID': self.subnet_dc_ids,
-            'subnetOSInstancesID': self.subnet_osi_ids
+            'subnetDatacentersID': self.dc_ids,
+            'subnetOSInstancesID': self.osi_ids
         }
         return json.dumps(json_obj)
 
-    def __sync__(self, json_obj):
-        self.id = json_obj['subnetID']
-        self.name = json_obj['subnetName']
-        self.description = json_obj['subnetDescription']
-        self.ip = json_obj['subnetIP']
-        self.mask = json_obj['subnetMask']
-        self.routing_area_id = json_obj['subnetRoutingAreaID']
-        self.subnet_dc_ids = json_obj['subnetDatacentersID']
-        self.subnet_osi_ids = json_obj['subnetOSInstancesID']
+    def __sync__(self):
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.name is not None:
+            params = {'name': self.name}
 
-    def __init__(self, requester, subnetid=None, name=None, description=None, ip=None, mask=None,
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = SubnetService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['subnetID']
+            self.name = json_obj['subnetName']
+            self.description = json_obj['subnetDescription']
+            self.ip = json_obj['subnetIP']
+            self.mask = json_obj['subnetMask']
+            self.routing_area_id = json_obj['subnetRoutingAreaID']
+            self.dc_ids = json_obj['subnetDatacentersID']
+            self.osi_ids = json_obj['subnetOSInstancesID']
+
+    def __init__(self, subnetid=None, name=None, description=None, ip=None, mask=None,
                  routing_area_id=None, subnet_dc_ids=None, subnet_osi_ids=None):
-        self.requester = requester
         self.id = subnetid
         self.name = name
         self.description = description
         self.ip = ip
         self.mask = mask
         self.routing_area_id = routing_area_id
-        self.subnet_dc_ids = subnet_dc_ids
-        self.subnet_dc_2_add = []
-        self.subnet_dc_2_rm = []
-        self.subnet_osi_ids = subnet_osi_ids
-        self.subnet_osi_2_add = []
-        self.subnet_osi_2_rm = []
+        self.dc_ids = subnet_dc_ids
+        self.dc_2_add = []
+        self.dc_2_rm = []
+        self.osi_ids = subnet_osi_ids
+        self.osi_2_add = []
+        self.osi_2_rm = []
+
+    def add_datacenter(self, datacenter, sync=True):
+        if not sync:
+            self.dc_2_add.append(datacenter)
+        else:
+            if datacenter.id is None:
+                datacenter.save()
+            if self.id is not None and datacenter.id is not None:
+                params = {
+                    'id': self.id,
+                    'datacenterID': datacenter.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
+                response = SubnetService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.dc_ids.append(datacenter.id)
+                    datacenter.subnet_ids.append(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                    datacenter.name + ' id is None or self.id is None'
+                )
+
+    def del_datacenter(self, datacenter, sync=True):
+        if not sync:
+            self.dc_2_rm.append(datacenter)
+        else:
+            if datacenter.id is None:
+                datacenter.__sync__()
+            if self.id is not None and datacenter.id is not None:
+                params = {
+                    'id': self.id,
+                    'datacenterID': datacenter.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
+                response = SubnetService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.dc_ids.remove(datacenter.id)
+                    datacenter.subnet_ids.remove(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                    datacenter.name + ' id is None or self.id is None'
+                )
 
     def save(self):
+        ok = True
         if self.id is None:
             params = {
                 'name': self.name,
@@ -916,21 +985,21 @@ class Subnet(object):
                 'subnetMask': self.mask
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = self.requester.call(args)
+            response = SubnetService.requester.call(args)
             if response.rc is 0:
-                self.__sync__(response.response_content)
+                self.id = response.response_content['subnetID']
             else:
                 LOGGER.error(
                     'Error while saving subnet' + self.name + '. Reason: ' + str(response.error_message)
                 )
+                ok = False
         else:
             params = {
                 'id': self.id,
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            ok = True
-            response = self.requester.call(args)
+            response = SubnetService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating subnet ' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -943,12 +1012,13 @@ class Subnet(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = self.requester.call(args)
+                response = SubnetService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
+                    ok = False
 
             if ok:
                 params = {
@@ -956,12 +1026,13 @@ class Subnet(object):
                     'subnetIP': self.ip
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnetip', 'parameters': params}
-                response = self.requester.call(args)
+                response = SubnetService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
+                    ok = False
 
             if ok:
                 params = {
@@ -969,26 +1040,93 @@ class Subnet(object):
                     'subnetMask': self.mask
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnetmask', 'parameters': params}
-                response = self.requester.call(args)
+                response = SubnetService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
+                    ok = False
 
             if ok:
                 params = {
                     'id': self.id,
-                    'routingArea': self.routing_area_id
+                    'routingareaID': self.routing_area_id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingarea', 'parameters': params}
-                response = self.requester.call(args)
+                response = SubnetService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
+                    ok = False
 
+        if ok and self.dc_2_add.__len__() > 0:
+            for datacenter in self.dc_2_add:
+                if datacenter.id is None:
+                    datacenter.save()
+                if datacenter.id is not None:
+                    params = {
+                        'id': self.id,
+                        'datacenterID': datacenter.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
+                    response = SubnetService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.dc_2_add.remove(datacenter)
+                        datacenter.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                        datacenter.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.dc_2_rm.__len__() > 0:
+            for datacenter in self.dc_2_rm:
+                if datacenter.id is None:
+                    datacenter.__sync__()
+                if datacenter.id is not None:
+                    params = {
+                        'id': self.id,
+                        'datacenterID': datacenter.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
+                    response = SubnetService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.dc_2_rm.remove(datacenter)
+                        datacenter.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                        datacenter.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.osi_2_add.__len__() > 0:
+            pass
+
+        if ok and self.osi_2_rm.__len__() > 0:
+            pass
+
+        self.__sync__()
         return self
 
     def remove(self):
@@ -999,7 +1137,7 @@ class Subnet(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = self.requester.call(args)
+            response = SubnetService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while deleting subnet ' + self.name + '. Reason: ' + str(response.error_message)
