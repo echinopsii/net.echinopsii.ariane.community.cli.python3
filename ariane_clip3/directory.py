@@ -1622,6 +1622,60 @@ class OSInstance(object):
                     environment.name + ' id is None'
                 )
 
+    def add_team(self, team, sync=True):
+        if not sync:
+            self.team_2_add.append(team)
+        else:
+            if team.id is None:
+                team.save()
+            if self.id is not None and team.id is not None:
+                params = {
+                    'id': self.id,
+                    'teamID': team.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/teams/add', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.team_ids.append(team.id)
+                    team.osi_ids.append(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                    team.name + ' id is None'
+                )
+
+    def del_team(self, team, sync=True):
+        if not sync:
+            self.team_2_rm.append(team)
+        else:
+            if team.id is None:
+                team.save()
+            if self.id is not None and team.id is not None:
+                params = {
+                    'id': self.id,
+                    'teamID': team.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/teams/delete', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.team_ids.remove(team.id)
+                    team.osi_ids.remove(self.id)
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                    team.name + ' id is None'
+                )
+
     def save(self):
         ok = True
         if self.id is None:
@@ -1940,6 +1994,66 @@ class OSInstance(object):
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: environment ' +
                         environment.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.team_2_add.__len__() > 0:
+            for team in self.team_2_add:
+                if team.id is None:
+                    team.save()
+                if team.id is not None:
+                    params = {
+                        'id': self.id,
+                        'teamID': team.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/teams/add',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.team_2_add.remove(team)
+                        team.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: team ' +
+                        team.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.team_2_rm.__len__() > 0:
+            for team in self.team_2_rm:
+                if team.id is None:
+                    team.__sync__()
+                if team.id is not None:
+                    params = {
+                        'id': self.id,
+                        'teamID': team.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/teams/delete',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.team_2_rm.remove(team)
+                        team.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: team ' +
+                        team.name + ' id is None'
                     )
                     ok = False
                     break
@@ -3052,12 +3166,14 @@ class Environment(object):
 
 
 class TeamService(object):
-    def __init__(self, directory_driver):
-        self.driver = directory_driver
-        args = {'repository_path': 'rest/directories/common/organisation/teams/'}
-        self.requester = self.driver.make_requester(args)
+    requester = None
 
-    def find_team(self, team_id=None, team_name=None):
+    def __init__(self, directory_driver):
+        args = {'repository_path': 'rest/directories/common/organisation/teams/'}
+        TeamService.requester = directory_driver.make_requester(args)
+
+    @staticmethod
+    def find_team(team_id=None, team_name=None):
         if (team_id is None or not team_id) and (team_name is None or not team_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -3074,9 +3190,9 @@ class TeamService(object):
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = self.requester.call(args)
+            response = TeamService.requester.call(args)
             if response.rc is 0:
-                ret = Team.json_2_team(self.requester, response.response_content)
+                ret = Team.json_2_team(response.response_content)
             else:
                 err_msg = 'Error while finding team (id:' + str(team_id) + ', name:' + str(team_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -3086,14 +3202,15 @@ class TeamService(object):
 
         return ret
 
-    def get_teams(self):
+    @staticmethod
+    def get_teams():
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = self.requester.call(args)
+        response = TeamService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
-            for company in response.response_content['teams']:
-                ret.append(Team.json_2_team(self.requester, company))
+            for team in response.response_content['teams']:
+                ret.append(Team.json_2_team(team))
         else:
             err_msg = 'Error while getting teams. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -3103,9 +3220,8 @@ class TeamService(object):
 class Team(object):
 
     @staticmethod
-    def json_2_team(requester, json_obj):
-        return Team(requester=requester,
-                    teamid=json_obj['teamID'],
+    def json_2_team(json_obj):
+        return Team(teamid=json_obj['teamID'],
                     name=json_obj['teamName'],
                     description=json_obj['teamDescription'],
                     color_code=json_obj['teamColorCode'],
@@ -3118,30 +3234,39 @@ class Team(object):
             'teamName': self.name,
             'teamDescription': self.description,
             'teamColorCode': self.color_code,
-            'teamOSInstancesID': self.team_osi_ids
+            'teamOSInstancesID': self.osi_ids
         }
         return json.dumps(json_obj)
 
-    def __sync__(self, json_obj):
-        self.id = json_obj['teamID']
-        self.name = json_obj['teamName']
-        self.description = json_obj['teamDescription']
-        self.color_code = json_obj['teamColorCode']
-        self.team_osi_ids = json_obj['teamOSInstancesID']
+    def __sync__(self):
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.name is not None:
+            params = {'name': self.name}
 
-    def __init__(self, requester, teamid=None, name=None, description=None,
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = TeamService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['teamID']
+            self.name = json_obj['teamName']
+            self.description = json_obj['teamDescription']
+            self.color_code = json_obj['teamColorCode']
+            self.osi_ids = json_obj['teamOSInstancesID']
+
+    def __init__(self,  teamid=None, name=None, description=None,
                  color_code=None, app_ids=None, osi_ids=None):
-        self.requester = requester
         self.id = teamid
         self.name = name
         self.description = description
         self.color_code = color_code
-        self.team_app_ids = app_ids
-        self.team_app_2_add = []
-        self.team_app_2_rm = []
-        self.team_osi_ids = osi_ids
-        self.team_osi_2_add = []
-        self.team_osi_2_rm = []
+        self.app_ids = app_ids
+        self.app_2_add = []
+        self.app_2_rm = []
+        self.osi_ids = osi_ids
+        self.osi_2_add = []
+        self.osi_2_rm = []
 
     def save(self):
         ok = True
@@ -3152,9 +3277,9 @@ class Team(object):
                 'colorCode': self.color_code
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = self.requester.call(args)
+            response = TeamService.requester.call(args)
             if response.rc is 0:
-                self.__sync__(response.response_content)
+                self.id = response.response_content['teamID']
             else:
                 LOGGER.error(
                     'Error while saving team ' + self.name + '. Reason: ' + str(response.error_message)
@@ -3166,7 +3291,7 @@ class Team(object):
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = self.requester.call(args)
+            response = TeamService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating team ' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -3179,7 +3304,7 @@ class Team(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = self.requester.call(args)
+                response = TeamService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating team ' + self.name + ' name. Reason: ' +
@@ -3193,13 +3318,13 @@ class Team(object):
                     'colorCode': self.color_code
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
-                response = self.requester.call(args)
+                response = TeamService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
-
+        self.__sync__()
         return self
 
     def remove(self):
@@ -3210,7 +3335,7 @@ class Team(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = self.requester.call(args)
+            response = TeamService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while deleting team ' + self.name + '. Reason: ' + str(response.error_message)

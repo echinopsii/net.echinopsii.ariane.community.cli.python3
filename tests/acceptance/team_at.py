@@ -26,9 +26,8 @@ class TeamTest(unittest.TestCase):
 
     def test_new_team(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        new_team = Team(requester=service.team_service.requester,
-                        name='my_new_team',
+        DirectoryService(args)
+        new_team = Team(name='my_new_team',
                         description='my new team',
                         color_code='0000')
         new_team.save()
@@ -37,9 +36,8 @@ class TeamTest(unittest.TestCase):
 
     def test_remove_team(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        rm_team = Team(requester=service.team_service.requester,
-                       name='my_new_team',
+        DirectoryService(args)
+        rm_team = Team(name='my_new_team',
                        description='my new team',
                        color_code='0000')
         rm_team.save()
@@ -48,8 +46,7 @@ class TeamTest(unittest.TestCase):
     def test_team_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_team = Team(requester=service.team_service.requester,
-                        name='my_new_team',
+        new_team = Team(name='my_new_team',
                         description='my new team',
                         color_code='0000')
         new_team.save()
@@ -60,8 +57,7 @@ class TeamTest(unittest.TestCase):
     def test_team_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_team = Team(requester=service.team_service.requester,
-                        name='my_new_team',
+        new_team = Team(name='my_new_team',
                         description='my new team',
                         color_code='0000')
         new_team.save()
