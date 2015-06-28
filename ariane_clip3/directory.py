@@ -50,7 +50,12 @@ class DatacenterService(object):
 
     @staticmethod
     def find_datacenter(dc_id=None, dc_name=None):
-
+        """
+        find the datacenter according datacenter id (prioritary) or datacenter name
+        :param dc_id: the datacenter id
+        :param dc_name: the datacenter name
+        :return: found datacenter or None if not found
+        """
         if (dc_id is None or not dc_id) and (dc_name is None or not dc_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -79,6 +84,9 @@ class DatacenterService(object):
 
     @staticmethod
     def get_datacenters():
+        """
+        :return: all knows datacenters
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = DatacenterService.requester.call(args)
         ret = None
@@ -96,6 +104,11 @@ class Datacenter(object):
 
     @staticmethod
     def json_2_datacenter(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 Datacenter object
+        """
         return Datacenter(dcid=json_obj['datacenterID'],
                           name=json_obj['datacenterName'],
                           description=json_obj['datacenterDescription'],
@@ -109,6 +122,10 @@ class Datacenter(object):
                           subnet_ids=json_obj['datacenterSubnetsID'])
 
     def datacenter_2_json(self):
+        """
+        transform ariane_clip3 datacenter object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'datacenterID': self.id,
             'datacenterName': self.name,
@@ -125,6 +142,10 @@ class Datacenter(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -150,6 +171,21 @@ class Datacenter(object):
 
     def __init__(self, dcid=None, name=None, description=None, address=None, zip_code=None, town=None,
                  country=None, gps_latitude=None, gps_longitude=None, routing_area_ids=None, subnet_ids=None):
+        """
+        build ariane_clip3 Datacenter object
+        :param dcid: the id - default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param address: default None
+        :param zip_code: default None
+        :param town: default None
+        :param country: default None
+        :param gps_latitude: default None
+        :param gps_longitude: default None
+        :param routing_area_ids: default None
+        :param subnet_ids: default None
+        :return:
+        """
         self.id = dcid
         self.name = name
         self.description = description
@@ -167,9 +203,19 @@ class Datacenter(object):
         self.subnets_2_rm = []
 
     def __str__(self):
+        """
+        :return: this object dict to string
+        """
         return str(self.__dict__)
 
     def add_routing_area(self, routing_area, sync=True):
+        """
+        add a routing area to this datacenter.
+        :param routing_area: the routing area to add on this datacenter
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the routing area object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.routing_areas_2_add.append(routing_area)
         else:
@@ -197,6 +243,13 @@ class Datacenter(object):
                 )
 
     def del_routing_area(self, routing_area, sync=True):
+        """
+        delete routing area from this datacenter
+        :param routing_area: the routing area to be deleted from this datacenter
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the routing area object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.routing_areas_2_rm.append(routing_area)
         else:
@@ -224,6 +277,13 @@ class Datacenter(object):
                 )
 
     def add_subnet(self, subnet, sync=True):
+        """
+        add subnet to this datacenter
+        :param subnet: the subnet to be added to this datacenter
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.subnets_2_add.append(subnet)
         else:
@@ -251,6 +311,13 @@ class Datacenter(object):
                 )
 
     def del_subnet(self, subnet, sync=True):
+        """
+        delete subnet from this datacenter
+        :param subnet: the subnet to be deleted from this datacenter
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.subnets_2_rm.append(subnet)
         else:
@@ -278,6 +345,9 @@ class Datacenter(object):
                 )
 
     def save(self):
+        """
+        :return: save this datacenter on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -473,6 +543,10 @@ class Datacenter(object):
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
@@ -499,6 +573,12 @@ class RoutingAreaService(object):
 
     @staticmethod
     def find_routing_area(ra_id=None, ra_name=None):
+        """
+        find routing area according routing area id (default) or routing area name
+        :param ra_id: routing area id
+        :param ra_name: routing area name
+        :return: found routing area or None
+        """
         if (ra_id is None or not ra_id) and (ra_name is None or not ra_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -529,6 +609,9 @@ class RoutingAreaService(object):
 
     @staticmethod
     def get_routing_areas():
+        """
+        :return: all routing areas
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = RoutingAreaService.requester.call(args)
         ret = None
@@ -554,6 +637,11 @@ class RoutingArea(object):
 
     @staticmethod
     def json_2_routing_area(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 RoutingArea object
+        """
         return RoutingArea(raid=json_obj['routingAreaID'],
                            name=json_obj['routingAreaName'],
                            description=json_obj['routingAreaDescription'],
@@ -563,6 +651,10 @@ class RoutingArea(object):
                            routing_area_subnet_ids=json_obj['routingAreaSubnetsID'])
 
     def routing_area_2_json(self):
+        """
+        transform ariane_clip3 routing area object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'routingAreaID': self.id,
             'routingAreaName': self.name,
@@ -575,6 +667,10 @@ class RoutingArea(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -596,6 +692,17 @@ class RoutingArea(object):
 
     def __init__(self, raid=None, name=None, description=None, ra_type=None, multicast=None,
                  routing_area_dc_ids=None, routing_area_subnet_ids=None):
+        """
+        build ariane_clip3 routing area object
+        :param raid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param ra_type: default None
+        :param multicast: default None
+        :param routing_area_dc_ids: default None
+        :param routing_area_subnet_ids: default None
+        :return:
+        """
         self.id = raid
         self.name = name
         self.description = description
@@ -606,7 +713,20 @@ class RoutingArea(object):
         self.dc_2_rm = []
         self.subnet_ids = routing_area_subnet_ids
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_datacenter(self, datacenter, sync=True):
+        """
+        add a datacenter to this routing area.
+        :param datacenter: the datacenter to add on this routing area
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the datacenter object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.dc_2_add.append(datacenter)
         else:
@@ -634,6 +754,13 @@ class RoutingArea(object):
                 )
 
     def del_datacenter(self, datacenter, sync=True):
+        """
+        delete datacenter from this routing area
+        :param datacenter: the datacenter to be deleted from this routing area
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the datacenter object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.dc_2_rm.append(datacenter)
         else:
@@ -661,6 +788,9 @@ class RoutingArea(object):
                 )
 
     def save(self):
+        """
+        :return: save this routing area on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -795,6 +925,10 @@ class RoutingArea(object):
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
@@ -821,6 +955,12 @@ class SubnetService(object):
 
     @staticmethod
     def find_subnet(sb_id=None, sb_name=None):
+        """
+        find the subnet according subnet id (prioritary) or subnet name
+        :param sb_id: the subnet id
+        :param sb_name: the subnet name
+        :return: found subnet or None if not found
+        """
         if (sb_id is None or not sb_id) and (sb_name is None or not sb_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -851,6 +991,9 @@ class SubnetService(object):
 
     @staticmethod
     def get_subnets():
+        """
+        :return: all knows subnets
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = SubnetService.requester.call(args)
         ret = None
@@ -868,6 +1011,11 @@ class Subnet(object):
 
     @staticmethod
     def json_2_subnet(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 Subnet object
+        """
         return Subnet(subnetid=json_obj['subnetID'],
                       name=json_obj['subnetName'],
                       description=json_obj['subnetDescription'],
@@ -878,6 +1026,10 @@ class Subnet(object):
                       subnet_osi_ids=json_obj['subnetOSInstancesID'])
 
     def subnet_2_json(self):
+        """
+        transform ariane_clip3 subnet object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'subnetID': self.id,
             'subnetName': self.name,
@@ -891,6 +1043,10 @@ class Subnet(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -912,6 +1068,18 @@ class Subnet(object):
 
     def __init__(self, subnetid=None, name=None, description=None, ip=None, mask=None,
                  routing_area_id=None, subnet_dc_ids=None, subnet_osi_ids=None):
+        """
+        build ariane_clip3 subnet object
+        :param subnetid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param ip: default None
+        :param mask: default None
+        :param routing_area_id: default None
+        :param subnet_dc_ids: default None
+        :param subnet_osi_ids: default None
+        :return:
+        """
         self.id = subnetid
         self.name = name
         self.description = description
@@ -925,7 +1093,20 @@ class Subnet(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_datacenter(self, datacenter, sync=True):
+        """
+        add a datacenter to this subnet.
+        :param datacenter: the datacenter to add on this subnet
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the datacenter object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.dc_2_add.append(datacenter)
         else:
@@ -953,6 +1134,13 @@ class Subnet(object):
                 )
 
     def del_datacenter(self, datacenter, sync=True):
+        """
+        delete datacenter from this subnet
+        :param datacenter: the datacenter to be deleted from this subnet
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the datacenter object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.dc_2_rm.append(datacenter)
         else:
@@ -980,6 +1168,13 @@ class Subnet(object):
                 )
 
     def add_os_instance(self, os_instance, sync=True):
+        """
+        add a OS instance to this subnet.
+        :param os_instance: the OS instance to add on this subnet
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -1007,6 +1202,13 @@ class Subnet(object):
                 )
 
     def del_os_instance(self, os_instance, sync=True):
+        """
+        delete OS instance from this subnet
+        :param os_instance: the OS instance to be deleted from this subnet
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -1034,6 +1236,9 @@ class Subnet(object):
                 )
 
     def save(self):
+        """
+        :return: save this subnet on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -1243,6 +1448,10 @@ class Subnet(object):
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
@@ -1277,6 +1486,12 @@ class OSInstanceService(object):
 
     @staticmethod
     def find_osinstance(osi_id=None, osi_name=None):
+        """
+        find the OS instance (osi) according osi id (prioritary) or osi name
+        :param osi_id: the OS instance id
+        :param osi_name: the OS instance name
+        :return: found OS instance or None if not found
+        """
         if (osi_id is None or not osi_id) and (osi_name is None or not osi_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -1307,6 +1522,9 @@ class OSInstanceService(object):
 
     @staticmethod
     def get_osinstances():
+        """
+        :return: all knows OS instance
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = OSInstanceService.requester.call(args)
         ret = None
@@ -1324,6 +1542,11 @@ class OSInstanceService(object):
 class OSInstance(object):
     @staticmethod
     def json_2_osinstance(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 OS instance object
+        """
         return OSInstance(osiid=json_obj['osInstanceID'],
                           name=json_obj['osInstanceName'],
                           description=json_obj['osInstanceDescription'],
@@ -1337,6 +1560,10 @@ class OSInstance(object):
                           osi_team_ids=json_obj['osInstanceTeamsID'])
 
     def osinstance_2_json(self):
+        """
+        transform ariane_clip3 OS Instance object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'osInstanceID': self.id,
             'osInstanceName': self.name,
@@ -1353,6 +1580,10 @@ class OSInstance(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -1384,6 +1615,21 @@ class OSInstance(object):
     def __init__(self, osiid=None, name=None, description=None, admin_gate_uri=None,
                  osi_embedding_osi_id=None, osi_ost_id=None, osi_embedded_osi_ids=None, osi_application_ids=None,
                  osi_environment_ids=None, osi_subnet_ids=None, osi_team_ids=None):
+        """
+        build ariane_clip3 OS instance object
+        :param osiid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param admin_gate_uri: default None
+        :param osi_embedding_osi_id: default None
+        :param osi_ost_id: default None
+        :param osi_embedded_osi_ids: default None
+        :param osi_application_ids: default None
+        :param osi_environment_ids: default None
+        :param osi_subnet_ids: default None
+        :param osi_team_ids: default None
+        :return:
+        """
         self.id = osiid
         self.name = name
         self.description = description
@@ -1406,7 +1652,20 @@ class OSInstance(object):
         self.team_2_add = []
         self.team_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_subnet(self, subnet, sync=True):
+        """
+        add a subnet to this OS instance.
+        :param subnet: the subnet to add on this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.subnets_2_add.append(subnet)
         else:
@@ -1434,6 +1693,13 @@ class OSInstance(object):
                 )
 
     def del_subnet(self, subnet, sync=True):
+        """
+        delete subnet from this OS instance
+        :param subnet: the subnet to be deleted from this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.subnets_2_rm.append(subnet)
         else:
@@ -1461,6 +1727,13 @@ class OSInstance(object):
                 )
 
     def add_embedded_osi(self, e_osi, sync=True):
+        """
+        add an embedded OS instance to this OS instance.
+        :param e_osi: the embedded OS instance to add on this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the embedded OS instance object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.embedded_osi_2_add.append(e_osi)
         else:
@@ -1489,6 +1762,14 @@ class OSInstance(object):
                 )
 
     def del_embedded_osi(self, e_osi, sync=True):
+        """
+        delete embedded OS instance from this OS instance
+        :param e_osi: the embedded OS instance to be deleted from this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the embedded OS instance object on list to be removed on next save().
+        :return:
+        """
+
         if not sync:
             self.embedded_osi_2_rm.append(e_osi)
         else:
@@ -1517,6 +1798,13 @@ class OSInstance(object):
                 )
 
     def add_application(self, application, sync=True):
+        """
+        add an application to this OS instance.
+        :param application: the application to add on this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the application object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.application_2_add.append(application)
         else:
@@ -1544,6 +1832,13 @@ class OSInstance(object):
                 )
 
     def del_application(self, application, sync=True):
+        """
+        delete application from this OS instance
+        :param application: the application to be deleted from this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the application object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.application_2_rm.append(application)
         else:
@@ -1571,6 +1866,13 @@ class OSInstance(object):
                 )
 
     def add_environment(self, environment, sync=True):
+        """
+        add an environment to this OS instance.
+        :param environment: the environment to add on this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the environment object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.environment_2_add.append(environment)
         else:
@@ -1598,6 +1900,13 @@ class OSInstance(object):
                 )
 
     def del_environment(self, environment, sync=True):
+        """
+        delete environment from this OS instance
+        :param environment: the environment to be deleted from this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the environment object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.environment_2_rm.append(environment)
         else:
@@ -1625,6 +1934,13 @@ class OSInstance(object):
                 )
 
     def add_team(self, team, sync=True):
+        """
+        add a team to this OS instance.
+        :param team: the team to add on this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the team object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.team_2_add.append(team)
         else:
@@ -1652,6 +1968,13 @@ class OSInstance(object):
                 )
 
     def del_team(self, team, sync=True):
+        """
+        delete team from this OS instance
+        :param team: the team to be deleted from this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the team object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.team_2_rm.append(team)
         else:
@@ -1679,6 +2002,9 @@ class OSInstance(object):
                 )
 
     def save(self):
+        """
+        :return: save this OS instance on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -2062,6 +2388,10 @@ class OSInstance(object):
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
@@ -2088,6 +2418,12 @@ class OSTypeService(object):
 
     @staticmethod
     def find_ostype(ost_id=None, ost_name=None):
+        """
+        find the OS type (ost) according ost id (prioritary) or ost name
+        :param ost_id: the OS type id
+        :param ost_name: the OS type name
+        :return: found OS type or None if not found
+        """
         if (ost_id is None or not ost_id) and (ost_name is None or not ost_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -2118,6 +2454,9 @@ class OSTypeService(object):
 
     @staticmethod
     def get_ostypes():
+        """
+        :return: all knows OS types
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = OSTypeService.requester.call(args)
         ret = None
@@ -2135,6 +2474,11 @@ class OSTypeService(object):
 class OSType(object):
     @staticmethod
     def json_2_ostype(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 OS type object
+        """
         return OSType(ostid=json_obj['osTypeID'],
                       name=json_obj['osTypeName'],
                       architecture=json_obj['osTypeArchitecture'],
@@ -2142,6 +2486,10 @@ class OSType(object):
                       os_type_os_instance_ids=json_obj['osTypeOSInstancesID'])
 
     def ostype_2_json(self):
+        """
+        transform ariane_clip3 OS Type object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'osTypeID': self.id,
             'osTypeName': self.name,
@@ -2152,6 +2500,10 @@ class OSType(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -2173,6 +2525,15 @@ class OSType(object):
 
     def __init__(self, ostid=None, name=None, architecture=None,
                  os_type_company_id=None, os_type_os_instance_ids=None):
+        """
+        build ariane_clip3 OS type object
+        :param ostid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param architecture: default None
+        :param os_type_company_id: default None
+        :param os_type_os_instance_ids: default None
+        :return:
+        """
         self.id = ostid
         self.name = name
         self.architecture = architecture
@@ -2181,7 +2542,20 @@ class OSType(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_os_instance(self, os_instance, sync=True):
+        """
+        add a OS instance to this OS type.
+        :param os_instance: the OS instance to add on this OS type
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -2209,6 +2583,13 @@ class OSType(object):
                 )
 
     def del_os_instance(self, os_instance, sync=True):
+        """
+        delete OS instance from this OS type
+        :param os_instance: the OS instance to be deleted from this OS type
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -2236,6 +2617,9 @@ class OSType(object):
                 )
 
     def save(self):
+        """
+        :return: save this OS type on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -2354,6 +2738,10 @@ class OSType(object):
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
@@ -2380,6 +2768,12 @@ class ApplicationService(object):
 
     @staticmethod
     def find_application(app_id=None, app_name=None):
+        """
+        find the application according application id (prioritary) or application name
+        :param app_id: the application id
+        :param app_name: the application name
+        :return: found application or None if not found
+        """
         if (app_id is None or not app_id) and (app_name is None or not app_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -2410,6 +2804,9 @@ class ApplicationService(object):
 
     @staticmethod
     def get_applications():
+        """
+        :return: all knows applications
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = ApplicationService.requester.call(args)
         ret = None
@@ -2426,6 +2823,11 @@ class ApplicationService(object):
 class Application(object):
     @staticmethod
     def json_2_application(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 Application object
+        """
         return Application(appid=json_obj['applicationID'],
                            name=json_obj['applicationName'],
                            description=json_obj['applicationDescription'],
@@ -2436,6 +2838,10 @@ class Application(object):
                            osi_ids=json_obj['applicationOSInstancesID'])
 
     def application_2_json(self):
+        """
+        transform ariane_clip3 Application object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'applicationID': self.id,
             'applicationName': self.name,
@@ -2449,6 +2855,10 @@ class Application(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -2476,6 +2886,18 @@ class Application(object):
 
     def __init__(self, appid=None, name=None, description=None, short_name=None, color_code=None,
                  company_id=None, team_id=None, osi_ids=None):
+        """
+        build ariane_clip3 Application object
+        :param appid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param short_name: default None
+        :param color_code: default None
+        :param company_id: default None
+        :param team_id: default None
+        :param osi_ids: default None
+        :return:
+        """
         self.id = appid
         self.name = name
         self.description = description
@@ -2487,7 +2909,20 @@ class Application(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_os_instance(self, os_instance, sync=True):
+        """
+        add a OS instance to this application.
+        :param os_instance: the OS instance to add on this application
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -2515,6 +2950,13 @@ class Application(object):
                 )
 
     def del_os_instance(self, os_instance, sync=True):
+        """
+        delete OS instance from this application
+        :param os_instance: the OS instance to be deleted from this application
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -2542,6 +2984,9 @@ class Application(object):
                 )
 
     def save(self):
+        """
+        :return: save this application on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -2731,6 +3176,12 @@ class CompanyService(object):
 
     @staticmethod
     def find_company(cmp_id=None, cmp_name=None):
+        """
+        find the company according company id (prioritary) or company name
+        :param cmp_id: the company id
+        :param cmp_name: the company name
+        :return: found company or None if not found
+        """
         if (cmp_id is None or not cmp_id) and (cmp_name is None or not cmp_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -2761,6 +3212,9 @@ class CompanyService(object):
 
     @staticmethod
     def get_companies():
+        """
+        :return: all knows companies
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = CompanyService.requester.call(args)
         ret = None
@@ -2777,6 +3231,11 @@ class CompanyService(object):
 class Company(object):
     @staticmethod
     def json_2_company(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 Company object
+        """
         return Company(cmpid=json_obj['companyID'],
                        name=json_obj['companyName'],
                        description=json_obj['companyDescription'],
@@ -2784,6 +3243,10 @@ class Company(object):
                        ost_ids=json_obj['companyOSTypesID'])
 
     def company_2_json(self):
+        """
+        transform ariane_clip3 company object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'companyID': self.id,
             'companyName': self.name,
@@ -2794,6 +3257,10 @@ class Company(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -2812,6 +3279,15 @@ class Company(object):
 
     def __init__(self, cmpid=None, name=None, description=None,
                  application_ids=None, ost_ids=None):
+        """
+        build ariane_clip3 Company object
+        :param cmpid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param application_ids: default None
+        :param ost_ids: default None
+        :return:
+        """
         self.id = cmpid
         self.name = name
         self.description = description
@@ -2822,7 +3298,20 @@ class Company(object):
         self.ost_2_add = []
         self.ost_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_application(self, application, sync=True):
+        """
+        add a application to this company.
+        :param application: the application to add on this company
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the application object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.applications_2_add.append(application)
         else:
@@ -2850,6 +3339,13 @@ class Company(object):
                 )
 
     def del_application(self, application, sync=True):
+        """
+        delete application from this company
+        :param application: the subnet to be deleted from this company
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the application object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.applications_2_rm.append(application)
         else:
@@ -2877,6 +3373,13 @@ class Company(object):
                 )
 
     def add_ostype(self, ostype, sync=True):
+        """
+        add a OS type to this company.
+        :param ostype: the OS type to add on this company
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS type object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.ost_2_add.append(ostype)
         else:
@@ -2904,6 +3407,13 @@ class Company(object):
                 )
 
     def del_ostype(self, ostype, sync=True):
+        """
+        delete OS type from this company
+        :param ostype: the OS type to be deleted from this company
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS type object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.ost_2_rm.append(ostype)
         else:
@@ -2931,6 +3441,9 @@ class Company(object):
                 )
 
     def save(self):
+        """
+        :return: save this company on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -3097,6 +3610,10 @@ class Company(object):
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
@@ -3123,6 +3640,12 @@ class EnvironmentService(object):
 
     @staticmethod
     def find_environment(env_id=None, env_name=None):
+        """
+        find the environment according environment id (prioritary) or environment name
+        :param env_id: the environment id
+        :param env_name: the environment name
+        :return: found environment or None if not found
+        """
         if (env_id is None or not env_id) and (env_name is None or not env_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -3153,6 +3676,9 @@ class EnvironmentService(object):
 
     @staticmethod
     def get_environments():
+        """
+        :return: all knows environments
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = EnvironmentService.requester.call(args)
         ret = None
@@ -3169,6 +3695,11 @@ class EnvironmentService(object):
 class Environment(object):
     @staticmethod
     def json_2_environment(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 Environment object
+        """
         return Environment(envid=json_obj['environmentID'],
                            name=json_obj['environmentName'],
                            description=json_obj['environmentDescription'],
@@ -3176,6 +3707,10 @@ class Environment(object):
                            osi_ids=json_obj['environmentOSInstancesID'])
 
     def environment_2_json(self):
+        """
+        transform ariane_clip3 environment object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'environmentID': self.id,
             'environmentName': self.name,
@@ -3186,6 +3721,10 @@ class Environment(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -3204,6 +3743,15 @@ class Environment(object):
 
     def __init__(self, envid=None, name=None, description=None,
                  color_code=None, osi_ids=None):
+        """
+        build ariane_clip3 environment object
+        :param envid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param color_code: default None
+        :param osi_ids: default None
+        :return:
+        """
         self.id = envid
         self.name = name
         self.description = description
@@ -3212,7 +3760,20 @@ class Environment(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_os_instance(self, os_instance, sync=True):
+        """
+        add a OS instance to this environment.
+        :param os_instance: the OS instance to add on this environment
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -3240,6 +3801,13 @@ class Environment(object):
                 )
 
     def del_os_instance(self, os_instance, sync=True):
+        """
+        delete OS instance from this environment.
+        :param os_instance: the OS instance to be deleted from this environment
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -3267,6 +3835,9 @@ class Environment(object):
                 )
 
     def save(self):
+        """
+        :return: save this environment on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -3386,6 +3957,10 @@ class Environment(object):
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
@@ -3412,6 +3987,12 @@ class TeamService(object):
 
     @staticmethod
     def find_team(team_id=None, team_name=None):
+        """
+        find the team according team id (prioritary) or team name
+        :param team_id: the team id
+        :param team_name: the team name
+        :return: found team or None if not found
+        """
         if (team_id is None or not team_id) and (team_name is None or not team_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -3442,6 +4023,9 @@ class TeamService(object):
 
     @staticmethod
     def get_teams():
+        """
+        :return: all knows teams
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = TeamService.requester.call(args)
         ret = None
@@ -3459,6 +4043,11 @@ class Team(object):
 
     @staticmethod
     def json_2_team(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 Team object
+        """
         return Team(teamid=json_obj['teamID'],
                     name=json_obj['teamName'],
                     description=json_obj['teamDescription'],
@@ -3467,6 +4056,10 @@ class Team(object):
                     osi_ids=json_obj['teamOSInstancesID'])
 
     def team_2_json(self):
+        """
+        transform ariane_clip3 team object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
         json_obj = {
             'teamID': self.id,
             'teamName': self.name,
@@ -3478,6 +4071,10 @@ class Team(object):
         return json.dumps(json_obj)
 
     def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (prioritary) or name
+        :return:
+        """
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -3497,6 +4094,16 @@ class Team(object):
 
     def __init__(self,  teamid=None, name=None, description=None,
                  color_code=None, app_ids=None, osi_ids=None):
+        """
+        build ariane_clip3 team object
+        :param teamid: default None. it will be erased by any interaction with Ariane server
+        :param name: default None
+        :param description: default None
+        :param color_code: default None
+        :param app_ids: default None
+        :param osi_ids: default None
+        :return:
+        """
         self.id = teamid
         self.name = name
         self.description = description
@@ -3508,7 +4115,20 @@ class Team(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def add_os_instance(self, os_instance, sync=True):
+        """
+        add a OS instance to this team.
+        :param os_instance: the OS instance to add on this team
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -3536,6 +4156,13 @@ class Team(object):
                 )
 
     def del_os_instance(self, os_instance, sync=True):
+        """
+        delete OS instance from this team
+        :param os_instance: the OS instance to be deleted from this team
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the OS instance object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -3563,6 +4190,13 @@ class Team(object):
                 )
 
     def add_application(self, application, sync=True):
+        """
+        add a application to this team.
+        :param application: the application to add on this team
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the application object on list to be added on next save().
+        :return:
+        """
         if not sync:
             self.app_2_add.append(application)
         else:
@@ -3590,6 +4224,13 @@ class Team(object):
                 )
 
     def del_application(self, application, sync=True):
+        """
+        delete application from this team
+        :param application: the application to be deleted from this team
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the application object on list to be removed on next save().
+        :return:
+        """
         if not sync:
             self.app_2_rm.append(application)
         else:
@@ -3616,8 +4257,10 @@ class Team(object):
                     application.name + ' id is None or self.id is None'
                 )
 
-
     def save(self):
+        """
+        :return: save this team on Ariane server (create or update)
+        """
         ok = True
         if self.id is None:
             params = {
@@ -3780,7 +4423,7 @@ class Team(object):
                             'Error while updating team ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        ok = False
+                        #ok = False
                         break
                     else:
                         self.app_2_rm.remove(application)
@@ -3790,13 +4433,17 @@ class Team(object):
                         'Error while updating team ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
-                    ok = False
+                    #ok = False
                     break
 
         self.__sync__()
         return self
 
     def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
         if self.id is None:
             return None
         else:
