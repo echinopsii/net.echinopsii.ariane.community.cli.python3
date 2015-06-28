@@ -2876,6 +2876,60 @@ class Company(object):
                     application.name + ' id is None or self.id is None'
                 )
 
+    def add_ostype(self, ostype, sync=True):
+        if not sync:
+            self.ost_2_add.append(ostype)
+        else:
+            if ostype.id is None:
+                ostype.save()
+            if self.id is not None and ostype.id is not None:
+                params = {
+                    'id': self.id,
+                    'ostypeID': ostype.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/add', 'parameters': params}
+                response = CompanyService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.ost_ids.append(ostype.id)
+                    ostype.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating company ' + self.name + ' name. Reason: ostype ' +
+                    ostype.name + ' id is None or self.id is None'
+                )
+
+    def del_ostype(self, ostype, sync=True):
+        if not sync:
+            self.ost_2_rm.append(ostype)
+        else:
+            if ostype.id is None:
+                ostype.__sync__()
+            if self.id is not None and ostype.id is not None:
+                params = {
+                    'id': self.id,
+                    'ostypeID': ostype.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/delete', 'parameters': params}
+                response = CompanyService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.ost_ids.remove(ostype.id)
+                    ostype.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating company ' + self.name + ' name. Reason: ostype ' +
+                    ostype.name + ' id is None or self.id is None'
+                )
+
     def save(self):
         ok = True
         if self.id is None:
@@ -2980,10 +3034,64 @@ class Company(object):
                     break
 
         if ok and self.ost_2_add.__len__() > 0:
-            pass
+            for os_type in self.ost_2_add:
+                if os_type.id is None:
+                    os_type.save()
+                if os_type.id is not None:
+                    params = {
+                        'id': self.id,
+                        'ostypeID': os_type.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/add',
+                            'parameters': params}
+                    response = CompanyService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.ost_2_add.remove(os_type)
+                        os_type.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: os_type ' +
+                        os_type.name + ' id is None'
+                    )
+                    ok = False
+                    break
 
         if ok and self.ost_2_rm.__len__() > 0:
-            pass
+            for os_type in self.ost_2_rm:
+                if os_type.id is None:
+                    os_type.save()
+                if os_type.id is not None:
+                    params = {
+                        'id': self.id,
+                        'ostypeID': os_type.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/delete',
+                            'parameters': params}
+                    response = CompanyService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.ost_2_rm.remove(os_type)
+                        os_type.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: os_type ' +
+                        os_type.name + ' id is None'
+                    )
+                    ok = False
+                    break
 
         self.__sync__()
         return self

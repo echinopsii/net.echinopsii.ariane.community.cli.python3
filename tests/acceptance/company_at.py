@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import json
 import unittest
-from ariane_clip3.directory import DirectoryService, Company, Application
+from ariane_clip3.directory import DirectoryService, Company, Application, OSType
 from tests.acceptance import application_at
 
 __author__ = 'mffrench'
@@ -93,4 +93,36 @@ class CompanyTest(unittest.TestCase):
         self.assertTrue(application.id not in company.applications_ids)
         self.assertIsNone(application.company_id)
         application.remove()
+        company.remove()
+
+    def test_company_link_to_ostype(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+        company = Company(name='my_new_cmp',
+                          description='my new cmp')
+        ostype = OSType(name='my_new_ost',
+                        architecture='x864')
+        company.add_ostype(ostype, sync=False)
+        self.assertTrue(ostype in company.ost_2_add)
+        self.assertIsNone(company.ost_ids)
+        self.assertIsNone(ostype.company_id)
+        company.save()
+        self.assertTrue(ostype not in company.ost_2_add)
+        self.assertTrue(ostype.id in company.ost_ids)
+        self.assertTrue(company.id == ostype.company_id)
+        company.del_ostype(ostype, sync=False)
+        self.assertTrue(ostype in company.ost_2_rm)
+        self.assertTrue(ostype.id in company.ost_ids)
+        self.assertTrue(company.id == ostype.company_id)
+        company.save()
+        self.assertTrue(ostype not in company.ost_2_rm)
+        self.assertTrue(ostype.id not in company.ost_ids)
+        self.assertIsNone(ostype.company_id)
+        company.add_ostype(ostype)
+        self.assertTrue(ostype.id in company.ost_ids)
+        self.assertTrue(company.id == ostype.company_id)
+        company.del_ostype(ostype)
+        self.assertTrue(ostype.id not in company.ost_ids)
+        self.assertIsNone(ostype.company_id)
+        ostype.remove()
         company.remove()
