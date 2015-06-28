@@ -3080,7 +3080,7 @@ class Company(object):
                             'Error while updating company ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        ok = False
+                        #ok = False
                         break
                     else:
                         self.ost_2_rm.remove(os_type)
@@ -3090,7 +3090,7 @@ class Company(object):
                         'Error while updating company ' + self.name + ' name. Reason: os_type ' +
                         os_type.name + ' id is None'
                     )
-                    ok = False
+                    #ok = False
                     break
 
         self.__sync__()
@@ -3472,7 +3472,8 @@ class Team(object):
             'teamName': self.name,
             'teamDescription': self.description,
             'teamColorCode': self.color_code,
-            'teamOSInstancesID': self.osi_ids
+            'teamOSInstancesID': self.osi_ids,
+            'teamApplicationsID': self.app_ids
         }
         return json.dumps(json_obj)
 
@@ -3492,6 +3493,7 @@ class Team(object):
             self.description = json_obj['teamDescription']
             self.color_code = json_obj['teamColorCode']
             self.osi_ids = json_obj['teamOSInstancesID']
+            self.app_ids = json_obj['teamApplicationsID']
 
     def __init__(self,  teamid=None, name=None, description=None,
                  color_code=None, app_ids=None, osi_ids=None):
@@ -3559,6 +3561,61 @@ class Team(object):
                     'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
+
+    def add_application(self, application, sync=True):
+        if not sync:
+            self.app_2_add.append(application)
+        else:
+            if application.id is None:
+                application.save()
+            if self.id is not None and application.id is not None:
+                params = {
+                    'id': self.id,
+                    'applicationID': application.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
+                response = TeamService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.app_ids.append(application.id)
+                    application.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating team ' + self.name + ' name. Reason: application ' +
+                    application.name + ' id is None or self.id is None'
+                )
+
+    def del_application(self, application, sync=True):
+        if not sync:
+            self.app_2_rm.append(application)
+        else:
+            if application.id is None:
+                application.__sync__()
+            if self.id is not None and application.id is not None:
+                params = {
+                    'id': self.id,
+                    'applicationID': application.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
+                response = TeamService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.app_ids.remove(application.id)
+                    application.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating team ' + self.name + ' name. Reason: application ' +
+                    application.name + ' id is None or self.id is None'
+                )
+
 
     def save(self):
         ok = True
@@ -3663,7 +3720,7 @@ class Team(object):
                             'Error while updating team ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        ok = False
                         break
                     else:
                         self.osi_2_rm.remove(osi)
@@ -3673,7 +3730,67 @@ class Team(object):
                         'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
-                    #ok = False
+                    ok = False
+                    break
+
+        if ok and self.app_2_add.__len__() > 0:
+            for application in self.app_2_add:
+                if application.id is None:
+                    application.save()
+                if application.id is not None:
+                    params = {
+                        'id': self.id,
+                        'applicationID': application.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/add',
+                            'parameters': params}
+                    response = TeamService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.app_2_add.remove(application)
+                        application.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: application ' +
+                        application.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.app_2_rm.__len__() > 0:
+            for application in self.app_2_rm:
+                if application.id is None:
+                    application.save()
+                if application.id is not None:
+                    params = {
+                        'id': self.id,
+                        'applicationID': application.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete',
+                            'parameters': params}
+                    response = TeamService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.app_2_rm.remove(application)
+                        application.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating team ' + self.name + ' name. Reason: application ' +
+                        application.name + ' id is None'
+                    )
+                    ok = False
                     break
 
         self.__sync__()

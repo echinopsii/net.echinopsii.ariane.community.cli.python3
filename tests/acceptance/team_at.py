@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import json
 import unittest
-from ariane_clip3.directory import DirectoryService, Team, OSInstance
+from ariane_clip3.directory import DirectoryService, Team, OSInstance, Application
 
 __author__ = 'mffrench'
 
@@ -96,4 +96,39 @@ class TeamTest(unittest.TestCase):
         self.assertTrue(team.id not in osinstance.team_ids)
         self.assertTrue(osinstance.id not in team.osi_ids)
         osinstance.remove()
+        team.remove()
+
+    def test_team_link_to_application(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+        team = Team(name='my_new_team',
+                    description='my new team',
+                    color_code='0000')
+        application = Application(name='my_new_app',
+                                  description='my new app',
+                                  short_name='app',
+                                  color_code='082487')
+        team.add_application(application, sync=False)
+        self.assertTrue(application in team.app_2_add)
+        self.assertIsNone(application.team_id)
+        self.assertIsNone(team.app_ids)
+        team.save()
+        self.assertTrue(application not in team.app_2_add)
+        self.assertTrue(team.id == application.team_id)
+        self.assertTrue(application.id in team.app_ids)
+        team.del_application(application, sync=False)
+        self.assertTrue(application in team.app_2_rm)
+        self.assertTrue(team.id == application.team_id)
+        self.assertTrue(application.id in team.app_ids)
+        team.save()
+        self.assertTrue(application not in team.app_2_rm)
+        self.assertIsNone(application.team_id)
+        self.assertTrue(application.id not in team.app_ids)
+        team.add_application(application)
+        self.assertTrue(team.id == application.team_id)
+        self.assertTrue(application.id in team.app_ids)
+        team.del_application(application)
+        self.assertIsNone(application.team_id)
+        self.assertTrue(application.id not in team.app_ids)
+        application.remove()
         team.remove()
