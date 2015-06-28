@@ -71,7 +71,10 @@ class Requester(object):
         """
         stop requester
         """
-        self.channel.close()
+        try:
+            self.channel.close()
+        except Exception as e:
+            LOGGER.warn("Exception raised while closing channel")
 
     def on_response(self, ch, method_frame, props, body):
         """
@@ -112,11 +115,19 @@ class Requester(object):
         while self.response is None:
             self.connection.process_data_events()
 
-        return DriverResponse(
-            rc=json.loads(self.response['headers'].decode("UTF-8"))['RC'],
-            error_message=json.loads(self.response['headers'].decode("UTF-8"))['SERVER_ERROR_MESSAGE'],
-            response_content=json.loads(self.response['body'].decode("UTF-8"))
-        )
+        rc_ = self.response['props'].headers['RC']
+        if rc_ != 0:
+            return DriverResponse(
+                rc=rc_,
+                error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE'],
+                response_content=json.loads(self.response['body'].decode("UTF-8"))
+            )
+        else:
+            return DriverResponse(
+                rc=rc_,
+                response_content=json.loads(self.response['body'].decode("UTF-8"))
+            )
+
 
 
 class Service(object):
