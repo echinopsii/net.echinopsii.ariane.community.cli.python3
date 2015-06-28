@@ -1,5 +1,5 @@
 # Ariane CLI Python 3
-# Application acceptence tests
+# Application acceptance tests
 #
 # Copyright (C) 2015 echinopsii
 #
@@ -15,7 +15,6 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import json
 import unittest
 from ariane_clip3.directory import DirectoryService, Application, OSInstance
 
