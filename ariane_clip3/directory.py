@@ -1471,7 +1471,8 @@ class OSInstance(object):
                     'id': self.id,
                     'osiID': e_osi.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/add', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/add',
+                        'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
@@ -1498,7 +1499,8 @@ class OSInstance(object):
                     'id': self.id,
                     'osiID': e_osi.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/delete', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/delete',
+                        'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
@@ -2045,7 +2047,6 @@ class OSInstance(object):
                             'Error while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        ok = False
                         break
                     else:
                         self.team_2_rm.remove(team)
@@ -2055,7 +2056,6 @@ class OSInstance(object):
                         'Error while updating OS instance ' + self.name + ' name. Reason: team ' +
                         team.name + ' id is None'
                     )
-                    ok = False
                     break
 
         self.__sync__()
@@ -2723,12 +2723,14 @@ class Application(object):
 
 
 class CompanyService(object):
-    def __init__(self, directory_driver):
-        self.driver = directory_driver
-        args = {'repository_path': 'rest/directories/common/organisation/companies/'}
-        self.requester = self.driver.make_requester(args)
+    requester = None
 
-    def find_company(self, cmp_id=None, cmp_name=None):
+    def __init__(self, directory_driver):
+        args = {'repository_path': 'rest/directories/common/organisation/companies/'}
+        CompanyService.requester = directory_driver.make_requester(args)
+
+    @staticmethod
+    def find_company(cmp_id=None, cmp_name=None):
         if (cmp_id is None or not cmp_id) and (cmp_name is None or not cmp_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -2745,9 +2747,9 @@ class CompanyService(object):
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = self.requester.call(args)
+            response = CompanyService.requester.call(args)
             if response.rc is 0:
-                ret = Company.json_2_company(self.requester, response.response_content)
+                ret = Company.json_2_company(response.response_content)
             else:
                 err_msg = 'Error while finding company (id:' + str(cmp_id) + ', name:' + str(cmp_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -2757,14 +2759,15 @@ class CompanyService(object):
 
         return ret
 
-    def get_companies(self):
+    @staticmethod
+    def get_companies():
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = self.requester.call(args)
+        response = CompanyService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
             for company in response.response_content['companies']:
-                ret.append(Company.json_2_company(self.requester, company))
+                ret.append(Company.json_2_company(company))
         else:
             err_msg = 'Error while getting companies. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
@@ -2773,9 +2776,8 @@ class CompanyService(object):
 
 class Company(object):
     @staticmethod
-    def json_2_company(requester, json_obj):
-        return Company(requester=requester,
-                       cmpid=json_obj['companyID'],
+    def json_2_company(json_obj):
+        return Company(cmpid=json_obj['companyID'],
                        name=json_obj['companyName'],
                        description=json_obj['companyDescription'],
                        application_ids=json_obj['companyApplicationsID'],
@@ -2786,32 +2788,93 @@ class Company(object):
             'companyID': self.id,
             'companyName': self.name,
             'companyDescription': self.description,
-            'companyApplicationsID': self.cmp_applications_ids,
-            'companyOSTypesID': self.cmp_ost_ids
+            'companyApplicationsID': self.applications_ids,
+            'companyOSTypesID': self.ost_ids
         }
         return json.dumps(json_obj)
 
-    def __sync__(self, json_obj):
-        self.id = json_obj['companyID']
-        self.name = json_obj['companyName']
-        self.description = json_obj['companyDescription']
-        self.cmp_applications_ids = json_obj['companyApplicationsID']
-        self.cmp_ost_ids = json_obj['companyOSTypesID']
+    def __sync__(self):
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.name is not None:
+            params = {'name': self.name}
 
-    def __init__(self, requester, cmpid=None, name=None, description=None,
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = CompanyService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['companyID']
+            self.name = json_obj['companyName']
+            self.description = json_obj['companyDescription']
+            self.applications_ids = json_obj['companyApplicationsID']
+            self.ost_ids = json_obj['companyOSTypesID']
+
+    def __init__(self, cmpid=None, name=None, description=None,
                  application_ids=None, ost_ids=None):
-        self.requester = requester
         self.id = cmpid
         self.name = name
         self.description = description
-        self.cmp_applications_ids = application_ids
-        self.cmp_applications_2_add = []
-        self.cmp_applications_2_rm = []
-        self.cmp_applications_2_add = []
-        self.cmp_applications_2_rm = []
-        self.cmp_ost_ids = ost_ids
-        self.cmp_ost_2_add = []
-        self.cmp_ost_2_rm = []
+        self.applications_ids = application_ids
+        self.applications_2_add = []
+        self.applications_2_rm = []
+        self.ost_ids = ost_ids
+        self.ost_2_add = []
+        self.ost_2_rm = []
+
+    def add_application(self, application, sync=True):
+        if not sync:
+            self.applications_2_add.append(application)
+        else:
+            if application.id is None:
+                application.save()
+            if self.id is not None and application.id is not None:
+                params = {
+                    'id': self.id,
+                    'applicationID': application.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
+                response = CompanyService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.applications_ids.append(application.id)
+                    application.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating company ' + self.name + ' name. Reason: application ' +
+                    application.name + ' id is None or self.id is None'
+                )
+
+    def del_application(self, application, sync=True):
+        if not sync:
+            self.applications_2_rm.append(application)
+        else:
+            if application.id is None:
+                application.__sync__()
+            if self.id is not None and application.id is not None:
+                params = {
+                    'id': self.id,
+                    'applicationID': application.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
+                response = CompanyService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.applications_ids.remove(application.id)
+                    application.__sync__()
+            else:
+                LOGGER.error(
+                    'Error while updating company ' + self.name + ' name. Reason: application ' +
+                    application.name + ' id is None or self.id is None'
+                )
 
     def save(self):
         ok = True
@@ -2821,9 +2884,9 @@ class Company(object):
                 'description': self.description,
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = self.requester.call(args)
+            response = CompanyService.requester.call(args)
             if response.rc is 0:
-                self.__sync__(response.response_content)
+                self.id = response.response_content['companyID']
             else:
                 LOGGER.error(
                     'Error while saving company' + self.name + '. Reason: ' + str(response.error_message)
@@ -2835,7 +2898,7 @@ class Company(object):
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = self.requester.call(args)
+            response = CompanyService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while updating company ' + self.name + ' name. Reason: ' + str(response.error_message)
@@ -2848,7 +2911,7 @@ class Company(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = self.requester.call(args)
+                response = CompanyService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
                         'Error while updating company ' + self.name + ' name. Reason: ' +
@@ -2856,6 +2919,73 @@ class Company(object):
                     )
                     ok = False
 
+        if ok and self.applications_2_add.__len__() > 0:
+            for application in self.applications_2_add:
+                if application.id is None:
+                    application.save()
+                if application.id is not None:
+                    params = {
+                        'id': self.id,
+                        'applicationID': application.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/add',
+                            'parameters': params}
+                    response = CompanyService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.applications_2_add.remove(application)
+                        application.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: application ' +
+                        application.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.applications_2_rm.__len__() > 0:
+            for application in self.applications_2_rm:
+                if application.id is None:
+                    application.save()
+                if application.id is not None:
+                    params = {
+                        'id': self.id,
+                        'applicationID': application.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete',
+                            'parameters': params}
+                    response = CompanyService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.applications_2_rm.remove(application)
+                        application.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating company ' + self.name + ' name. Reason: application ' +
+                        application.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.ost_2_add.__len__() > 0:
+            pass
+
+        if ok and self.ost_2_rm.__len__() > 0:
+            pass
+
+        self.__sync__()
         return self
 
     def remove(self):
@@ -2866,7 +2996,7 @@ class Company(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = self.requester.call(args)
+            response = CompanyService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
                     'Error while deleting company ' + self.name + '. Reason: ' + str(response.error_message)

@@ -17,7 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import json
 import unittest
-from ariane_clip3.directory import DirectoryService, Company
+from ariane_clip3.directory import DirectoryService, Company, Application
+from tests.acceptance import application_at
 
 __author__ = 'mffrench'
 
@@ -26,9 +27,8 @@ class CompanyTest(unittest.TestCase):
 
     def test_new_company(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        new_company = Company(requester=service.company_service.requester,
-                              name='my_new_cmp',
+        DirectoryService(args)
+        new_company = Company(name='my_new_cmp',
                               description='my new cmp')
         new_company.save()
         self.assertIsNotNone(new_company.id)
@@ -36,9 +36,8 @@ class CompanyTest(unittest.TestCase):
 
     def test_remove_company(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        service = DirectoryService(args)
-        rm_application = Company(requester=service.company_service.requester,
-                                 name='my_new_cmp',
+        DirectoryService(args)
+        rm_application = Company(name='my_new_cmp',
                                  description='my new cmp')
         rm_application.save()
         self.assertIsNone(rm_application.remove())
@@ -46,8 +45,7 @@ class CompanyTest(unittest.TestCase):
     def test_company_get(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_company = Company(requester=service.company_service.requester,
-                              name='my_new_cmp',
+        new_company = Company(name='my_new_cmp',
                               description='my new cmp')
         new_company.save()
         ret = service.company_service.get_companies()
@@ -57,9 +55,42 @@ class CompanyTest(unittest.TestCase):
     def test_company_find(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         service = DirectoryService(args)
-        new_company = Company(requester=service.company_service.requester,
-                              name='my_new_cmp',
+        new_company = Company(name='my_new_cmp',
                               description='my new cmp')
         new_company.save()
         self.assertIsNotNone(service.company_service.find_company(cmp_name="my_new_cmp"))
         new_company.remove()
+
+    def test_company_link_to_application(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        service = DirectoryService(args)
+        company = Company(name='my_new_cmp',
+                          description='my new cmp')
+        application = Application(name='my_new_app',
+                                  description='my new app',
+                                  short_name='app',
+                                  color_code='082487')
+        company.add_application(application, sync=False)
+        self.assertTrue(application in company.applications_2_add)
+        self.assertIsNone(company.applications_ids)
+        self.assertIsNone(application.company_id)
+        company.save()
+        self.assertTrue(application not in company.applications_2_add)
+        self.assertTrue(application.id in company.applications_ids)
+        self.assertTrue(company.id == application.company_id)
+        company.del_application(application, sync=False)
+        self.assertTrue(application in company.applications_2_rm)
+        self.assertTrue(application.id in company.applications_ids)
+        self.assertTrue(company.id == application.company_id)
+        company.save()
+        self.assertTrue(application not in company.applications_2_rm)
+        self.assertTrue(application.id not in company.applications_ids)
+        self.assertIsNone(application.company_id)
+        company.add_application(application)
+        self.assertTrue(application.id in company.applications_ids)
+        self.assertTrue(company.id == application.company_id)
+        company.del_application(application)
+        self.assertTrue(application.id not in company.applications_ids)
+        self.assertIsNone(application.company_id)
+        application.remove()
+        company.remove()
