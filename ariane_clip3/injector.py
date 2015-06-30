@@ -43,16 +43,35 @@ class InjectorUITreeService(object):
             InjectorUITreeService.requester.start()
 
     @staticmethod
-    def find_ui_tree_entity(entity_id):
-        args = {'properties': {'OPERATION': 'GET_TREE_MENU_ENTITY_I', 'TREE_MENU_ENTITY_ID': entity_id}}
-        result = InjectorUITreeService.requester.call(args)
+    def find_ui_tree_entity(entity_id=None, entity_value=None, entity_ca=None):
+        operation = None
+        search_criteria = None
+        criteria_value = None
+        if entity_id is not None:
+            operation = 'GET_TREE_MENU_ENTITY_I'
+            search_criteria = 'id'
+            criteria_value = entity_id
+        if operation is None and entity_value is not None:
+            operation = 'GET_TREE_MENU_ENTITY_V'
+            search_criteria = 'value'
+            criteria_value = entity_value
+        if operation is None and entity_ca is not None:
+            operation = 'GET_TREE_MENU_ENTITY_C'
+            search_criteria = 'context address'
+            criteria_value = entity_ca
+
         ret = None
-        if result.rc == 0:
-            ret = InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity(result.response_content)
-        else:
-            err_msg = 'Error while finding injector UI Tree Menu Entity (id:' + str(entity_id) + '). ' + \
-                      'Reason: ' + str(result.error_message)
-            LOGGER.error(err_msg)
+        if operation is not None:
+            args = {'properties': {'OPERATION': operation, 'TREE_MENU_ENTITY_ID': criteria_value}}
+            result = InjectorUITreeService.requester.call(args)
+
+            if result.rc == 0:
+                ret = InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity(result.response_content)
+            else:
+                err_msg = 'Error while finding injector UI Tree Menu Entity ('+search_criteria+':' + str(criteria_value) + '). ' + \
+                          'Reason: ' + str(result.error_message)
+                LOGGER.error(err_msg)
+
         return ret
 
 
