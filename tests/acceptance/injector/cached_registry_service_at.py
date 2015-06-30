@@ -24,7 +24,7 @@ __author__ = 'mffrench'
 
 class InjectorCachedRegistryFactoryTest(unittest.TestCase):
 
-    def test_make_gears_registry(self):
+    def setUp(self):
         client_properties = {
             'product': 'Ariane CLI Python 3',
             'information': 'Ariane - UI Tree Test',
@@ -37,37 +37,27 @@ class InjectorCachedRegistryFactoryTest(unittest.TestCase):
         args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
                 'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
 
-        injector_service = InjectorService(args)
+        self.injector_service = InjectorService(args)
 
+    #def tearDown(self):
+    #    self.injector_service.stop()
+
+    def test_make_gears_registry(self):
         docker_gears_registry = {
             'registry.name': 'Ariane Docker plugin gears registry',
             'registry.cache.id': 'ariane.community.plugin.docker.gears.cache',
             'registry.cache.name': 'Ariane Docker plugin gears cache',
             'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_GEARS_CACHE_MGR'
         }
-        ret = injector_service.cached_registry_service.make_gears_cache_registry(docker_gears_registry)
+        ret = self.injector_service.cached_registry_service.make_gears_cache_registry(docker_gears_registry)
         self.assertTrue(ret is not None and ret.rc == 0)
 
     def test_make_components_registry(self):
-        client_properties = {
-            'product': 'Ariane CLI Python 3',
-            'information': 'Ariane - UI Tree Test',
-            'ariane.pgurl': 'ssh://' + socket.gethostname(),
-            'ariane.osi': 'localhost',
-            'ariane.otm': 'ArianeOPS',
-            'ariane.app': 'Ariane',
-            'ariane.cmp': 'echinopsii'
-        }
-        args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
-
-        injector_service = InjectorService(args)
-
-        docker_gears_registry = {
+        docker_components_registry = {
             'registry.name': 'Ariane Docker plugin components registry',
             'registry.cache.id': 'ariane.community.plugin.docker.components.cache',
             'registry.cache.name': 'Ariane Docker plugin components cache',
             'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_COMPONENTS_CACHE_MGR'
         }
-        ret = injector_service.cached_registry_service.make_gears_cache_registry(docker_gears_registry)
+        ret = self.injector_service.cached_registry_service.make_gears_cache_registry(docker_components_registry)
         self.assertTrue(ret is not None and ret.rc == 0)

@@ -24,11 +24,28 @@ LOGGER = logging.getLogger(__name__)
 
 
 class InjectorService(object):
-    def __init__(self, my_args):
-        self.driver = driver_factory.DriverFactory.make(my_args)
+    def __init__(self, driver_args, gears_registry_args=None, components_registry_args=None):
+        self.driver = driver_factory.DriverFactory.make(driver_args)
         self.driver.start()
         self.ui_tree_service = InjectorUITreeService(self.driver)
         self.cached_registry_service = InjectorCachedRegistryFactoryService(self.driver)
+        self.gear_cache_id = None
+        self.component_cache_id = None
+        if gears_registry_args is not None:
+            ret = self.cached_registry_service.make_gears_cache_registry(gears_registry_args)
+            if ret is not None and ret.rc == 0:
+                self.gear_cache_id = gears_registry_args['ariane.community.injector.gears.registry.cache.id']\
+                    if 'ariane.community.injector.gears.registry.cache.id' in gears_registry_args else None
+        if components_registry_args is not None:
+            ret = self.cached_registry_service.make_components_cache_registry(components_registry_args)
+            if ret is not None and ret.rc == 0:
+                self.component_cache_id = \
+                    components_registry_args['ariane.community.injector.components.registry.cache.id']\
+                    if 'ariane.community.injector.components.registry.cache.id' in components_registry_args else None
+        if self.gear_cache_id is not None:
+            self.gear_service = InjectorGearService(self.driver, self.gear_cache_id)
+        if self.component_cache_id is not None:
+            self.component_service = InjectorComponentService(self.driver, self.component_cache_id)
 
     def stop(self):
         self.driver.stop()
@@ -328,7 +345,7 @@ class InjectorCachedRegistryFactoryService(object):
             LOGGER.error(err_msg)
             return None
         else:
-            args['ariane.community.injector.components.cache.mgr.name'] = args['cache.mgr.name']
+            args['ariane.community.injector.cache.mgr.name'] = args['cache.mgr.name']
             args.pop('cache.mgr.name', None)
 
         args['OPERATION'] = 'MAKE_COMPONENTS_REGISTRY'
@@ -337,9 +354,168 @@ class InjectorCachedRegistryFactoryService(object):
         return InjectorCachedRegistryFactoryService.requester.call(args)
 
 
-class InjectorComponents(object):
-    pass
+class InjectorComponentService(object):
+    requester = None
+    cache_id = None
+
+    def __init__(self, injector_driver, cache_id):
+        args = {'request_q': 'remote.injector.comp'}
+        if InjectorComponentService.requester is None:
+            InjectorComponentService.requester = injector_driver.make_requester(args)
+            InjectorComponentService.requester.start()
+            InjectorComponentService.cache_id = cache_id
+
+    @staticmethod
+    def find_component(co_id):
+        ret = None
+        if co_id is not None:
+            args = {'properties': {'OPERATION': 'PULL_COMPONENT_FROM_CACHE',
+                                   'REMOTE_COMPONENT': str({'componentId': co_id}).replace("'", '"'),
+                                   'CACHE_ID': InjectorComponentService.cache_id}}
+
+            result = InjectorComponentService.requester.call(args)
+            if result.rc == 0:
+                ret = InjectorComponent.json_2_injector_component(result.response_content)
+            else:
+                err_msg = 'Error while finding component ( id : ' + co_id + \
+                          'Reason: ' + str(result.error_message)
+                LOGGER.error(err_msg)
+        return ret
 
 
-class InjectorGears(object):
-    pass
+class InjectorComponent(object):
+
+    @staticmethod
+    def json_2_injector_component(json_obj):
+        return InjectorComponent(
+            component_id=json_obj['componentId'],
+            component_name=json_obj['componentName'],
+            component_admin_queue=json_obj['componentAdminQueue'],
+            refreshing=json_obj['refreshing'],
+            next_action=json_obj['nextAction'],
+            json_last_refresh=json_obj['jsonLastRefresh'],
+            attached_gear_id=json_obj['attachedGearId']
+        )
+
+    def injector_component_2_json(self):
+        json_obj = {
+            'componentId': self.id,
+            'componentName': self.name,
+            'componentAdminQueue': self.admin_queue,
+            'refreshing': 'true' if self.refreshing else 'false',
+            'nextAction': self.next_action,
+            'jsonLastRefresh': self.json_last_refresh,
+            'attachedGearId': self.attached_gear_id
+        }
+        return json_obj
+
+    def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
+                 next_action=None, json_last_refresh=None, attached_gear_id=None):
+        self.id = component_id
+        self.name = component_name
+        self.admin_queue = component_admin_queue
+        self.refreshing = refreshing
+        self.next_action = next_action
+        self.json_last_refresh = json_last_refresh
+        self.attached_gear_id = attached_gear_id
+
+    def save(self):
+        ret = True
+        args = {'properties': {'OPERATION': 'PUSH_COMPONENT_IN_CACHE',
+                               'REMOTE_COMPONENT': str(self.injector_component_2_json()).replace("'", '"'),
+                               'CACHE_ID': InjectorComponentService.cache_id}}
+
+        result = InjectorComponentService.requester.call(args)
+        if result.rc != 0:
+            err_msg = 'Error while saving component ( id : ' + self.id + \
+                      'Reason: ' + str(result.error_message)
+            LOGGER.error(err_msg)
+            ret = False
+
+        return ret
+
+    def remove(self):
+        ret = True
+        args = {'properties': {'OPERATION': 'DEL_COMPONENT_FROM_CACHE',
+                               'REMOTE_COMPONENT': str(self.injector_component_2_json()).replace("'", '"'),
+                               'CACHE_ID': InjectorComponentService.cache_id}}
+
+        result = InjectorComponentService.requester.call(args)
+        if result.rc != 0:
+            err_msg = 'Error while saving component ( id : ' + self.id + \
+                      'Reason: ' + str(result.error_message)
+            LOGGER.error(err_msg)
+            ret = False
+
+        return ret
+
+
+class InjectorGearService(object):
+    requester = None
+    cache_id = None
+
+    def __init__(self, injector_driver, cache_id):
+        args = {'request_q': 'remote.injector.gear'}
+        if InjectorGearService.requester is None:
+            InjectorGearService.requester = injector_driver.make_requester(args)
+            InjectorGearService.requester.start()
+            InjectorGearService.cache_id = cache_id
+
+
+class InjectorGear(object):
+    @staticmethod
+    def json_2_injector_gear(json_obj):
+        return InjectorGear(
+            gear_id=json_obj['gearId'],
+            gear_name=json_obj['gearName'],
+            gear_description=json_obj['gearDescription'],
+            gear_admin_queue=json_obj['gearAdminQueue'],
+            running=json_obj['running']
+        )
+
+    def injector_gear_2_json(self):
+        json_obj = {
+            'gearId': self.id,
+            'gearName': self.name,
+            'gearAdminQueue': self.admin_queue,
+            'gearDescription': self.description,
+            'running': 'true' if self.running else 'false'
+        }
+        return json_obj
+
+    def __init__(self, gear_id=None, gear_name=None, gear_description=None, gear_admin_queue=None, running=None):
+        self.id = gear_id
+        self.name = gear_name
+        self.description = gear_description
+        self.admin_queue = gear_admin_queue
+        self.running = running
+
+    def save(self):
+        ret = True
+        args = {'properties': {'OPERATION': 'PUSH_GEAR_IN_CACHE',
+                               'REMOTE_GEAR': str(self.injector_gear_2_json()).replace("'", '"'),
+                               'CACHE_ID': InjectorGearService.cache_id}}
+
+        result = InjectorGearService.requester.call(args)
+        if result.rc != 0:
+            err_msg = 'Error while saving gear ( id : ' + self.id + \
+                      'Reason: ' + str(result.error_message)
+            LOGGER.error(err_msg)
+            ret = False
+
+        return ret
+
+    def remove(self):
+        ret = True
+        args = {'properties': {'OPERATION': 'DEL_GEAR_FROM_CACHE',
+                               'REMOTE_GEAR': str(self.injector_gear_2_json()).replace("'", '"'),
+                               'CACHE_ID': InjectorGearService.cache_id}}
+
+        result = InjectorGearService.requester.call(args)
+        if result.rc != 0:
+            err_msg = 'Error while deleting gear ( id : ' + self.id + \
+                      'Reason: ' + str(result.error_message)
+            LOGGER.error(err_msg)
+            ret = False
+
+        return ret

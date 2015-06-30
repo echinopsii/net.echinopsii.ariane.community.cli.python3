@@ -24,7 +24,7 @@ __author__ = 'mffrench'
 
 class InjectorUITreeTest(unittest.TestCase):
 
-    def test_find_ui_tree_menu_entity(self):
+    def setUp(self):
         client_properties = {
             'product': 'Ariane CLI Python 3',
             'information': 'Ariane - UI Tree Test',
@@ -37,26 +37,17 @@ class InjectorUITreeTest(unittest.TestCase):
         args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
                 'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
 
-        injector_service = InjectorService(args)
-        mapping_dir_entity = injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
+        self.injector_service = InjectorService(args)
+
+    #def tearDown(self):
+    #    self.injector_service.stop()
+
+    def test_find_ui_tree_menu_entity(self):
+        mapping_dir_entity = self.injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
         self.assertTrue(mapping_dir_entity.id == 'mappingDir')
-        injector_service.stop()
 
     def test_register_ui_tree_menu_entity(self):
-        client_properties = {
-            'product': 'Ariane CLI Python 3',
-            'information': 'Ariane - UI Tree Test',
-            'ariane.pgurl': 'ssh://' + socket.gethostname(),
-            'ariane.osi': 'localhost',
-            'ariane.otm': 'ArianeOPS',
-            'ariane.app': 'Ariane',
-            'ariane.cmp': 'echinopsii'
-        }
-        args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
-
-        injector_service = InjectorService(args)
-        mapping_dir_entity = injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
+        mapping_dir_entity = self.injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
         self.assertTrue(mapping_dir_entity.id == 'mappingDir')
 
         system_entity = InjectorUITreeEntity(uitid="systemDir", value="System",
@@ -66,7 +57,7 @@ class InjectorUITreeTest(unittest.TestCase):
                                              display_permissions=["injMapSysDocker:display"])
 
         system_entity.save()
-        self.assertIsNotNone(injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
+        self.assertIsNotNone(self.injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
 
         docker_entity = InjectorUITreeEntity(uitid="docker", value="Docker",
                                              type=InjectorUITreeEntity.entity_leaf_type,
@@ -79,27 +70,13 @@ class InjectorUITreeTest(unittest.TestCase):
                                              remote_injector_tree_entity_components_cache_id=
                                              "ariane.community.plugin.docker.components.cache.localhost")
         docker_entity.save()
-        self.assertIsNotNone(injector_service.ui_tree_service.find_ui_tree_entity(docker_entity.id))
+        self.assertIsNotNone(self.injector_service.ui_tree_service.find_ui_tree_entity(docker_entity.id))
 
         docker_entity.remove()
         system_entity.remove()
-        injector_service.stop()
 
     def test_unregister_ui_tree_menu_entity(self):
-        client_properties = {
-            'product': 'Ariane CLI Python 3',
-            'information': 'Ariane - UI Tree Test',
-            'ariane.pgurl': 'ssh://' + socket.gethostname(),
-            'ariane.osi': 'localhost',
-            'ariane.otm': 'ArianeOPS',
-            'ariane.app': 'Ariane',
-            'ariane.cmp': 'echinopsii'
-        }
-        args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
-
-        injector_service = InjectorService(args)
-        mapping_dir_entity = injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
+        mapping_dir_entity = self.injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
         system_entity = InjectorUITreeEntity(uitid="systemDir", value="System",
                                              type=InjectorUITreeEntity.entity_dir_type,
                                              context_address="", description="", icon="cog",
@@ -107,35 +84,20 @@ class InjectorUITreeTest(unittest.TestCase):
                                              display_permissions=["injMapSysDocker:display"])
 
         system_entity.save()
-        self.assertIsNotNone(injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
+        self.assertIsNotNone(self.injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
 
         system_entity.remove()
-        self.assertIsNone(injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
-
-        injector_service.stop()
+        self.assertIsNone(self.injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
 
     def test_update_ui_tree_menu_entity(self):
-        client_properties = {
-            'product': 'Ariane CLI Python 3',
-            'information': 'Ariane - UI Tree Test',
-            'ariane.pgurl': 'ssh://' + socket.gethostname(),
-            'ariane.osi': 'localhost',
-            'ariane.otm': 'ArianeOPS',
-            'ariane.app': 'Ariane',
-            'ariane.cmp': 'echinopsii'
-        }
-        args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
-
-        injector_service = InjectorService(args)
-        mapping_dir_entity = injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
+        mapping_dir_entity = self.injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
         system_entity = InjectorUITreeEntity(uitid="systemDir", value="System",
                                              type=InjectorUITreeEntity.entity_dir_type, icon="cog",
                                              parent_id=mapping_dir_entity.id, display_roles=["sysadmin"],
                                              display_permissions=["injMapSysDocker:display"])
 
         system_entity.save()
-        self.assertIsNotNone(injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
+        self.assertIsNotNone(self.injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
         docker_entity = InjectorUITreeEntity(uitid="docker", value="Docker",
                                              type=InjectorUITreeEntity.entity_leaf_type,
                                              context_address= "/ariane/views/injectors/external.jsf?id=docker",
@@ -147,9 +109,9 @@ class InjectorUITreeTest(unittest.TestCase):
                                              remote_injector_tree_entity_components_cache_id=
                                              "ariane.community.plugin.docker.components.cache.localhost")
         docker_entity.save()
-        self.assertIsNotNone(injector_service.ui_tree_service.find_ui_tree_entity(docker_entity.id))
+        self.assertIsNotNone(self.injector_service.ui_tree_service.find_ui_tree_entity(docker_entity.id))
         docker_entity.icon = "icon-cog"
         docker_entity.save()
-        self.assertTrue(injector_service.ui_tree_service.find_ui_tree_entity(docker_entity.id).icon == "icon-cog")
+        self.assertTrue(self.injector_service.ui_tree_service.find_ui_tree_entity(docker_entity.id).icon == "icon-cog")
         docker_entity.remove()
         system_entity.remove()
