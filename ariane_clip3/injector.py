@@ -28,6 +28,7 @@ class InjectorService(object):
         self.driver = driver_factory.DriverFactory.make(my_args)
         self.driver.start()
         self.ui_tree_service = InjectorUITreeService(self.driver)
+        self.cached_registry_service = InjectorCachedRegistryFactoryService(self.driver)
 
     def stop(self):
         self.driver.stop()
@@ -68,7 +69,8 @@ class InjectorUITreeService(object):
             if result.rc == 0:
                 ret = InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity(result.response_content)
             else:
-                err_msg = 'Error while finding injector UI Tree Menu Entity ('+search_criteria+':' + str(criteria_value) + '). ' + \
+                err_msg = 'Error while finding injector UI Tree Menu Entity ('+search_criteria+':' + \
+                          str(criteria_value) + '). ' + \
                           'Reason: ' + str(result.error_message)
                 LOGGER.error(err_msg)
 
@@ -78,7 +80,6 @@ class InjectorUITreeService(object):
 class InjectorUITreeEntity(object):
     entity_leaf_type = 1
     entity_dir_type = 2
-
 
     @staticmethod
     def json_2_injector_ui_tree_menu_entity(json_obj):
@@ -100,7 +101,7 @@ class InjectorUITreeEntity(object):
 
             remote_injector_tree_entity_gears_cache_id=
             json_obj['remoteInjectorTreeEntityGearsCacheId'] if 'remoteInjectorTreeEntityGearsCacheId' in
-                                                                     json_obj else None
+                                                                json_obj else None
         )
 
     def injector_ui_tree_menu_entity_2_json(self, ignore_genealogy=False):
@@ -239,8 +240,101 @@ class InjectorUITreeEntity(object):
             LOGGER.error(err_msg)
 
 
-class InjectorCacheFactory(object):
-    pass
+class InjectorCachedRegistryFactoryService(object):
+    requester = None
+
+    def __init__(self, injector_driver):
+        args = {'request_q': 'remote.injector.cachefactory'}
+        if InjectorCachedRegistryFactoryService.requester is None:
+            InjectorCachedRegistryFactoryService.requester = injector_driver.make_requester(args)
+            InjectorCachedRegistryFactoryService.requester.start()
+
+    @staticmethod
+    def make_gears_cache_registry(args):
+        if args is None:
+            err_msg = 'not args defined !'
+            LOGGER.error(err_msg)
+            return None
+
+        if 'registry.name' not in args or args['registry.name'] is None or not args['registry.name']:
+            err_msg = 'registry.name is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.gears.registry.name'] = args['registry.name']
+            args.pop('registry.name', None)
+
+        if 'registry.cache.id' not in args or args['registry.cache.id'] is None or not args['registry.cache.id']:
+            err_msg = 'registry.cache.id is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.gears.registry.cache.id'] = args['registry.cache.id']
+            args.pop('registry.cache.id', None)
+
+        if 'registry.cache.name' not in args or args['registry.cache.name'] is None or not args['registry.cache.name']:
+            err_msg = 'registry.cache.name is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.gears.registry.cache.name'] = args['registry.cache.name']
+            args.pop('registry.cache.name', None)
+
+        if 'cache.mgr.name' not in args or args['cache.mgr.name'] is None or not args['cache.mgr.name']:
+            err_msg = 'cache.mgr.name is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.cache.mgr.name'] = args['cache.mgr.name']
+            args.pop('cache.mgr.name', None)
+
+        args['OPERATION'] = 'MAKE_GEARS_REGISTRY'
+        args = {'properties': args}
+        return InjectorCachedRegistryFactoryService.requester.call(args)
+
+    @staticmethod
+    def make_components_cache_registry(args):
+        if args is None:
+            err_msg = 'not args defined !'
+            LOGGER.error(err_msg)
+            return None
+
+        if 'registry.name' not in args or args['registry.name'] is None or not args['registry.name']:
+            err_msg = 'registry.name is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.components.registry.name'] = args['registry.name']
+            args.pop('registry.name', None)
+
+        if 'registry.cache.id' not in args or args['registry.cache.id'] is None or not args['registry.cache.id']:
+            err_msg = 'registry.cache.id is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.components.registry.cache.id'] = args['registry.cache.id']
+            args.pop('registry.cache.id', None)
+
+        if 'registry.cache.name' not in args or args['registry.cache.name'] is None or not args['registry.cache.name']:
+            err_msg = 'registry.cache.name is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.components.registry.cache.name'] = args['registry.cache.name']
+            args.pop('registry.cache.name', None)
+
+        if 'cache.mgr.name' not in args or args['cache.mgr.name'] is None or not args['cache.mgr.name']:
+            err_msg = 'cache.mgr.name is not defined !'
+            LOGGER.error(err_msg)
+            return None
+        else:
+            args['ariane.community.injector.components.cache.mgr.name'] = args['cache.mgr.name']
+            args.pop('cache.mgr.name', None)
+
+        args['OPERATION'] = 'MAKE_COMPONENTS_REGISTRY'
+        args = {'properties': args}
+
+        return InjectorCachedRegistryFactoryService.requester.call(args)
 
 
 class InjectorComponents(object):
