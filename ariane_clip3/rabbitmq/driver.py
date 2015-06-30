@@ -117,17 +117,24 @@ class Requester(object):
 
         rc_ = self.response['props'].headers['RC']
         if rc_ != 0:
+            try:
+                content = json.loads(self.response['body'].decode("UTF-8"))
+            except ValueError:
+                content = self.response['body'].decode("UTF-8")
             return DriverResponse(
                 rc=rc_,
                 error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE'],
-                response_content=json.loads(self.response['body'].decode("UTF-8"))
+                response_content=content
             )
         else:
+            try:
+                content = json.loads(self.response['body'].decode("UTF-8"))
+            except ValueError:
+                content = self.response['body'].decode("UTF-8")
             return DriverResponse(
                 rc=rc_,
-                response_content=json.loads(self.response['body'].decode("UTF-8"))
+                response_content=content
             )
-
 
 
 class Service(object):
