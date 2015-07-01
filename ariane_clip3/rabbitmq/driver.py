@@ -128,11 +128,19 @@ class Requester(object):
             )
         else:
             try:
+                if 'PROPERTIES' in self.response['props'].headers:
+                    props = json.loads(self.response['props'].headers['PROPERTIES'])
+                else:
+                    props = None
+            except ValueError:
+                props = self.response['props'].headers['PROPERTIES']
+            try:
                 content = json.loads(self.response['body'].decode("UTF-8"))
             except ValueError:
                 content = self.response['body'].decode("UTF-8")
             return DriverResponse(
                 rc=rc_,
+                response_properties=props,
                 response_content=content
             )
 

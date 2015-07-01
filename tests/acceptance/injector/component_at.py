@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import json
 import socket
 import unittest
 from ariane_clip3.injector import InjectorService, InjectorComponent, InjectorGear, InjectorComponentService
@@ -62,7 +63,11 @@ class InjectorComponentTest(unittest.TestCase):
                                       component_name='docker@localhost',
                                       component_admin_queue='ariane.community.plugin.docker.components.cache.localhost',
                                       refreshing=False, next_action=0, json_last_refresh='2013-03-11 01:38:18.309',
-                                      attached_gear_id=self.gear.id)
+                                      attached_gear_id=self.gear.id,
+                                      component_blob='{"my_object_field": "my_object_field_value"}')
         self.assertTrue(component.save())
-        self.assertIsNotNone(InjectorComponentService.find_component(component.id))
+        retrieved_component = InjectorComponentService.find_component(component.id)
+        self.assertIsNotNone(retrieved_component)
+        retrieved_component_object = retrieved_component.blob
+        self.assertTrue(retrieved_component_object['my_object_field']=='my_object_field_value')
 

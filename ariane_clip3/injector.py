@@ -375,7 +375,8 @@ class InjectorComponentService(object):
 
             result = InjectorComponentService.requester.call(args)
             if result.rc == 0:
-                ret = InjectorComponent.json_2_injector_component(result.response_content)
+                ret = InjectorComponent.json_2_injector_component(result.response_properties)
+                ret.blob = result.response_content
             else:
                 err_msg = 'Error while finding component ( id : ' + co_id + \
                           'Reason: ' + str(result.error_message)
@@ -397,20 +398,32 @@ class InjectorComponent(object):
             attached_gear_id=json_obj['attachedGearId']
         )
 
-    def injector_component_2_json(self):
-        json_obj = {
-            'componentId': self.id,
-            'componentName': self.name,
-            'componentAdminQueue': self.admin_queue,
-            'refreshing': 'true' if self.refreshing else 'false',
-            'nextAction': self.next_action,
-            'jsonLastRefresh': self.json_last_refresh,
-            'attachedGearId': self.attached_gear_id
-        }
+    def injector_component_2_json(self, properties_only=False):
+        if properties_only:
+            json_obj = {
+                'componentId': self.id,
+                'componentName': self.name,
+                'componentAdminQueue': self.admin_queue,
+                'refreshing': 'true' if self.refreshing else 'false',
+                'nextAction': self.next_action,
+                'jsonLastRefresh': self.json_last_refresh,
+                'attachedGearId': self.attached_gear_id
+            }
+        else:
+            json_obj = {
+                'componentId': self.id,
+                'componentName': self.name,
+                'componentAdminQueue': self.admin_queue,
+                'refreshing': 'true' if self.refreshing else 'false',
+                'nextAction': self.next_action,
+                'jsonLastRefresh': self.json_last_refresh,
+                'attachedGearId': self.attached_gear_id,
+                'componentBlob': self.blob
+            }
         return json_obj
 
     def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
-                 next_action=None, json_last_refresh=None, attached_gear_id=None):
+                 next_action=None, json_last_refresh=None, attached_gear_id=None, component_blob=None):
         self.id = component_id
         self.name = component_name
         self.admin_queue = component_admin_queue
@@ -418,12 +431,15 @@ class InjectorComponent(object):
         self.next_action = next_action
         self.json_last_refresh = json_last_refresh
         self.attached_gear_id = attached_gear_id
+        self.blob = component_blob
 
     def save(self):
         ret = True
         args = {'properties': {'OPERATION': 'PUSH_COMPONENT_IN_CACHE',
-                               'REMOTE_COMPONENT': str(self.injector_component_2_json()).replace("'", '"'),
-                               'CACHE_ID': InjectorComponentService.cache_id}}
+                               'REMOTE_COMPONENT': str(self.injector_component_2_json(properties_only=True)).
+                                   replace("'", '"'),
+                               'CACHE_ID': InjectorComponentService.cache_id},
+                'body': self.blob}
 
         result = InjectorComponentService.requester.call(args)
         if result.rc != 0:
@@ -437,7 +453,8 @@ class InjectorComponent(object):
     def remove(self):
         ret = True
         args = {'properties': {'OPERATION': 'DEL_COMPONENT_FROM_CACHE',
-                               'REMOTE_COMPONENT': str(self.injector_component_2_json()).replace("'", '"'),
+                               'REMOTE_COMPONENT': str(self.injector_component_2_json(properties_only=True)).
+                                   replace("'", '"'),
                                'CACHE_ID': InjectorComponentService.cache_id}}
 
         result = InjectorComponentService.requester.call(args)
