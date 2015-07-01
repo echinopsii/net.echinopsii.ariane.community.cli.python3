@@ -38,10 +38,10 @@ class InjectorComponentTest(unittest.TestCase):
                        'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
 
         gr_args = {
-            'registry.name': 'Ariane Docker plugin components registry',
-            'registry.cache.id': 'ariane.community.plugin.docker.components.cache',
-            'registry.cache.name': 'Ariane Docker plugin components cache',
-            'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_COMPONENTS_CACHE_MGR'
+            'registry.name': 'Ariane Docker plugin gears registry',
+            'registry.cache.id': 'ariane.community.plugin.docker.gears.cache',
+            'registry.cache.name': 'Ariane Docker plugin gears cache',
+            'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_GEARS_CACHE_MGR'
         }
 
         self.injector_service = InjectorService(driver_args=driver_args, gears_registry_args=gr_args)

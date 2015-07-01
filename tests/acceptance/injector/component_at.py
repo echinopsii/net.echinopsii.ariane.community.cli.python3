@@ -37,10 +37,10 @@ class InjectorComponentTest(unittest.TestCase):
         driver_args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
                        'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
         gr_args = {
-            'registry.name': 'Ariane Docker plugin components registry',
-            'registry.cache.id': 'ariane.community.plugin.docker.components.cache',
-            'registry.cache.name': 'Ariane Docker plugin components cache',
-            'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_COMPONENTS_CACHE_MGR'
+            'registry.name': 'Ariane Docker plugin gears registry',
+            'registry.cache.id': 'ariane.community.plugin.docker.gears.cache',
+            'registry.cache.name': 'Ariane Docker plugin gears cache',
+            'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_GEARS_CACHE_MGR'
         }
         co_args = {
             'registry.name': 'Ariane Docker plugin components registry',
@@ -55,10 +55,8 @@ class InjectorComponentTest(unittest.TestCase):
                                  gear_name='docker@localhost', gear_description='Ariane remote injector for localhost',
                                  gear_admin_queue='ariane.community.plugin.docker.gears.cache.localhost', running=False)
 
-
     #def tearDown(self):
     #    self.injector_service.stop()
-
     def test_new_component(self):
         component = InjectorComponent(component_id='ariane.community.plugin.docker.components.cache.localhost',
                                       component_name='docker@localhost',

@@ -59,5 +59,5 @@ class InjectorCachedRegistryFactoryTest(unittest.TestCase):
             'registry.cache.name': 'Ariane Docker plugin components cache',
             'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_COMPONENTS_CACHE_MGR'
         }
-        ret = self.injector_service.cached_registry_service.make_gears_cache_registry(docker_components_registry)
+        ret = self.injector_service.cached_registry_service.make_components_cache_registry(docker_components_registry)
         self.assertTrue(ret is not None and ret.rc == 0)
