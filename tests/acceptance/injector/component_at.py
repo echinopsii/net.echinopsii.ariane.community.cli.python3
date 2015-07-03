@@ -58,6 +58,7 @@ class InjectorComponentTest(unittest.TestCase):
 
     #def tearDown(self):
     #    self.injector_service.stop()
+
     def test_new_component(self):
         component = InjectorComponent(component_id='ariane.community.plugin.docker.components.cache.localhost',
                                       component_name='docker@localhost',
@@ -69,5 +70,7 @@ class InjectorComponentTest(unittest.TestCase):
         retrieved_component = InjectorComponentService.find_component(component.id)
         self.assertIsNotNone(retrieved_component)
         retrieved_component_object = retrieved_component.blob
-        self.assertTrue(retrieved_component_object['my_object_field']=='my_object_field_value')
+        self.assertTrue(retrieved_component_object['my_object_field'] == 'my_object_field_value')
+        self.assertTrue(component.remove())
+        pass
 

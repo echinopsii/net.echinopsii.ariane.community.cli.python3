@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import copy
 import json
 import socket
 import threading
@@ -38,20 +39,29 @@ class Requester(object):
     :param my_args: dict like {connection, request_q}
     """
 
-    def __init__(self, my_args=None):
+    def __init__(self, my_args=None, connection_args=None):
         """
         RabbitMQ requester constructor
         :param my_args: dict like {connection, request_q}
+        :param connection_args: dict like {user, password, host[, port, vhost, client_properties]}
         :return: self
         """
         if my_args is None:
             raise exceptions.ArianeConfError("requestor arguments")
-        if 'connection' not in my_args or my_args['connection'] is None:
-            raise exceptions.ArianeConfError("connection")
         if 'request_q' not in my_args or my_args['request_q'] is None or not my_args['request_q']:
             raise exceptions.ArianeConfError("request_q")
 
-        self.connection = my_args['connection']
+        Driver.validate_driver_conf(connection_args)
+
+        self.connection_args = copy.deepcopy(connection_args)
+        self.connection_args['client_properties']['information'] = \
+            self.connection_args['client_properties']['information'] + " - requestor on " + my_args['request_q']
+        self.credentials = pika.PlainCredentials(connection_args['user'], connection_args['password'])
+        self.parameters = pika.ConnectionParameters(connection_args['host'], connection_args['port'],
+                                                    connection_args['vhost'], credentials=self.credentials,
+                                                    client_props=self.connection_args['client_properties'])
+        self.connection = pika.BlockingConnection(self.parameters)
+
         self.channel = self.connection.channel()
         self.requestQ = my_args['request_q']
         self.channel.queue_declare(queue=self.requestQ)
@@ -75,6 +85,10 @@ class Requester(object):
             self.channel.close()
         except Exception as e:
             LOGGER.warn("Exception raised while closing channel")
+        try:
+            self.connection.close()
+        except:
+            LOGGER.warn("Exception raised while closing connection")
 
     def on_response(self, ch, method_frame, props, body):
         """
@@ -151,16 +165,15 @@ class Service(object):
     :param my_args: dict like {connection, service_q, treatment_callback[, service_name]}
     """
 
-    def __init__(self, my_args=None):
+    def __init__(self, my_args=None, connection_args=None):
         """
         RabbitMQ service constructor
         :param my_args: dict like {connection, service_q, treatment_callback[, service_name]}
+        :param connection_args: dict like {user, password, host[, port, vhost, client_properties]}
         :return: self
         """
-        if my_args is None:
+        if my_args is None or connection_args is None:
             raise exceptions.ArianeConfError("service arguments")
-        if 'connection' not in my_args or my_args['connection'] is None:
-            raise exceptions.ArianeConfError("connection")
         if 'service_q' not in my_args or my_args['service_q'] is None or not my_args['service_q']:
             raise exceptions.ArianeConfError("service_q")
         if 'treatment_callback' not in my_args or my_args['treatment_callback'] is None:
@@ -169,12 +182,23 @@ class Service(object):
             LOGGER.warn("service_name is not defined ! Use default : " + self.__class__.__name__)
             my_args['service_name'] = self.__class__.__name__
 
-        self.connection = my_args['connection']
+        Driver.validate_driver_conf(connection_args)
+
+        self.connection_args = copy.deepcopy(connection_args)
+        self.connection_args['client_properties']['information'] = \
+            self.connection_args['client_properties']['information'] + " - " +  my_args['service_name']
+
+        self.credentials = pika.PlainCredentials(connection_args['user'], connection_args['password'])
+        self.parameters = pika.ConnectionParameters(connection_args['host'], connection_args['port'],
+                                                    connection_args['vhost'], credentials=self.credentials,
+                                                    client_props=self.connection_args['client_properties'])
+        self.connection = pika.BlockingConnection(self.parameters)
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=my_args['service_q'])
         self.serviceQ = my_args['service_q']
         self.serviceName = my_args['service_name']
         self.cb = my_args['treatment_callback']
+        self.is_started = False
 
     def run(self):
         """
@@ -196,14 +220,22 @@ class Service(object):
         self.channel.basic_consume(self.on_request, self.serviceQ)
         service = threading.Thread(target=self.run, name=self.serviceName)
         service.start()
+        self.is_started = True
 
     def stop(self):
         """
         stop the service
         """
-        self.channel.stop_consuming()
-        self.channel.stop()
+        try:
+            self.channel.close()
+        except Exception as e:
+            LOGGER.warn("Exception raised while closing channel and connection")
+        self.is_started = False
 
+        try:
+            self.connection.close()
+        except:
+            LOGGER.warn("Exception raised while closing connection")
 
 class Driver(object):
     """
@@ -211,13 +243,8 @@ class Driver(object):
     :param my_args: dict like {user, password, host[, port, vhost, client_properties]}. Default = None
     """
 
-    def __init__(self, my_args=None):
-        """
-        RabbitMQ driver constructor
-        :param my_args: dict like {user, password, host[, port, vhost, client_properties]}. Default = None
-        :return: selft
-        """
-
+    @staticmethod
+    def validate_driver_conf(my_args=None):
         default_port = 5672
         default_vhost = "/"
         default_client_properties = {
@@ -230,7 +257,6 @@ class Driver(object):
             'ariane.cmp': 'echinopsii'
         }
 
-        self.configuration_OK = False
         if my_args is None:
             raise exceptions.ArianeConfError("rabbitmq driver arguments ")
         if 'user' not in my_args or my_args['user'] is None or not my_args['user']:
@@ -251,22 +277,28 @@ class Driver(object):
             my_args['client_properties'] = default_client_properties
             LOGGER.info("client properties are not defined. Use default " + str(default_client_properties))
 
-        self.configuration_OK = True
-        self.credentials = pika.PlainCredentials(my_args['user'], my_args['password'])
-        self.parameters = pika.ConnectionParameters(my_args['host'], my_args['port'], my_args['vhost'],
-                                                    credentials=self.credentials,
-                                                    client_props=my_args['client_properties'])
-        self.connection = None
+    def __init__(self, my_args=None):
+
+        """
+        RabbitMQ driver constructor
+        :param my_args: dict like {user, password, host[, port, vhost, client_properties]}. Default = None
+        :return: self
+        """
+        self.configuration_OK = False
+        try:
+            Driver.validate_driver_conf(my_args)
+            self.configuration_OK = True
+        except Exception as e:
+            raise e
+
+        self.connection_args = my_args
         self.services_registry = []
         self.requester_registry = []
 
     def start(self):
         """
-        Connect to RabbitMQ if configuration seems OK
         :return: self
         """
-        if self.configuration_OK:
-            self.connection = pika.BlockingConnection(self.parameters)
         return self
 
     def stop(self):
@@ -282,22 +314,19 @@ class Driver(object):
             requester.stop()
         self.requester_registry.clear()
 
-        if self.connection is not None:
-            self.connection.close()
-            self.connection = None
-
         return self
 
     def make_service(self, my_args=None):
         """
         make a new service instance and handle it from driver
-        :param my_args: dict like {service_q, treatment_callback, [, service_name] }. Default : None
+        :param my_args: dict like {service_q, treatment_callback [, service_name] }. Default : None
         :return: created service
         """
         if my_args is None:
             raise exceptions.ArianeConfError('service factory arguments')
-        my_args['connection'] = self.connection
-        service = Service(my_args)
+        if not self.configuration_OK or self.connection_args is None:
+            raise exceptions.ArianeConfError('rabbitmq connection arguments')
+        service = Service(my_args, self.connection_args)
         self.services_registry.append(service)
         return service
 
@@ -309,7 +338,8 @@ class Driver(object):
         """
         if my_args is None:
             raise exceptions.ArianeConfError('requester factory arguments')
-        my_args['connection'] = self.connection
-        requester = Requester(my_args)
+        if not self.configuration_OK or self.connection_args is None:
+            raise exceptions.ArianeConfError('rabbitmq connection arguments')
+        requester = Requester(my_args, self.connection_args)
         self.requester_registry.append(requester)
         return requester

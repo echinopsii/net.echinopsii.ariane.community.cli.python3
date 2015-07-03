@@ -357,8 +357,10 @@ class InjectorCachedRegistryFactoryService(object):
 class InjectorComponentService(object):
     requester = None
     cache_id = None
+    driver = None
 
     def __init__(self, injector_driver, cache_id):
+        InjectorComponentService.driver = injector_driver
         args = {'request_q': 'remote.injector.comp'}
         if InjectorComponentService.requester is None:
             InjectorComponentService.requester = injector_driver.make_requester(args)
@@ -382,6 +384,15 @@ class InjectorComponentService(object):
                           'Reason: ' + str(result.error_message)
                 LOGGER.error(err_msg)
         return ret
+
+    @staticmethod
+    def make_refresh_on_demand_service(injector_component):
+        args = {
+            'service_q': injector_component.id,
+            'treatment_callback': injector_component.refresh,
+            'service_name': injector_component.id + " - On Demand Refreshing Service"
+        }
+        return InjectorComponentService.driver.make_service(args)
 
 
 class InjectorComponent(object):
@@ -432,9 +443,16 @@ class InjectorComponent(object):
         self.json_last_refresh = json_last_refresh
         self.attached_gear_id = attached_gear_id
         self.blob = component_blob
+        self.service = None
 
     def save(self):
         ret = True
+
+        if self.service is None:
+            self.service = InjectorComponentService.make_refresh_on_demand_service(self)
+        if self.service is not None and not self.service.is_started:
+            self.service.start()
+
         args = {'properties': {'OPERATION': 'PUSH_COMPONENT_IN_CACHE',
                                'REMOTE_COMPONENT': str(self.injector_component_2_json(properties_only=True)).
                                    replace("'", '"'),
@@ -464,7 +482,17 @@ class InjectorComponent(object):
             LOGGER.error(err_msg)
             ret = False
 
+        if self.service is not None and self.service.is_started:
+            self.service.stop()
+
         return ret
+
+    def refresh(self, channel, props, body):
+        operation = props.headers['OPERATION']
+        if operation == "REFRESH":
+            pass
+        else:
+            print("Unsupported operation " + str(operation))
 
 
 class InjectorGearService(object):
@@ -477,6 +505,16 @@ class InjectorGearService(object):
             InjectorGearService.requester = injector_driver.make_requester(args)
             InjectorGearService.requester.start()
             InjectorGearService.cache_id = cache_id
+            InjectorGearService.driver = injector_driver
+
+    @staticmethod
+    def make_start_stop_on_demand_service(injector_gear):
+        args = {
+            'service_q': injector_gear.id,
+            'treatment_callback': injector_gear.refresh,
+            'service_name': injector_gear.id + " - On Demand Start/Stop Service"
+        }
+        return InjectorGearService.driver.make_service(args)
 
 
 class InjectorGear(object):
@@ -506,9 +544,18 @@ class InjectorGear(object):
         self.description = gear_description
         self.admin_queue = gear_admin_queue
         self.running = running
+        self.service = None
 
     def save(self):
         ret = True
+
+        if self.service is None:
+            self.service = InjectorGearService.make_start_stop_on_demand_service(self)
+
+        if self.service is not None and not self.service.is_started:
+            self.service.start()
+
+
         args = {'properties': {'OPERATION': 'PUSH_GEAR_IN_CACHE',
                                'REMOTE_GEAR': str(self.injector_gear_2_json()).replace("'", '"'),
                                'CACHE_ID': InjectorGearService.cache_id}}
@@ -535,4 +582,10 @@ class InjectorGear(object):
             LOGGER.error(err_msg)
             ret = False
 
+        if self.service is not None and self.service.is_started:
+            self.service.stop()
+
         return ret
+
+    def refresh(self, channel, props, body):
+        pass
