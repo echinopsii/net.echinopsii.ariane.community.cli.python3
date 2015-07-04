@@ -1,5 +1,5 @@
 # Ariane CLI Python 3
-# Injector Cached Registry Factory acceptance test
+# Injector Component acceptance test
 #
 # Copyright (C) 2015 echinopsii
 #
@@ -100,36 +100,34 @@ class InjectorComponentTest(unittest.TestCase):
 
     def test_save_and_remove_component(self):
         component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
-        self.assertTrue(component.component_cache_actor.get().save().get())
+        self.assertTrue(component.cache().get())
         retrieved_component = InjectorCachedComponentService.find_component(
-            component.component_cache_actor.get().id.get())
+            component.cache_id().get())
         self.assertIsNotNone(retrieved_component)
         retrieved_component_object = retrieved_component.blob
         self.assertTrue(retrieved_component_object['my_object_field'] == 'my_object_field_value')
-        self.assertTrue(component.component_cache_actor.get().remove().get())
+        self.assertTrue(component.remove().get())
 
     def test_update_component(self):
         component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
-        self.assertTrue(component.component_cache_actor.get().save().get())
-        retrieved_component = InjectorCachedComponentService.find_component(
-            component.component_cache_actor.get().id.get())
+        self.assertTrue(component.cache().get())
+        retrieved_component = InjectorCachedComponentService.find_component(component.cache_id().get())
         self.assertIsNotNone(retrieved_component)
         self.assertTrue(retrieved_component.blob['my_object_field'] == 'my_object_field_value')
 
         now = datetime.datetime.now()
         now_str = now.strftime("%Y-%m-%d %H:%M:%S.%f")
-        self.assertTrue(component.component_cache_actor.get().save(
+        self.assertTrue(component.cache(
             refreshing=True, next_action=InjectorCachedComponent.action_update, json_last_refresh=now,
             data_blob='{"my_object_field": "my_object_field_value_updated"}'
         ).get())
-        retrieved_component = InjectorCachedComponentService.find_component(
-            component.component_cache_actor.get().id.get())
+        retrieved_component = InjectorCachedComponentService.find_component(component.cache_id().get())
         self.assertIsNotNone(retrieved_component)
         self.assertTrue(retrieved_component.blob['my_object_field'] == 'my_object_field_value_updated')
         self.assertTrue(retrieved_component.refreshing)
         self.assertTrue(retrieved_component.next_action == InjectorCachedComponent.action_update)
         self.assertTrue(retrieved_component.json_last_refresh == now_str)
-        self.assertTrue(component.component_cache_actor.get().remove().get())
+        self.assertTrue(component.remove().get())
 
     def test_refresh_call(self):
         """
@@ -141,7 +139,7 @@ class InjectorComponentTest(unittest.TestCase):
         self.refresh_requestor.call({'properties': {'OPERATION': 'REFRESH'}})
         time.sleep(1)
         retrieved_component = InjectorCachedComponentService.find_component(
-            component.component_cache_actor.get().id.get())
+            component.cache_id().get())
         self.assertTrue(retrieved_component.blob['my_object_field'] == 'my_object_field_value_remotely_refreshed')
         self.assertTrue(component.component_cache_actor.get().remove().get())
 

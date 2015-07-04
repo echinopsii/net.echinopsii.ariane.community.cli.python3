@@ -26,7 +26,33 @@ LOGGER = logging.getLogger(__name__)
 
 
 class InjectorService(object):
+    """
+    Injector service class give you easy access to injector services :
+
+    => UI Tree Service to register your items in the Ariane Injector Menu
+
+    => Cache registry service to create the cache you need for your registries on Ariane server
+        => Gear registry cache is created depending on the gear_registry_args provided (look at the tests to know more.
+        Then your gears will be listed on the Ariane UI
+        => Component registry cache is created depending on the component_registry_args provided (lookt at the tests to
+        know more). Then your components will be listed on the Ariane UI and you'll be able to reuse value coming from
+        the cache to make diffs with your last component sniffs
+
+    => Gear service which helps create admin service for the gears you create
+
+    => Component service which helps you to search, create admin service for the components you create
+
+    """
     def __init__(self, driver_args, gears_registry_args=None, components_registry_args=None):
+        """
+        Initialization of the Injector Service
+        :param driver_args: argument to connect to the remote Ariane RabbitMQ broker
+        :param gears_registry_args: arguments to create the cache for the gears registry and share data with the Ariane
+        UI
+        :param components_registry_args: arguments to create the cache for components registry, share data with the
+         Ariane UI and use it for you sniff algorithms
+        :return:
+        """
         self.driver = driver_factory.DriverFactory.make(driver_args)
         self.driver.start()
         self.ui_tree_service = InjectorUITreeService(self.driver)
@@ -50,6 +76,10 @@ class InjectorService(object):
             self.component_service = InjectorCachedComponentService(self.driver, self.component_cache_id)
 
     def stop(self):
+        """
+        stop the injector service. By the way stoping all Pykka actors if not cleanly closed.
+        :return:
+        """
         self.driver.stop()
 
 
@@ -57,6 +87,11 @@ class InjectorUITreeService(object):
     requester = None
 
     def __init__(self, injector_driver):
+        """
+        initialization of the injector UI Tree service
+        :param injector_driver: the rabbitmq driver coming from InjectorService
+        :return:
+        """
         args = {'request_q': 'remote.injector.tree'}
         if InjectorUITreeService.requester is None:
             InjectorUITreeService.requester = injector_driver.make_requester(args)
@@ -64,6 +99,13 @@ class InjectorUITreeService(object):
 
     @staticmethod
     def find_ui_tree_entity(entity_id=None, entity_value=None, entity_ca=None):
+        """
+        find the Ariane UI tree menu entity depending on its id (priority), value or context address
+        :param entity_id: the Ariane UI tree menu ID to search
+        :param entity_value: the Ariane UI tree menu Value to search
+        :param entity_ca: the Ariane UI tree menu context address to search
+        :return:
+        """
         operation = None
         search_criteria = None
         criteria_value = None
@@ -102,6 +144,11 @@ class InjectorUITreeEntity(object):
 
     @staticmethod
     def json_2_injector_ui_tree_menu_entity(json_obj):
+        """
+        transform remote JSON UI entity to local object
+        :param json_obj: the retrieved Ariane Menu entity to transform
+        :return: the local object InjectorUITreeEntity
+        """
         return InjectorUITreeEntity(
             uitid=json_obj['id'],
             value=json_obj['value'],
@@ -124,6 +171,11 @@ class InjectorUITreeEntity(object):
         )
 
     def injector_ui_tree_menu_entity_2_json(self, ignore_genealogy=False):
+        """
+        transform this local object to JSON
+        :param ignore_genealogy: ignore the genealogy of this object if true (awaited format for Ariane server)
+        :return: the resulting JSON of transformation
+        """
         if ignore_genealogy:
             json_obj = {
                 'id': self.id,
@@ -188,6 +240,28 @@ class InjectorUITreeEntity(object):
                  parent_id=None, child_ids=None, display_permissions=None, display_roles=None, other_actions_roles=None,
                  other_actions_perms=None, remote_injector_tree_entity_gears_cache_id=None,
                  remote_injector_tree_entity_components_cache_id=None):
+        """
+        initialization of this object
+        :param uitid: id of this Ariane UI Injector Tree Menu Entity (must be unique)
+        :param value: value of this entity
+        :param uitype: type of this entity (directory of leaf - see InjectorUITreeEntity.entity_leaf|dir_type)
+        :param description: description of this entity
+        :param context_address: context address of this entity - for external injector :
+         /ariane/views/injectors/external.jsf?id=<uitid> - can be None
+        :param icon: the icon of this entity - can be None
+        :param parent_id: the parent id of this entity
+        :param child_ids: the childs id of this entity
+        :param display_permissions: the needed permissions to display on Ariane UI
+        :param display_roles: the needed roles to display on Ariane UI
+        :param other_actions_roles: the needed roles to perfom action from Ariane UI (component refresh, gear start or
+        stop)
+        :param other_actions_perms: the needed permissions to perform action from Ariane UI
+        :param remote_injector_tree_entity_gears_cache_id: the gears registry cache id where the UI will look to list
+        the gears
+        :param remote_injector_tree_entity_components_cache_id: the components registry cache id where the UI will look
+         to list the components
+        :return:
+        """
         self.id = uitid
         self.value = value
         self.type = uitype
@@ -209,6 +283,10 @@ class InjectorUITreeEntity(object):
         self.remote_injector_tree_entity_components_cache_id = remote_injector_tree_entity_components_cache_id
 
     def save(self):
+        """
+        save or update this entity on Ariane server
+        :return:
+        """
         if self.id and self.value and self.type:
             ok = True
 
@@ -246,6 +324,10 @@ class InjectorUITreeEntity(object):
             LOGGER.error(err_msg)
 
     def remove(self):
+        """
+        remove the entity from the Ariane server
+        :return:
+        """
         if self.id and InjectorUITreeService.find_ui_tree_entity(self.id) is not None:
             args = {'properties': {'OPERATION': 'UNREGISTER', 'TREE_MENU_ENTITY_ID': self.id}}
             result = InjectorUITreeService.requester.call(args).get()
@@ -263,6 +345,11 @@ class InjectorCachedRegistryFactoryService(object):
     requester = None
 
     def __init__(self, injector_driver):
+        """
+        initialize the injector cache factory service
+        :param injector_driver: the injector service rabbitmq driver
+        :return:
+        """
         args = {'request_q': 'remote.injector.cachefactory'}
         if InjectorCachedRegistryFactoryService.requester is None:
             InjectorCachedRegistryFactoryService.requester = injector_driver.make_requester(args)
@@ -270,6 +357,11 @@ class InjectorCachedRegistryFactoryService(object):
 
     @staticmethod
     def make_gears_cache_registry(args):
+        """
+        create a new gears registry cache on Ariane Server
+        :param args: the cache parameters - look to the tests to know more
+        :return: remote procedure call return - look to the tests to know more
+        """
         if args is None:
             err_msg = 'not args defined !'
             LOGGER.error(err_msg)
@@ -313,6 +405,11 @@ class InjectorCachedRegistryFactoryService(object):
 
     @staticmethod
     def make_components_cache_registry(args):
+        """
+        create a new component registry cache on Ariane server
+        :param args: the cache parameter - look to the tests to know more
+        :return: remote procedure call return - look to the tests to know more
+        """
         if args is None:
             err_msg = 'not args defined !'
             LOGGER.error(err_msg)
@@ -362,6 +459,12 @@ class InjectorCachedComponentService(object):
     driver = None
 
     def __init__(self, injector_driver, cache_id):
+        """
+        initialize the injector cached component service
+        :param injector_driver: the injector service rabbitmq driver
+        :param cache_id: the cache id of the Ariane server where to search and create/update components
+        :return:
+        """
         InjectorCachedComponentService.driver = injector_driver
         args = {'request_q': 'remote.injector.comp'}
         if InjectorCachedComponentService.requester is None:
@@ -371,6 +474,11 @@ class InjectorCachedComponentService(object):
 
     @staticmethod
     def find_component(co_id):
+        """
+        find a component from the Ariane server cache depending on its id
+        :param co_id: the component id to find
+        :return: the component if found and None if not
+        """
         ret = None
         if co_id is not None:
             args = {'properties': {'OPERATION': 'PULL_COMPONENT_FROM_CACHE',
@@ -389,6 +497,11 @@ class InjectorCachedComponentService(object):
 
     @staticmethod
     def make_refresh_on_demand_service(injector_component):
+        """
+        create a refresh on demand service listening to refresh order on the component admin queue
+        :param injector_component: the injector_component to bind with the new refresh on demande service
+        :return: the created service
+        """
         args = {
             'service_q': injector_component.id,
             'treatment_callback': injector_component.refresh,
@@ -405,6 +518,11 @@ class InjectorCachedComponent(pykka.ThreadingActor):
 
     @staticmethod
     def json_2_injector_component(json_obj):
+        """
+        transform the JSON return by Ariane server to local object
+        :param json_obj: the JSON returned by Ariane server
+        :return: a new InjectorCachedComponent
+        """
         return InjectorCachedComponent(
             component_id=json_obj['componentId'],
             component_name=json_obj['componentName'],
@@ -416,6 +534,11 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         )
 
     def injector_component_2_json(self, properties_only=False):
+        """
+        transform this local object to JSON. If properties only ignore the component blob (awaited by Ariane Server)
+        :param properties_only: true or false
+        :return: the JSON from this local object
+        """
         if properties_only:
             json_obj = {
                 'componentId': self.id,
@@ -442,6 +565,19 @@ class InjectorCachedComponent(pykka.ThreadingActor):
     def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
                  next_action=None, json_last_refresh=None, attached_gear_id=None, data_blob=None,
                  parent_actor_ref=None):
+        """
+        initialize this injector cached component
+        :param component_id: the component id
+        :param component_name: the component name
+        :param component_admin_queue: the component admin queue for refresh actions
+        :param refreshing: if the component is currently being refreshed or not
+        :param next_action: the next action to be done
+        :param json_last_refresh: the last refresh of this component
+        :param attached_gear_id: the gear attached to this component
+        :param data_blob: the data blob comming from your component sniffing
+        :param parent_actor_ref: the parent actor ref which defines the sniff method of the component
+        :return:
+        """
         super(InjectorCachedComponent, self).__init__()
         self.id = component_id
         self.name = component_name
@@ -458,6 +594,14 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         self.parent_actor_ref = parent_actor_ref
 
     def save(self, refreshing=None, next_action=None, json_last_refresh=None, data_blob=None):
+        """
+        save or update the component on the Ariane server cache
+        :param refreshing: the new refreshing value - default None and ignored
+        :param next_action: the new next action - default None and ignored
+        :param json_last_refresh: the new json last refresh - default the date of this call
+        :param data_blob: the new data blob of this component - default None and ignored
+        :return:
+        """
         ret = True
 
         if refreshing is not None:
@@ -493,6 +637,10 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         return ret
 
     def remove(self):
+        """
+        remove this component from Ariane server cache, stop the on demand refresh and actor linked to this component
+        :return:
+        """
         ret = True
         args = {'properties': {'OPERATION': 'DEL_COMPONENT_FROM_CACHE',
                                'REMOTE_COMPONENT': str(self.injector_component_2_json(properties_only=True)).
@@ -509,11 +657,20 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         if self.service is not None and self.service.is_started:
             self.service.stop()
 
-        self.stop()
+        if self.actor_ref is not None:
+            self.stop()
 
         return ret
 
     def refresh(self, channel, props, body):
+        """
+        the refresh method called when on demand refresh service receive a message. then call the parent actor sniff
+        method if message is compliant on what is attended
+        :param channel: the rabbitmq channel from where the message is coming
+        :param props: the message properties
+        :param body: the message body
+        :return:
+        """
         operation = props.headers['OPERATION']
         if operation == "REFRESH":
             if self.parent_actor_ref is not None:
@@ -524,9 +681,32 @@ class InjectorCachedComponent(pykka.ThreadingActor):
 
 
 class InjectorComponentSkeleton(pykka.ThreadingActor):
+    """
+    This Injector Component Skeleton object offer you a convenient way to define your component. It is linked
+    automatically to an InjectorCachedComponent object and offer some usefull method like :
+        => cache() : to store your component in the Ariane server cache
+        => remove() : to remove your component from the Ariane server cache
+        => cache_id() : return the cache id of this component
+    It also define two method you can override for you business needs :
+        => data_blob(): to transform your object fields into a json blob ready to store on Ariane server cache
+        => sniff(): to define sniff algorithm on your component
+    """
 
     def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
                  next_action=None, json_last_refresh=None, attached_gear_id=None, data_blob=None):
+        """
+        initialization of this object. you need to call InjectorComponentSkeleter.start(args...) as this is a
+        pykka.ThreadingActor. Look at the tests to know more...
+        :param component_id: the component id
+        :param component_name: the component name
+        :param component_admin_queue: the component admin queue
+        :param refreshing: the refreshing value
+        :param next_action: the next action value
+        :param json_last_refresh: the last refresh value
+        :param attached_gear_id: the attached gear id
+        :param data_blob: the data blob...
+        :return:
+        """
         super(InjectorComponentSkeleton, self).__init__()
         self.component_cache_actor = InjectorCachedComponent.start(component_id=component_id,
                                                                    component_name=component_name,
@@ -538,20 +718,50 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
                                                                    data_blob=data_blob,
                                                                    parent_actor_ref=self.actor_ref).proxy()
 
-    def on_start(self):
-        pass
+    def cache(self, refreshing=None, next_action=None, data_blob=None, json_last_refresh=None):
+        """
+        push this component into the cache
 
-    def on_stop(self):
-        pass
+        :param refreshing: the new refreshing value
+        :param next_action: the new next action value
+        :param data_blob: the new data blob value
+        :param json_last_refresh: the new json last refresh value - if None the date of this call
+        :return:
+        """
+        if json_last_refresh is None:
+            json_last_refresh = datetime.datetime.now()
+        return self.component_cache_actor.save(refreshing=refreshing, next_action=next_action,
+                                               json_last_refresh=json_last_refresh, data_blob=data_blob).get()
 
-    def cache(self, refreshing=None, next_action=None, data_blob=None):
-        self.component_cache_actor.save(refreshing=refreshing, next_action=next_action,
-                                        json_last_refresh=datetime.datetime.now(), data_blob=data_blob).get()
+    def remove(self):
+        """
+        remove this component from cache and stop the actor
+        :return:
+        """
+        ret = self.component_cache_actor.remove().get()
+        if self.actor_ref is not None:
+            self.stop()
+        return ret
+
+    def cache_id(self):
+        """
+
+        :return: the cache id of this component
+        """
+        return self.component_cache_actor.id.get()
 
     def data_blob(self):
+        """
+        to be overrided to feat your need
+        :return:
+        """
         pass
 
     def sniff(self):
+        """
+        to be overrided to feat your need
+        :return:
+        """
         pass
 
 
@@ -561,6 +771,12 @@ class InjectorCachedGearService(object):
     driver = None
 
     def __init__(self, injector_driver, cache_id):
+        """
+        initialize the injector cached gear service
+        :param injector_driver: the injector service rabbitmq driver
+        :param cache_id: the cache id of the Ariane server where to create/update gears
+        :return:
+        """
         args = {'request_q': 'remote.injector.gear'}
         if InjectorCachedGearService.requester is None:
             InjectorCachedGearService.requester = injector_driver.make_requester(args)
@@ -569,18 +785,28 @@ class InjectorCachedGearService(object):
             InjectorCachedGearService.driver = injector_driver
 
     @staticmethod
-    def make_start_stop_on_demand_service(injector_gear):
+    def make_admin_on_demand_service(injector_gear):
+        """
+        create an admin service to stop or start the linked gear
+        :param injector_gear: the gear to be linked to this admin service
+        :return: the service created
+        """
         args = {
             'service_q': injector_gear.id,
-            'treatment_callback': injector_gear.refresh,
+            'treatment_callback': injector_gear.admin,
             'service_name': injector_gear.id + " - On Demand Start/Stop Service"
         }
         return InjectorCachedGearService.driver.make_service(args)
 
 
-class InjectorCachedGear(object):
+class InjectorCachedGear(pykka.ThreadingActor):
     @staticmethod
     def json_2_injector_gear(json_obj):
+        """
+        transform the JSON return by Ariane server to local object
+        :param json_obj: the JSON returned by Ariane server
+        :return: a new InjectorCachedGear
+        """
         return InjectorCachedGear(
             gear_id=json_obj['gearId'],
             gear_name=json_obj['gearName'],
@@ -590,6 +816,10 @@ class InjectorCachedGear(object):
         )
 
     def injector_gear_2_json(self):
+        """
+        transform this local object to JSON.
+        :return: the JSON from this local object
+        """
         json_obj = {
             'gearId': self.id,
             'gearName': self.name,
@@ -599,19 +829,40 @@ class InjectorCachedGear(object):
         }
         return json_obj
 
-    def __init__(self, gear_id=None, gear_name=None, gear_description=None, gear_admin_queue=None, running=None):
+    def __init__(self, gear_id=None, gear_name=None, gear_description=None, gear_admin_queue=None, running=None,
+                 parent_actor_ref=None):
+        """
+        initialization of this object.
+        :param gear_id:
+        :param gear_name:
+        :param gear_description:
+        :param gear_admin_queue:
+        :param running:
+        :param parent_actor_ref: the parent actor ref handling gear start / stop method
+        :return:
+        """
+        super(InjectorCachedGear, self).__init__()
         self.id = gear_id
         self.name = gear_name
         self.description = gear_description
         self.admin_queue = gear_admin_queue
         self.running = running
         self.service = None
+        self.parent_actor_ref = parent_actor_ref
 
-    def save(self):
+    def save(self, running=None):
+        """
+        save or update this cached gear into the Ariane server cache
+        :param running: the new running value. if None ignored
+        :return:
+        """
         ret = True
 
+        if running is not None:
+            self.running = running
+
         if self.service is None:
-            self.service = InjectorCachedGearService.make_start_stop_on_demand_service(self)
+            self.service = InjectorCachedGearService.make_admin_on_demand_service(self)
 
         if self.service is not None and not self.service.is_started:
             self.service.start()
@@ -630,6 +881,10 @@ class InjectorCachedGear(object):
         return ret
 
     def remove(self):
+        """
+        remove this gear from the cache and stop the service
+        :return:
+        """
         ret = True
         args = {'properties': {'OPERATION': 'DEL_GEAR_FROM_CACHE',
                                'REMOTE_GEAR': str(self.injector_gear_2_json()).replace("'", '"'),
@@ -644,7 +899,92 @@ class InjectorCachedGear(object):
 
         if self.service is not None and self.service.is_started:
             self.service.stop()
+
+        if self.actor_ref is not None:
+            self.stop()
+
         return ret
 
-    def refresh(self, channel, props, body):
+    def admin(self, channel, props, body):
+        operation = props.headers['OPERATION']
+        if operation == "START":
+            if self.parent_actor_ref is not None:
+                parent_actor = self.parent_actor_ref.proxy()
+                parent_actor.gear_start().get()
+        elif operation == "STOP":
+            if self.parent_actor_ref is not None:
+                parent_actor = self.parent_actor_ref.proxy()
+                parent_actor.gear_stop().get()
+        else:
+            print("Unsupported operation " + str(operation))
+
+
+class InjectorGearSkeleton(pykka.ThreadingActor):
+    """
+    This Injector Gear Skeleton object offer you a convenient way to define your component. It is linked
+    automatically to an InjectorCachedGear object and offer some useful methods like :
+        => cache() : to store your gear in the Ariane server cache
+        => remove() : to remove your gear from the Ariane server cache
+        => gear_id() : return the gear id of this component
+    It also define two method you can override for you business needs :
+        => gear_stop(): to stop this gear
+        => gear_start(): to start this gear
+    """
+    def __init__(self, gear_id=None, gear_name=None, gear_description=None, gear_admin_queue=None, running=None):
+        """
+        initialization of this object. you need to call InjectorGearSkeleton.start(args...) as this is a
+        pykka.ThreadingActor. Look at the tests to know more...
+        :param gear_id:
+        :param gear_name:
+        :param gear_description:
+        :param gear_admin_queue:
+        :param running:
+        :return:
+        """
+        super(InjectorGearSkeleton, self).__init__()
+        self.cached_gear_actor = InjectorCachedGear.start(gear_id=gear_id,
+                                                          gear_name=gear_name,
+                                                          gear_description=gear_description,
+                                                          gear_admin_queue=gear_admin_queue,
+                                                          running=running,
+                                                          parent_actor_ref=self.actor_ref).proxy()
+        self.running = running if running is not None else False
+
+    def cache(self, running):
+        """
+        save / update this gear into Ariane server cache
+        :param running: the new running value (True or False)
+        :return:
+        """
+        self.running = running if running is not None else False
+        return self.cached_gear_actor.save(running).get()
+
+    def remove(self):
+        """
+        remove the gear from the cache and stop this actor
+        :return:
+        """
+        ret = self.cached_gear_actor.remove().get()
+        if self.actor_ref:
+            self.stop()
+        return ret
+
+    def gear_id(self):
+        """
+        :return: the gear cache id
+        """
+        return self.cached_gear_actor.id.get()
+
+    def gear_stop(self):
+        """
+        to be overrided to feat your need
+        :return:
+        """
+        pass
+
+    def gear_start(self):
+        """
+        to be overrided to feat your need
+        :return:
+        """
         pass

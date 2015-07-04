@@ -63,7 +63,7 @@ class InjectorUITreeTest(unittest.TestCase):
 
         docker_entity = InjectorUITreeEntity(uitid="docker", value="Docker",
                                              uitype=InjectorUITreeEntity.entity_leaf_type,
-                                             context_address= "/ariane/views/injectors/external.jsf?id=docker",
+                                             context_address="/ariane/views/injectors/external.jsf?id=docker",
                                              description="Docker injector", icon="cog", parent_id=system_entity.id,
                                              display_roles=["sysadmin", "sysreviewer"],
                                              display_permissions=["injMapSysDocker:display"],

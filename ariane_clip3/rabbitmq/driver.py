@@ -215,7 +215,7 @@ class Service(pykka.ThreadingActor):
         self.channel = None
         self.service = None
         self.serviceQ = my_args['service_q']
-        self.serviceName = my_args['service_name']
+        self.service_name = my_args['service_name']
         self.cb = my_args['treatment_callback']
         self.is_started = False
 
@@ -234,6 +234,7 @@ class Service(pykka.ThreadingActor):
         """
         self.cb(ch, props, body)
         ch.basic_ack(delivery_tag=method_frame.delivery_tag)
+        pass
 
     def on_start(self):
         """
@@ -243,7 +244,7 @@ class Service(pykka.ThreadingActor):
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=self.serviceQ)
         self.channel.basic_consume(self.on_request, self.serviceQ)
-        self.service = threading.Thread(target=self.run, name=self.serviceName)
+        self.service = threading.Thread(target=self.run, name=self.service_name)
         self.service.start()
         self.is_started = True
 
