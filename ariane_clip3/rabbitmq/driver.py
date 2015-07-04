@@ -23,6 +23,7 @@ import uuid
 import logging
 
 import pika
+import pykka
 
 from ariane_clip3 import exceptions
 from ariane_clip3.driver_common import DriverResponse
@@ -33,7 +34,7 @@ LOGGER = logging.getLogger(__name__)
 __author__ = 'mffrench'
 
 
-class Requester(object):
+class Requester(pykka.ThreadingActor):
     """
     RabbitMQ requester implementation
     :param my_args: dict like {connection, request_q}
@@ -50,9 +51,14 @@ class Requester(object):
             raise exceptions.ArianeConfError("requestor arguments")
         if 'request_q' not in my_args or my_args['request_q'] is None or not my_args['request_q']:
             raise exceptions.ArianeConfError("request_q")
+        if 'fire_and_forget' not in my_args or my_args['fire_and_forget'] is None or not my_args['fire_and_forget']:
+            self.fire_and_forget = False
+        else:
+            self.fire_and_forget = True
 
         Driver.validate_driver_conf(connection_args)
 
+        super(Requester, self).__init__()
         self.connection_args = copy.deepcopy(connection_args)
         self.connection_args['client_properties']['information'] = \
             self.connection_args['client_properties']['information'] + " - requestor on " + my_args['request_q']
@@ -65,19 +71,21 @@ class Requester(object):
         self.channel = self.connection.channel()
         self.requestQ = my_args['request_q']
         self.channel.queue_declare(queue=self.requestQ)
-        self.result = self.channel.queue_declare(exclusive=True)
-        self.callback_queue = self.result.method.queue
-        self.response = None
-        self.corr_id = None
+        if not self.fire_and_forget:
+            self.result = self.channel.queue_declare(exclusive=True)
+            self.callback_queue = self.result.method.queue
+            self.response = None
+            self.corr_id = None
 
-    def start(self):
+    def on_start(self):
         """
         start requester
         """
-        self.channel.basic_consume(self.on_response, no_ack=True,
-                                   queue=self.callback_queue)
+        if not self.fire_and_forget:
+            self.channel.basic_consume(self.on_response, no_ack=True,
+                                       queue=self.callback_queue)
 
-    def stop(self):
+    def on_stop(self):
         """
         stop requester
         """
@@ -87,7 +95,7 @@ class Requester(object):
             LOGGER.warn("Exception raised while closing channel")
         try:
             self.connection.close()
-        except:
+        except Exception as e:
             LOGGER.warn("Exception raised while closing connection")
 
     def on_response(self, ch, method_frame, props, body):
@@ -113,56 +121,66 @@ class Requester(object):
         self.response = None
         self.corr_id = str(uuid.uuid4())
 
-        properties = pika.BasicProperties(content_type=None, content_encoding=None,
-                                          headers=my_args['properties'], delivery_mode=None,
-                                          priority=None, correlation_id=self.corr_id,
-                                          reply_to=self.callback_queue, expiration=None,
-                                          message_id=None, timestamp=None,
-                                          type=None, user_id=None,
-                                          app_id=None, cluster_id=None)
+        if not self.fire_and_forget:
+            properties = pika.BasicProperties(content_type=None, content_encoding=None,
+                                              headers=my_args['properties'], delivery_mode=None,
+                                              priority=None, correlation_id=self.corr_id,
+                                              reply_to=self.callback_queue, expiration=None,
+                                              message_id=None, timestamp=None,
+                                              type=None, user_id=None,
+                                              app_id=None, cluster_id=None)
+        else:
+            properties = pika.BasicProperties(content_type=None, content_encoding=None,
+                                              headers=my_args['properties'], delivery_mode=None,
+                                              priority=None, expiration=None,
+                                              message_id=None, timestamp=None,
+                                              type=None, user_id=None,
+                                              app_id=None, cluster_id=None)
 
         self.channel.basic_publish(exchange='',
                                    routing_key=self.requestQ,
                                    properties=properties,
                                    body=str(my_args['body']))
 
-        while self.response is None:
-            self.connection.process_data_events()
+        if not self.fire_and_forget:
+            while self.response is None:
+                self.connection.process_data_events()
 
-        rc_ = self.response['props'].headers['RC']
-        if rc_ != 0:
-            try:
-                content = json.loads(self.response['body'].decode("UTF-8"))
-            except ValueError:
-                content = self.response['body'].decode("UTF-8")
-            return DriverResponse(
-                rc=rc_,
-                error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE'],
-                response_content=content
-            )
-        else:
-            try:
-                if 'PROPERTIES' in self.response['props'].headers:
-                    props = json.loads(self.response['props'].headers['PROPERTIES'])
-                else:
-                    props = None
-            except ValueError:
-                props = self.response['props'].headers['PROPERTIES']
-            try:
-                content = json.loads(self.response['body'].decode("UTF-8"))
-            except ValueError:
-                content = self.response['body'].decode("UTF-8")
-            return DriverResponse(
-                rc=rc_,
-                response_properties=props,
-                response_content=content
-            )
+            rc_ = self.response['props'].headers['RC']
+            if rc_ != 0:
+                try:
+                    content = json.loads(self.response['body'].decode("UTF-8"))
+                except ValueError:
+                    content = self.response['body'].decode("UTF-8")
+                return DriverResponse(
+                    rc=rc_,
+                    error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE'],
+                    response_content=content
+                )
+            else:
+                try:
+                    if 'PROPERTIES' in self.response['props'].headers:
+                        props = json.loads(self.response['props'].headers['PROPERTIES'])
+                    else:
+                        props = None
+                except ValueError:
+                    props = self.response['props'].headers['PROPERTIES']
+                try:
+                    content = json.loads(self.response['body'].decode("UTF-8"))
+                except ValueError:
+                    content = self.response['body'].decode("UTF-8")
+                return DriverResponse(
+                    rc=rc_,
+                    response_properties=props,
+                    response_content=content
+                )
 
 
-class Service(object):
+class Service(pykka.ThreadingActor):
     """
     RabbitMQ service implementation.
     :param my_args: dict like {connection, service_q, treatment_callback[, service_name]}
+    :param connection_args: dict like {user, password, host[, port, vhost, client_properties]}
     """
 
     def __init__(self, my_args=None, connection_args=None):
@@ -184,6 +202,7 @@ class Service(object):
 
         Driver.validate_driver_conf(connection_args)
 
+        super(Service, self).__init__()
         self.connection_args = copy.deepcopy(connection_args)
         self.connection_args['client_properties']['information'] = \
             self.connection_args['client_properties']['information'] + " - " +  my_args['service_name']
@@ -192,9 +211,9 @@ class Service(object):
         self.parameters = pika.ConnectionParameters(connection_args['host'], connection_args['port'],
                                                     connection_args['vhost'], credentials=self.credentials,
                                                     client_props=self.connection_args['client_properties'])
-        self.connection = pika.BlockingConnection(self.parameters)
-        self.channel = self.connection.channel()
-        self.channel.queue_declare(queue=my_args['service_q'])
+        self.connection = None
+        self.channel = None
+        self.service = None
         self.serviceQ = my_args['service_q']
         self.serviceName = my_args['service_name']
         self.cb = my_args['treatment_callback']
@@ -204,7 +223,10 @@ class Service(object):
         """
         consume message from channel on the consuming thread.
         """
-        self.channel.start_consuming()
+        try:
+            self.channel.start_consuming()
+        except Exception as e:
+            LOGGER.warn("Exception raised while consuming")
 
     def on_request(self, ch, method_frame, props, body):
         """
@@ -213,29 +235,38 @@ class Service(object):
         self.cb(ch, props, body)
         ch.basic_ack(delivery_tag=method_frame.delivery_tag)
 
-    def start(self):
+    def on_start(self):
         """
         start the service
         """
+        self.connection = pika.BlockingConnection(self.parameters)
+        self.channel = self.connection.channel()
+        self.channel.queue_declare(queue=self.serviceQ)
         self.channel.basic_consume(self.on_request, self.serviceQ)
-        service = threading.Thread(target=self.run, name=self.serviceName)
-        service.start()
+        self.service = threading.Thread(target=self.run, name=self.serviceName)
+        self.service.start()
         self.is_started = True
 
-    def stop(self):
+    def on_stop(self):
         """
         stop the service
         """
+        self.is_started = False
+        try:
+            self.channel.stop_consuming()
+        except Exception as e:
+            LOGGER.warn("Exception raised while stoping consuming")
+
         try:
             self.channel.close()
         except Exception as e:
-            LOGGER.warn("Exception raised while closing channel and connection")
-        self.is_started = False
+            LOGGER.warn("Exception raised while closing channel")
 
         try:
             self.connection.close()
-        except:
+        except Exception as e:
             LOGGER.warn("Exception raised while closing connection")
+
 
 class Driver(object):
     """
@@ -306,13 +337,16 @@ class Driver(object):
         Stop services and requestors and then connection.
         :return: self
         """
-        for service in self.services_registry:
-            service.stop()
-        self.services_registry.clear()
-
         for requester in self.requester_registry:
             requester.stop()
         self.requester_registry.clear()
+
+        for service in self.services_registry:
+            if service.is_started:
+                service.stop()
+        self.services_registry.clear()
+
+        pykka.ActorRegistry.stop_all()
 
         return self
 
@@ -320,13 +354,13 @@ class Driver(object):
         """
         make a new service instance and handle it from driver
         :param my_args: dict like {service_q, treatment_callback [, service_name] }. Default : None
-        :return: created service
+        :return: created service proxy
         """
         if my_args is None:
             raise exceptions.ArianeConfError('service factory arguments')
         if not self.configuration_OK or self.connection_args is None:
             raise exceptions.ArianeConfError('rabbitmq connection arguments')
-        service = Service(my_args, self.connection_args)
+        service = Service.start(my_args, self.connection_args).proxy()
         self.services_registry.append(service)
         return service
 
@@ -334,12 +368,12 @@ class Driver(object):
         """
         make a new requester instance and handle it from driver
         :param my_args: dict like {request_q}. Default : None
-        :return: created requester
+        :return: created requester proxy
         """
         if my_args is None:
             raise exceptions.ArianeConfError('requester factory arguments')
         if not self.configuration_OK or self.connection_args is None:
             raise exceptions.ArianeConfError('rabbitmq connection arguments')
-        requester = Requester(my_args, self.connection_args)
+        requester = Requester.start(my_args, self.connection_args).proxy()
         self.requester_registry.append(requester)
         return requester

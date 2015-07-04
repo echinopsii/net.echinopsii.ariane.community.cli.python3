@@ -15,7 +15,9 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import datetime
 import logging
+import pykka
 from ariane_clip3 import driver_factory
 
 __author__ = 'mffrench'
@@ -43,9 +45,9 @@ class InjectorService(object):
                     components_registry_args['ariane.community.injector.components.registry.cache.id']\
                     if 'ariane.community.injector.components.registry.cache.id' in components_registry_args else None
         if self.gear_cache_id is not None:
-            self.gear_service = InjectorGearService(self.driver, self.gear_cache_id)
+            self.gear_service = InjectorCachedGearService(self.driver, self.gear_cache_id)
         if self.component_cache_id is not None:
-            self.component_service = InjectorComponentService(self.driver, self.component_cache_id)
+            self.component_service = InjectorCachedComponentService(self.driver, self.component_cache_id)
 
     def stop(self):
         self.driver.stop()
@@ -81,7 +83,7 @@ class InjectorUITreeService(object):
         ret = None
         if operation is not None:
             args = {'properties': {'OPERATION': operation, 'TREE_MENU_ENTITY_ID': criteria_value}}
-            result = InjectorUITreeService.requester.call(args)
+            result = InjectorUITreeService.requester.call(args).get()
 
             if result.rc == 0:
                 ret = InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity(result.response_content)
@@ -103,7 +105,7 @@ class InjectorUITreeEntity(object):
         return InjectorUITreeEntity(
             uitid=json_obj['id'],
             value=json_obj['value'],
-            type=json_obj['type'],
+            uitype=json_obj['type'],
             context_address=json_obj['contextAddress'],
             icon=json_obj['icon'],
             parent_id=json_obj['parentTreeMenuEntityID'],
@@ -182,13 +184,13 @@ class InjectorUITreeEntity(object):
         """
         return str(self.__dict__)
 
-    def __init__(self, uitid=None, value=None, type=None, description=None, context_address=None, icon=None,
+    def __init__(self, uitid=None, value=None, uitype=None, description=None, context_address=None, icon=None,
                  parent_id=None, child_ids=None, display_permissions=None, display_roles=None, other_actions_roles=None,
                  other_actions_perms=None, remote_injector_tree_entity_gears_cache_id=None,
                  remote_injector_tree_entity_components_cache_id=None):
         self.id = uitid
         self.value = value
-        self.type = type
+        self.type = uitype
         self.description = description
         self.context_address = context_address if context_address else None
         self.icon = icon if icon else None
@@ -213,7 +215,7 @@ class InjectorUITreeEntity(object):
             if InjectorUITreeService.find_ui_tree_entity(self.id) is None:  # SAVE
                 self_string = str(self.injector_ui_tree_menu_entity_2_json(ignore_genealogy=True)).replace("'", '"')
                 args = {'properties': {'OPERATION': 'REGISTER', 'TREE_MENU_ENTITY': self_string}}
-                result = InjectorUITreeService.requester.call(args)
+                result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
                     err_msg = 'Error while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
@@ -223,7 +225,7 @@ class InjectorUITreeEntity(object):
             else:  # UPDATE
                 self_string = str(self.injector_ui_tree_menu_entity_2_json(ignore_genealogy=True)).replace("'", '"')
                 args = {'properties': {'OPERATION': 'UPDATE', 'TREE_MENU_ENTITY': self_string}}
-                result = InjectorUITreeService.requester.call(args)
+                result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
                     err_msg = 'Error while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
@@ -233,7 +235,7 @@ class InjectorUITreeEntity(object):
             if ok and self.parent_id is not None:
                 args = {'properties': {'OPERATION': 'SET_PARENT', 'TREE_MENU_ENTITY_ID': self.id,
                                        'TREE_MENU_ENTITY_PARENT_ID': self.parent_id}}
-                result = InjectorUITreeService.requester.call(args)
+                result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
                     err_msg = 'Error while updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
@@ -246,7 +248,7 @@ class InjectorUITreeEntity(object):
     def remove(self):
         if self.id and InjectorUITreeService.find_ui_tree_entity(self.id) is not None:
             args = {'properties': {'OPERATION': 'UNREGISTER', 'TREE_MENU_ENTITY_ID': self.id}}
-            result = InjectorUITreeService.requester.call(args)
+            result = InjectorUITreeService.requester.call(args).get()
             if result.rc != 0:
                 err_msg = 'Error while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                           'Reason: ' + str(result.error_message)
@@ -307,7 +309,7 @@ class InjectorCachedRegistryFactoryService(object):
 
         args['OPERATION'] = 'MAKE_GEARS_REGISTRY'
         args = {'properties': args}
-        return InjectorCachedRegistryFactoryService.requester.call(args)
+        return InjectorCachedRegistryFactoryService.requester.call(args).get()
 
     @staticmethod
     def make_components_cache_registry(args):
@@ -351,21 +353,21 @@ class InjectorCachedRegistryFactoryService(object):
         args['OPERATION'] = 'MAKE_COMPONENTS_REGISTRY'
         args = {'properties': args}
 
-        return InjectorCachedRegistryFactoryService.requester.call(args)
+        return InjectorCachedRegistryFactoryService.requester.call(args).get()
 
 
-class InjectorComponentService(object):
+class InjectorCachedComponentService(object):
     requester = None
     cache_id = None
     driver = None
 
     def __init__(self, injector_driver, cache_id):
-        InjectorComponentService.driver = injector_driver
+        InjectorCachedComponentService.driver = injector_driver
         args = {'request_q': 'remote.injector.comp'}
-        if InjectorComponentService.requester is None:
-            InjectorComponentService.requester = injector_driver.make_requester(args)
-            InjectorComponentService.requester.start()
-            InjectorComponentService.cache_id = cache_id
+        if InjectorCachedComponentService.requester is None:
+            InjectorCachedComponentService.requester = injector_driver.make_requester(args)
+            InjectorCachedComponentService.requester.start()
+            InjectorCachedComponentService.cache_id = cache_id
 
     @staticmethod
     def find_component(co_id):
@@ -373,11 +375,11 @@ class InjectorComponentService(object):
         if co_id is not None:
             args = {'properties': {'OPERATION': 'PULL_COMPONENT_FROM_CACHE',
                                    'REMOTE_COMPONENT': str({'componentId': co_id}).replace("'", '"'),
-                                   'CACHE_ID': InjectorComponentService.cache_id}}
+                                   'CACHE_ID': InjectorCachedComponentService.cache_id}}
 
-            result = InjectorComponentService.requester.call(args)
+            result = InjectorCachedComponentService.requester.call(args).get()
             if result.rc == 0:
-                ret = InjectorComponent.json_2_injector_component(result.response_properties)
+                ret = InjectorCachedComponent.json_2_injector_component(result.response_properties)
                 ret.blob = result.response_content
             else:
                 err_msg = 'Error while finding component ( id : ' + co_id + \
@@ -392,14 +394,18 @@ class InjectorComponentService(object):
             'treatment_callback': injector_component.refresh,
             'service_name': injector_component.id + " - On Demand Refreshing Service"
         }
-        return InjectorComponentService.driver.make_service(args)
+        return InjectorCachedComponentService.driver.make_service(args)
 
 
-class InjectorComponent(object):
+class InjectorCachedComponent(pykka.ThreadingActor):
+
+    action_create = 0
+    action_delete = 1
+    action_update = 2
 
     @staticmethod
     def json_2_injector_component(json_obj):
-        return InjectorComponent(
+        return InjectorCachedComponent(
             component_id=json_obj['componentId'],
             component_name=json_obj['componentName'],
             component_admin_queue=json_obj['componentAdminQueue'],
@@ -434,32 +440,50 @@ class InjectorComponent(object):
         return json_obj
 
     def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
-                 next_action=None, json_last_refresh=None, attached_gear_id=None, component_blob=None):
+                 next_action=None, json_last_refresh=None, attached_gear_id=None, data_blob=None,
+                 parent_actor_ref=None):
+        super(InjectorCachedComponent, self).__init__()
         self.id = component_id
         self.name = component_name
         self.admin_queue = component_admin_queue
         self.refreshing = refreshing
         self.next_action = next_action
-        self.json_last_refresh = json_last_refresh
+        try:
+            self.json_last_refresh = json_last_refresh.strftime("%Y-%m-%d %H:%M:%S.%f")
+        except AttributeError:
+            self.json_last_refresh = json_last_refresh
         self.attached_gear_id = attached_gear_id
-        self.blob = component_blob
+        self.blob = data_blob
         self.service = None
+        self.parent_actor_ref = parent_actor_ref
 
-    def save(self):
+    def save(self, refreshing=None, next_action=None, json_last_refresh=None, data_blob=None):
         ret = True
 
+        if refreshing is not None:
+            self.refreshing = refreshing
+        if next_action is not None:
+            self.next_action = next_action
+        if json_last_refresh is not None:
+            try:
+                self.json_last_refresh = json_last_refresh.strftime("%Y-%m-%d %H:%M:%S.%f")
+            except AttributeError:
+                self.json_last_refresh = json_last_refresh
+        if data_blob is not None:
+            self.blob = data_blob
+
         if self.service is None:
-            self.service = InjectorComponentService.make_refresh_on_demand_service(self)
+            self.service = InjectorCachedComponentService.make_refresh_on_demand_service(self)
         if self.service is not None and not self.service.is_started:
             self.service.start()
 
         args = {'properties': {'OPERATION': 'PUSH_COMPONENT_IN_CACHE',
-                               'REMOTE_COMPONENT': str(self.injector_component_2_json(properties_only=True)).
-                                   replace("'", '"'),
-                               'CACHE_ID': InjectorComponentService.cache_id},
+                               'REMOTE_COMPONENT':
+                                   str(self.injector_component_2_json(properties_only=True)).replace("'", '"'),
+                               'CACHE_ID': InjectorCachedComponentService.cache_id},
                 'body': self.blob}
 
-        result = InjectorComponentService.requester.call(args)
+        result = InjectorCachedComponentService.requester.call(args).get()
         if result.rc != 0:
             err_msg = 'Error while saving component ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
@@ -473,9 +497,9 @@ class InjectorComponent(object):
         args = {'properties': {'OPERATION': 'DEL_COMPONENT_FROM_CACHE',
                                'REMOTE_COMPONENT': str(self.injector_component_2_json(properties_only=True)).
                                    replace("'", '"'),
-                               'CACHE_ID': InjectorComponentService.cache_id}}
+                               'CACHE_ID': InjectorCachedComponentService.cache_id}}
 
-        result = InjectorComponentService.requester.call(args)
+        result = InjectorCachedComponentService.requester.call(args).get()
         if result.rc != 0:
             err_msg = 'Error while saving component ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
@@ -485,27 +509,64 @@ class InjectorComponent(object):
         if self.service is not None and self.service.is_started:
             self.service.stop()
 
+        self.stop()
+
         return ret
 
     def refresh(self, channel, props, body):
         operation = props.headers['OPERATION']
         if operation == "REFRESH":
-            pass
+            if self.parent_actor_ref is not None:
+                parent_actor = self.parent_actor_ref.proxy()
+                parent_actor.sniff().get()
         else:
             print("Unsupported operation " + str(operation))
 
 
-class InjectorGearService(object):
+class InjectorComponentSkeleton(pykka.ThreadingActor):
+
+    def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
+                 next_action=None, json_last_refresh=None, attached_gear_id=None, data_blob=None):
+        super(InjectorComponentSkeleton, self).__init__()
+        self.component_cache_actor = InjectorCachedComponent.start(component_id=component_id,
+                                                                   component_name=component_name,
+                                                                   component_admin_queue=component_admin_queue,
+                                                                   refreshing=refreshing,
+                                                                   next_action=next_action,
+                                                                   json_last_refresh=json_last_refresh,
+                                                                   attached_gear_id=attached_gear_id,
+                                                                   data_blob=data_blob,
+                                                                   parent_actor_ref=self.actor_ref).proxy()
+
+    def on_start(self):
+        pass
+
+    def on_stop(self):
+        pass
+
+    def cache(self, refreshing=None, next_action=None, data_blob=None):
+        self.component_cache_actor.save(refreshing=refreshing, next_action=next_action,
+                                        json_last_refresh=datetime.datetime.now(), data_blob=data_blob).get()
+
+    def data_blob(self):
+        pass
+
+    def sniff(self):
+        pass
+
+
+class InjectorCachedGearService(object):
     requester = None
     cache_id = None
+    driver = None
 
     def __init__(self, injector_driver, cache_id):
         args = {'request_q': 'remote.injector.gear'}
-        if InjectorGearService.requester is None:
-            InjectorGearService.requester = injector_driver.make_requester(args)
-            InjectorGearService.requester.start()
-            InjectorGearService.cache_id = cache_id
-            InjectorGearService.driver = injector_driver
+        if InjectorCachedGearService.requester is None:
+            InjectorCachedGearService.requester = injector_driver.make_requester(args)
+            InjectorCachedGearService.requester.start()
+            InjectorCachedGearService.cache_id = cache_id
+            InjectorCachedGearService.driver = injector_driver
 
     @staticmethod
     def make_start_stop_on_demand_service(injector_gear):
@@ -514,13 +575,13 @@ class InjectorGearService(object):
             'treatment_callback': injector_gear.refresh,
             'service_name': injector_gear.id + " - On Demand Start/Stop Service"
         }
-        return InjectorGearService.driver.make_service(args)
+        return InjectorCachedGearService.driver.make_service(args)
 
 
-class InjectorGear(object):
+class InjectorCachedGear(object):
     @staticmethod
     def json_2_injector_gear(json_obj):
-        return InjectorGear(
+        return InjectorCachedGear(
             gear_id=json_obj['gearId'],
             gear_name=json_obj['gearName'],
             gear_description=json_obj['gearDescription'],
@@ -550,17 +611,16 @@ class InjectorGear(object):
         ret = True
 
         if self.service is None:
-            self.service = InjectorGearService.make_start_stop_on_demand_service(self)
+            self.service = InjectorCachedGearService.make_start_stop_on_demand_service(self)
 
         if self.service is not None and not self.service.is_started:
             self.service.start()
 
-
         args = {'properties': {'OPERATION': 'PUSH_GEAR_IN_CACHE',
                                'REMOTE_GEAR': str(self.injector_gear_2_json()).replace("'", '"'),
-                               'CACHE_ID': InjectorGearService.cache_id}}
+                               'CACHE_ID': InjectorCachedGearService.cache_id}}
 
-        result = InjectorGearService.requester.call(args)
+        result = InjectorCachedGearService.requester.call(args).get()
         if result.rc != 0:
             err_msg = 'Error while saving gear ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
@@ -573,9 +633,9 @@ class InjectorGear(object):
         ret = True
         args = {'properties': {'OPERATION': 'DEL_GEAR_FROM_CACHE',
                                'REMOTE_GEAR': str(self.injector_gear_2_json()).replace("'", '"'),
-                               'CACHE_ID': InjectorGearService.cache_id}}
+                               'CACHE_ID': InjectorCachedGearService.cache_id}}
 
-        result = InjectorGearService.requester.call(args)
+        result = InjectorCachedGearService.requester.call(args).get()
         if result.rc != 0:
             err_msg = 'Error while deleting gear ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
@@ -584,7 +644,6 @@ class InjectorGear(object):
 
         if self.service is not None and self.service.is_started:
             self.service.stop()
-
         return ret
 
     def refresh(self, channel, props, body):
