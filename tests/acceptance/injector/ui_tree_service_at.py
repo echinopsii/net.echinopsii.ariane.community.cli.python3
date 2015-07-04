@@ -24,7 +24,8 @@ __author__ = 'mffrench'
 
 class InjectorUITreeTest(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         client_properties = {
             'product': 'Ariane CLI Python 3',
             'information': 'Ariane - UI Tree Test',
@@ -37,10 +38,11 @@ class InjectorUITreeTest(unittest.TestCase):
         args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
                 'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
 
-        self.injector_service = InjectorService(args)
+        cls.injector_service = InjectorService(args)
 
-    #def tearDown(self):
-    #    self.injector_service.stop()
+    @classmethod
+    def tearDownClass(cls):
+        cls.injector_service.stop()
 
     def test_find_ui_tree_menu_entity(self):
         mapping_dir_entity = self.injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
@@ -51,7 +53,7 @@ class InjectorUITreeTest(unittest.TestCase):
         self.assertTrue(mapping_dir_entity.id == 'mappingDir')
 
         system_entity = InjectorUITreeEntity(uitid="systemDir", value="System",
-                                             type=InjectorUITreeEntity.entity_dir_type,
+                                             uitype=InjectorUITreeEntity.entity_dir_type,
                                              context_address="", description="", icon="cog",
                                              parent_id=mapping_dir_entity.id, display_roles=["sysadmin"],
                                              display_permissions=["injMapSysDocker:display"])
@@ -60,7 +62,7 @@ class InjectorUITreeTest(unittest.TestCase):
         self.assertIsNotNone(self.injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
 
         docker_entity = InjectorUITreeEntity(uitid="docker", value="Docker",
-                                             type=InjectorUITreeEntity.entity_leaf_type,
+                                             uitype=InjectorUITreeEntity.entity_leaf_type,
                                              context_address= "/ariane/views/injectors/external.jsf?id=docker",
                                              description="Docker injector", icon="cog", parent_id=system_entity.id,
                                              display_roles=["sysadmin", "sysreviewer"],
@@ -78,7 +80,7 @@ class InjectorUITreeTest(unittest.TestCase):
     def test_unregister_ui_tree_menu_entity(self):
         mapping_dir_entity = self.injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
         system_entity = InjectorUITreeEntity(uitid="systemDir", value="System",
-                                             type=InjectorUITreeEntity.entity_dir_type,
+                                             uitype=InjectorUITreeEntity.entity_dir_type,
                                              context_address="", description="", icon="cog",
                                              parent_id=mapping_dir_entity.id, display_roles=["sysadmin"],
                                              display_permissions=["injMapSysDocker:display"])
@@ -92,14 +94,14 @@ class InjectorUITreeTest(unittest.TestCase):
     def test_update_ui_tree_menu_entity(self):
         mapping_dir_entity = self.injector_service.ui_tree_service.find_ui_tree_entity('mappingDir')
         system_entity = InjectorUITreeEntity(uitid="systemDir", value="System",
-                                             type=InjectorUITreeEntity.entity_dir_type, icon="cog",
+                                             uitype=InjectorUITreeEntity.entity_dir_type, icon="cog",
                                              parent_id=mapping_dir_entity.id, display_roles=["sysadmin"],
                                              display_permissions=["injMapSysDocker:display"])
 
         system_entity.save()
         self.assertIsNotNone(self.injector_service.ui_tree_service.find_ui_tree_entity(system_entity.id))
         docker_entity = InjectorUITreeEntity(uitid="docker", value="Docker",
-                                             type=InjectorUITreeEntity.entity_leaf_type,
+                                             uitype=InjectorUITreeEntity.entity_leaf_type,
                                              context_address= "/ariane/views/injectors/external.jsf?id=docker",
                                              description="Docker injector", icon="cog", parent_id=system_entity.id,
                                              display_roles=["sysadmin", "sysreviewer"],

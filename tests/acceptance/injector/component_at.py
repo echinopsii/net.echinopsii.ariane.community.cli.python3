@@ -15,20 +15,50 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import json
+import datetime
+import time
 import socket
 import unittest
-from ariane_clip3.injector import InjectorService, InjectorComponent, InjectorGear, InjectorComponentService
+from ariane_clip3.injector import InjectorService, InjectorCachedComponent, InjectorCachedGear, \
+    InjectorCachedComponentService, InjectorComponentSkeleton
 
 __author__ = 'mffrench'
 
 
+class DockerInjectorComponent(InjectorComponentSkeleton):
+
+    def __init__(self, attached_gear_id=None):
+        super(DockerInjectorComponent, self).__init__(
+            component_id=
+            'ariane.community.plugin.docker.components.cache.localhost',
+            component_name='docker@localhost',
+            component_admin_queue=
+            'ariane.community.plugin.docker.components.cache.localhost',
+            refreshing=False, next_action=InjectorCachedComponent.action_create,
+            json_last_refresh=datetime.datetime.now(),
+            attached_gear_id=attached_gear_id,
+            data_blob='{"my_object_field": "my_object_field_value"}'
+        )
+        self.my_object_field = "my_object_field_value"
+
+    def data_blob(self):
+        json_obj = {
+            'my_object_field': self.my_object_field
+        }
+        return str(json_obj).replace("'", '"')
+
+    def sniff(self):
+        self.my_object_field = "my_object_field_value_remotely_refreshed"
+        self.cache(data_blob=self.data_blob())
+
+
 class InjectorComponentTest(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         client_properties = {
             'product': 'Ariane CLI Python 3',
-            'information': 'Ariane - UI Tree Test',
+            'information': 'Ariane - Company Test',
             'ariane.pgurl': 'ssh://' + socket.gethostname(),
             'ariane.osi': 'localhost',
             'ariane.otm': 'ArianeOPS',
@@ -50,27 +80,70 @@ class InjectorComponentTest(unittest.TestCase):
             'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_COMPONENTS_CACHE_MGR'
         }
 
-        self.injector_service = InjectorService(driver_args=driver_args, gears_registry_args=gr_args,
-                                                components_registry_args=co_args)
-        self.gear = InjectorGear(gear_id='ariane.community.plugin.docker.gears.cache.localhost',
-                                 gear_name='docker@localhost', gear_description='Ariane remote injector for localhost',
-                                 gear_admin_queue='ariane.community.plugin.docker.gears.cache.localhost', running=False)
+        cls.injector_service = InjectorService(driver_args=driver_args, gears_registry_args=gr_args,
+                                               components_registry_args=co_args)
+        refresh_requestor = {'request_q': 'ariane.community.plugin.docker.components.cache.localhost',
+                             'fire_and_forget': True}
+        cls.refresh_requestor = cls.injector_service.driver.make_requester(refresh_requestor)
 
-    #def tearDown(self):
-    #    self.injector_service.stop()
+        cls.gear = InjectorCachedGear(gear_id='ariane.community.plugin.docker.gears.cache.localhost',
+                                      gear_name='docker@localhost',
+                                      gear_description='Ariane remote injector for localhost',
+                                      gear_admin_queue='ariane.community.plugin.docker.gears.cache.localhost',
+                                      running=False)
 
-    def test_new_component(self):
-        component = InjectorComponent(component_id='ariane.community.plugin.docker.components.cache.localhost',
-                                      component_name='docker@localhost',
-                                      component_admin_queue='ariane.community.plugin.docker.components.cache.localhost',
-                                      refreshing=False, next_action=0, json_last_refresh='2013-03-11 01:38:18.309',
-                                      attached_gear_id=self.gear.id,
-                                      component_blob='{"my_object_field": "my_object_field_value"}')
-        self.assertTrue(component.save())
-        retrieved_component = InjectorComponentService.find_component(component.id)
+    @classmethod
+    def tearDownClass(cls):
+        cls.gear.remove()
+        cls.refresh_requestor.stop()
+        cls.injector_service.stop()
+
+    def test_save_and_remove_component(self):
+        component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
+        self.assertTrue(component.component_cache_actor.get().save().get())
+        retrieved_component = InjectorCachedComponentService.find_component(
+            component.component_cache_actor.get().id.get())
         self.assertIsNotNone(retrieved_component)
         retrieved_component_object = retrieved_component.blob
         self.assertTrue(retrieved_component_object['my_object_field'] == 'my_object_field_value')
-        self.assertTrue(component.remove())
-        pass
+        self.assertTrue(component.component_cache_actor.get().remove().get())
+
+    def test_update_component(self):
+        component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
+        self.assertTrue(component.component_cache_actor.get().save().get())
+        retrieved_component = InjectorCachedComponentService.find_component(
+            component.component_cache_actor.get().id.get())
+        self.assertIsNotNone(retrieved_component)
+        self.assertTrue(retrieved_component.blob['my_object_field'] == 'my_object_field_value')
+
+        now = datetime.datetime.now()
+        now_str = now.strftime("%Y-%m-%d %H:%M:%S.%f")
+        self.assertTrue(component.component_cache_actor.get().save(
+            refreshing=True, next_action=InjectorCachedComponent.action_update, json_last_refresh=now,
+            data_blob='{"my_object_field": "my_object_field_value_updated"}'
+        ).get())
+        retrieved_component = InjectorCachedComponentService.find_component(
+            component.component_cache_actor.get().id.get())
+        self.assertIsNotNone(retrieved_component)
+        self.assertTrue(retrieved_component.blob['my_object_field'] == 'my_object_field_value_updated')
+        self.assertTrue(retrieved_component.refreshing)
+        self.assertTrue(retrieved_component.next_action == InjectorCachedComponent.action_update)
+        self.assertTrue(retrieved_component.json_last_refresh == now_str)
+        self.assertTrue(component.component_cache_actor.get().remove().get())
+
+    def test_refresh_call(self):
+        """
+        this test simulate a refresh action on Ariane UI
+        :return:
+        """
+        component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
+        self.assertTrue(component.component_cache_actor.get().save().get())
+        self.refresh_requestor.call({'properties': {'OPERATION': 'REFRESH'}})
+        time.sleep(1)
+        retrieved_component = InjectorCachedComponentService.find_component(
+            component.component_cache_actor.get().id.get())
+        self.assertTrue(retrieved_component.blob['my_object_field'] == 'my_object_field_value_remotely_refreshed')
+        self.assertTrue(component.component_cache_actor.get().remove().get())
+
+
 

@@ -24,10 +24,11 @@ __author__ = 'mffrench'
 
 class InjectorCachedRegistryFactoryTest(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         client_properties = {
             'product': 'Ariane CLI Python 3',
-            'information': 'Ariane - UI Tree Test',
+            'information': 'Ariane - Cached Registry Test',
             'ariane.pgurl': 'ssh://' + socket.gethostname(),
             'ariane.osi': 'localhost',
             'ariane.otm': 'ArianeOPS',
@@ -37,10 +38,11 @@ class InjectorCachedRegistryFactoryTest(unittest.TestCase):
         args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
                 'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
 
-        self.injector_service = InjectorService(args)
+        cls.injector_service = InjectorService(args)
 
-    #def tearDown(self):
-    #    self.injector_service.stop()
+    @classmethod
+    def tearDownClass(cls):
+        cls.injector_service.stop()
 
     def test_make_gears_registry(self):
         docker_gears_registry = {

@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import socket
 import unittest
-from ariane_clip3.injector import InjectorService, InjectorGear, InjectorGearService
+from ariane_clip3.injector import InjectorService, InjectorCachedGear, InjectorCachedGearService
 
 __author__ = 'mffrench'
 
@@ -27,7 +27,7 @@ class InjectorComponentTest(unittest.TestCase):
     def setUp(self):
         client_properties = {
             'product': 'Ariane CLI Python 3',
-            'information': 'Ariane - UI Tree Test',
+            'information': 'Ariane - Gear Test',
             'ariane.pgurl': 'ssh://' + socket.gethostname(),
             'ariane.osi': 'localhost',
             'ariane.otm': 'ArianeOPS',
@@ -50,7 +50,7 @@ class InjectorComponentTest(unittest.TestCase):
     #    self.injector_service.stop()
 
     def test_save_gear_remove_gear(self):
-        gear = InjectorGear(gear_id='ariane.community.plugin.docker.gears.cache.localhost',
+        gear = InjectorCachedGear(gear_id='ariane.community.plugin.docker.gears.cache.localhost',
                             gear_name='docker@localhost', gear_description='Ariane remote injector for localhost',
                             gear_admin_queue='ariane.community.plugin.docker.gears.cache.localhost', running=False)
         self.assertTrue(gear.save())
