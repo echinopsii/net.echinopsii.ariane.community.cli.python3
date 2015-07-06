@@ -77,7 +77,7 @@ class ClusterService(object):
         if cid is None or not cid:
             raise exceptions.ArianeCallParametersError('id')
 
-        params = {'id': cid}
+        params = {'ID': cid}
         args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = ClusterService.requester.call(args)
         if response.rc == 0:
@@ -151,7 +151,7 @@ class Cluster(object):
                 self.name = json_obj['clusterName']
                 self.containers_id = json_obj['clusterContainersID']
 
-    def __init__(self, cid, name, containers_id):
+    def __init__(self, cid=None, name=None, containers_id=None):
         """
         initialize a cluster
         :param cid: cluster id
@@ -182,7 +182,7 @@ class Cluster(object):
                 self.cid = response.response_content['clusterID']
         else:
             params = {
-                'id': self.cid,
+                'ID': self.cid,
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
@@ -204,7 +204,7 @@ class Cluster(object):
             return None
         else:
             params = {
-                'id': self.cid
+                'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = ClusterService.requester.call(args)
@@ -229,10 +229,52 @@ class ContainerService(object):
         args = {'repository_path': 'rest/mapping/domain/containers/'}
         ContainerService.requester = mapping_driver.make_requester(args)
 
+    @staticmethod
+    def find_container(cid=None, primary_admin_gate_url=None):
+        ret = None
+        if (cid is None or not cid) and (primary_admin_gate_url is None or not primary_admin_gate_url):
+            raise exceptions.ArianeCallParametersError('id and primary_admin_gate_url')
+
+        if (cid is not None and cid) and (primary_admin_gate_url is not None and primary_admin_gate_url):
+            LOGGER.warn('Both id and primary admin gate url are defined. Will give you search on id.')
+            primary_admin_gate_url = None
+
+        params = None
+        if cid is not None and cid:
+            params = {'ID': cid}
+        elif primary_admin_gate_url is not None and primary_admin_gate_url:
+            params = {'primaryAdminURL': primary_admin_gate_url}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc == 0:
+                ret = Container.json_2_container(response.response_content)
+            else:
+                err_msg = 'Error while finding container (id:' + str(cid) + ', primary admin gate url '\
+                          + str(primary_admin_gate_url) + ' ). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(err_msg)
+        return ret
+
+    @staticmethod
+    def get_containers():
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = ContainerService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for container in response.response_content['containers']:
+                ret.append(Container.json_2_container(container))
+        else:
+            err_msg = 'Error while getting containers. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
 
 class Container(object):
     @staticmethod
-    def json_2_cluster(json_obj):
+    def json_2_container(json_obj):
         """
         transform json from Ariane server to local object
         :param json_obj: json from Ariane Server
@@ -240,6 +282,7 @@ class Container(object):
         """
         return Container(
             cid=json_obj['containerID'],
+            name=json_obj['containerName'],
             gate_uri=json_obj['containerGateURI'],
             primary_admin_gate_id=json_obj['containerPrimaryAdminGateID'],
             cluster_id=json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None,
@@ -251,13 +294,14 @@ class Container(object):
             c_type=json_obj['containerType']
         )
 
-    def cluster_2_json(self):
+    def container_2_json(self):
         """
         transform this local object ot Ariane server JSON object
         :return: the JSON object
         """
         json_obj = {
             'containerID': self.cid,
+            'containerName': self.name,
             'containerGateURI': self.gate_uri,
             'containerPrimaryAdminGateID': self.primary_admin_gate_id,
             'containerClusterID': self.containers_id,
@@ -285,6 +329,7 @@ class Container(object):
             if response.rc is 0:
                 json_obj = response.response_content
                 self.cid = json_obj['containerID'],
+                self.name = json_obj['containerName'],
                 self.gate_uri = json_obj['containerGateURI'],
                 self.primary_admin_gate_id = json_obj['containerPrimaryAdminGateID'],
                 self.cluster_id = json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None,
@@ -295,7 +340,7 @@ class Container(object):
                 self.product = json_obj['containerProduct'],
                 self.type = json_obj['containerType']
 
-    def __init__(self, cid=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
+    def __init__(self, cid=None, name=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
                  cluster_id=None, containers_id=None, gates_id=None, nodes_id=None, company=None, product=None,
                  c_type=None):
         """
@@ -314,6 +359,7 @@ class Container(object):
         :return:
         """
         self.cid = cid
+        self.name = name
         self.gate_uri = gate_uri
         self.primary_admin_gate_id = primary_admin_gate_id
         self.primary_admin_gate_name = primary_admin_gate_name
@@ -332,10 +378,17 @@ class Container(object):
         """
         ok = True
         if self.cid is None:
-            params = {
-                'primaryAdminGateURL': self.gate_uri,
-                'primaryAdminGateName': self.primary_admin_gate_name
-            }
+            if self.name is None:
+                params = {
+                    'primaryAdminGateURL': self.gate_uri,
+                    'primaryAdminGateName': self.primary_admin_gate_name
+                }
+            else:
+                params = {
+                    'name': self.name,
+                    'primaryAdminURL': self.gate_uri,
+                    'primaryAdminGateName': self.primary_admin_gate_name
+                }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
@@ -343,18 +396,32 @@ class Container(object):
                 ok = False
             else:
                 self.cid = response.response_content['containerID']
+                self.primary_admin_gate_id = response.response_content['containerPrimaryAdminGateID']
         else:
             params = {
-                'id': self.cid,
+                'ID': self.cid,
                 'paGateID': self.primary_admin_gate_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/primaryAdminGate', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' name. Reason: ' + str(response.error_message)
+                    'Error while updating container' + self.gate_uri + ' primary admin gate. Reason: ' + str(response.error_message)
                 )
                 ok = False
+
+            if ok and self.name is not None:
+                params = {
+                    'ID': self.cid,
+                    'name': self.name
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+                response = ContainerService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating container' + self.gate_uri + ' name. Reason: ' + str(response.error_message)
+                    )
+                    ok = False
 
         self.__sync__()
 
