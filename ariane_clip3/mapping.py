@@ -140,7 +140,7 @@ class Cluster(object):
         """
         params = None
         if self.cid is not None:
-            params = {'id': self.cid}
+            params = {'ID': self.cid}
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -150,6 +150,74 @@ class Cluster(object):
                 self.cid = json_obj['clusterID']
                 self.name = json_obj['clusterName']
                 self.containers_id = json_obj['clusterContainersID']
+
+    def add_container(self, container, sync=True):
+        """
+        add container to this cluster
+        :param container: container to add to this cluster
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be added on next save().
+        :return:
+        """
+        if not sync:
+            self.containers_2_add.append(container)
+        else:
+            if container.cid is None:
+                container.save()
+            if container.cid is not None:
+                params = {
+                    'ID': self.cid,
+                    'containerID': container.cid
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
+                response = ClusterService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.containers_id.append(container.cid)
+                    container.cluster_id = self.cid
+            else:
+                LOGGER.error(
+                    'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                    container.gate_uri + ' id is None'
+                )
+
+    def del_container(self, container, sync=True):
+        """
+        delete container from this cluster
+        :param container: container to delete from this cluster
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be added on next save().
+        :return:
+        """
+        if not sync:
+            self.containers_2_rm.append(container)
+        else:
+            if container.cid is None:
+                container.save()
+            if container.cid is not None:
+                params = {
+                    'ID': self.cid,
+                    'containerID': container.cid
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
+                response = ClusterService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.containers_id.remove(container.cid)
+                    container.cluster_id = None
+            else:
+                LOGGER.error(
+                    'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                    container.gate_uri + ' id is None'
+                )
 
     def __init__(self, cid=None, name=None, containers_id=None):
         """
@@ -162,6 +230,8 @@ class Cluster(object):
         self.cid = cid
         self.name = name
         self.containers_id = containers_id
+        self.containers_2_add = []
+        self.containers_2_rm = []
 
     def save(self):
         """
@@ -192,6 +262,59 @@ class Cluster(object):
                     'Error while updating cluster' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
+
+        if ok and self.containers_2_add.__len__() > 0:
+            for container in self.containers_2_add:
+                if container.cid is None:
+                    container.save()
+                if container.cid is not None:
+                    params = {
+                        'ID': self.cid,
+                        'containerID': container.cid
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
+                    response = ClusterService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                    else:
+                        container.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                        container.gate_uri + ' id is None'
+                    )
+                    ok = False
+                    break
+            self.containers_2_add.clear()
+
+        if ok and self.containers_2_rm.__len__() > 0:
+            for container in self.containers_2_rm:
+                if container.cid is None:
+                    container.save()
+                if container.cid is not None:
+                    params = {
+                        'ID': self.cid,
+                        'containerID': container.cid
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
+                    response = ClusterService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                    else:
+                        container.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                        container.gate_uri + ' id is None'
+                    )
+                    break
+            self.containers_2_rm.clear()
 
         self.__sync__()
 
@@ -286,6 +409,8 @@ class Container(object):
             gate_uri=json_obj['containerGateURI'],
             primary_admin_gate_id=json_obj['containerPrimaryAdminGateID'],
             cluster_id=json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None,
+            parent_container_id=json_obj['containerParentContainerID'] if 'containerParentContainerID' is json_obj else
+            None,
             containers_id=json_obj['containerChildContainersID'],
             gates_id=json_obj['containerGatesID'],
             nodes_id=json_obj['containerNodesID'],
@@ -304,6 +429,7 @@ class Container(object):
             'containerName': self.name,
             'containerGateURI': self.gate_uri,
             'containerPrimaryAdminGateID': self.primary_admin_gate_id,
+            'containerParentContainerID': self.parent_container_id,
             'containerClusterID': self.containers_id,
             'containerChildContainersID': self.containers_id,
             'containerGatesID': self.gates_id,
@@ -321,41 +447,43 @@ class Container(object):
         """
         params = None
         if self.cid is not None:
-            params = {'id': self.cid}
+            params = {'ID': self.cid}
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is 0:
                 json_obj = response.response_content
-                self.cid = json_obj['containerID'],
-                self.name = json_obj['containerName'],
-                self.gate_uri = json_obj['containerGateURI'],
-                self.primary_admin_gate_id = json_obj['containerPrimaryAdminGateID'],
-                self.cluster_id = json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None,
-                self.containers_id = json_obj['containerChildContainersID'],
-                self.gates_id = json_obj['containerGatesID'],
-                self.nodes_id = json_obj['containerNodesID'],
-                self.company = json_obj['containerCompany'],
-                self.product = json_obj['containerProduct'],
+                self.cid = json_obj['containerID']
+                self.name = json_obj['containerName']
+                self.gate_uri = json_obj['containerGateURI']
+                self.primary_admin_gate_id = json_obj['containerPrimaryAdminGateID']
+                self.cluster_id = json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None
+                self.parent_container_id = json_obj['containerParentContainerID'] if 'containerParentContainerID' \
+                                                                                     in json_obj else None
+                self.containers_id = json_obj['containerChildContainersID']
+                self.gates_id = json_obj['containerGatesID']
+                self.nodes_id = json_obj['containerNodesID']
+                self.company = json_obj['containerCompany']
+                self.product = json_obj['containerProduct']
                 self.type = json_obj['containerType']
 
     def __init__(self, cid=None, name=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
-                 cluster_id=None, containers_id=None, gates_id=None, nodes_id=None, company=None, product=None,
-                 c_type=None):
+                 cluster_id=None, parent_container_id=None, containers_id=None, gates_id=None, nodes_id=None,
+                 company=None, product=None, c_type=None):
         """
-
-        :param cid:
-        :param name:
-        :param gate_uri:
-        :param primary_admin_gate_id:
-        :param cluster_id:
-        :param containers_id:
-        :param gates_id:
-        :param nodes_id:
-        :param company:
-        :param product:
-        :param c_type:
+        initialize container object
+        :param cid: container ID - return by Ariane server on save or __sync__
+        :param name: container name (optional)
+        :param gate_uri: primary admin gate uri
+        :param primary_admin_gate_id: primary admin gate ID
+        :param cluster_id: cluster ID
+        :param containers_id: list of child container
+        :param gates_id: list of child gates
+        :param nodes_id: list of child nodes
+        :param company: company responsible of the product container
+        :param product: product launched by this container
+        :param c_type: specify the type in the product spectrum type - optional
         :return:
         """
         self.cid = cid
@@ -365,6 +493,7 @@ class Container(object):
         self.primary_admin_gate_name = primary_admin_gate_name
         self.cluster_id = cluster_id
         self.containers_id = containers_id
+        self.parent_container_id = parent_container_id
         self.gates_id = gates_id
         self.nodes_id = nodes_id
         self.company = company
@@ -392,7 +521,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while saving container' + self.gate_uri + '. Reason: ' + str(response.error_message))
+                LOGGER.error('Error while saving container' + self.gate_uri + '. Reason: ' +
+                             str(response.error_message))
                 ok = False
             else:
                 self.cid = response.response_content['containerID']
@@ -406,7 +536,8 @@ class Container(object):
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' primary admin gate. Reason: ' + str(response.error_message)
+                    'Error while updating container' + self.gate_uri + ' primary admin gate. Reason: ' +
+                    str(response.error_message)
                 )
                 ok = False
 
@@ -419,9 +550,79 @@ class Container(object):
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
-                        'Error while updating container' + self.gate_uri + ' name. Reason: ' + str(response.error_message)
+                        'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                        str(response.error_message)
                     )
                     ok = False
+
+        if ok and self.company is not None and self.company:
+            params = {
+                'ID': self.cid,
+                'company': self.company
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+                ok = False
+
+        if ok and self.product is not None and self.product:
+            params = {
+                'ID': self.cid,
+                'product': self.product
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/product', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+                ok = False
+
+        if ok and self.type is not None and self.type:
+            params = {
+                'ID': self.cid,
+                'type': self.type
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+                ok = False
+
+        if ok and self.cluster_id is not None and self.cluster_id:
+            params = {
+                'ID': self.cid,
+                'clusterID': self.cluster_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/cluster', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+                ok = False
+
+        if ok and self.parent_container_id is not None and self.parent_container_id:
+            params = {
+                'ID': self.cid,
+                'parentContainerID': self.parent_container_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/parentContainer', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                    str(response.error_message)
+                )
 
         self.__sync__()
 
