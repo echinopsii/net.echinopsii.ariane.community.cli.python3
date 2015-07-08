@@ -53,6 +53,74 @@ class MappingService(object):
         self.link_service = LinkService(self.driver)
         self.transport_service = TransportService(self.driver)
 
+    @staticmethod
+    def property_array(value):
+        typed_array = []
+        if isinstance(value[0], str):
+            typed_array.append("string")
+        elif isinstance(value[0], int):
+            if isinstance(value[0], bool):
+                typed_array.append("boolean")
+            else:
+                typed_array.append("long")
+        elif isinstance(value[0], float):
+            typed_array.append("double")
+        elif isinstance(value[0], bool):
+            typed_array.append("boolean")
+        elif isinstance(value[0], list):
+            typed_array.append("array")
+        elif isinstance(value[0], dict):
+            typed_array.append("map")
+
+        if isinstance(value[0], list):
+            transformed_value_array = []
+            for value_array in value:
+                transformed_value_array.append(MappingService.property_array(value_array))
+            typed_array.append(transformed_value_array)
+        else:
+            typed_array.append(value)
+        return typed_array
+
+    @staticmethod
+    def property_params(o_id, name, value):
+        p_type = None
+        if isinstance(value, str):
+            p_type = 'string'
+        elif isinstance(value, int):
+            if isinstance(value, bool):
+                p_type = 'boolean'
+            else:
+                # in python 3 long and int are now same type
+                # by default we will use long type for the server
+                p_type = 'long'
+        elif isinstance(value, float):
+            p_type = 'double'
+        elif isinstance(value, list):
+            p_type = 'array'
+            value = str(MappingService.property_array(value)).replace("'", '"')
+        elif isinstance(value, dict):
+            p_type = 'map'
+            value = str(value).replace("'", '"')
+        elif isinstance(value, bool):
+            p_type = 'boolean'
+
+        params = None
+        if p_type is not None:
+            params = {
+                'ID': o_id,
+                'propertyName': name,
+                'propertyValue': value,
+                'propertyType': p_type
+            }
+        else:
+            params = {
+                'ID': o_id,
+                'propertyName': name,
+                'propertyValue': value
+            }
+
+        return params
+
 
 class ClusterService(object):
     requester = None
@@ -132,6 +200,7 @@ class Cluster(object):
             'clusterName': self.name,
             'clusterContainersID': self.containers_id
         }
+        return json_obj
 
     def __sync__(self):
         """
@@ -153,13 +222,13 @@ class Cluster(object):
 
     def add_container(self, container, sync=True):
         """
-        add container to this cluster
+        add container to this cluster. if this cluster has no id then it's like sync=False.
         :param container: container to add to this cluster
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the subnet object on list to be added on next save().
         :return:
         """
-        if not sync:
+        if not sync or self.cid is None:
             self.containers_2_add.append(container)
         else:
             if container.cid is None:
@@ -187,13 +256,13 @@ class Cluster(object):
 
     def del_container(self, container, sync=True):
         """
-        delete container from this cluster
+        delete container from this cluster. if this cluster has no id then it's like sync=False.
         :param container: container to delete from this cluster
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the subnet object on list to be added on next save().
         :return:
         """
-        if not sync:
+        if not sync or self.cid is None:
             self.containers_2_rm.append(container)
         else:
             if container.cid is None:
@@ -411,12 +480,13 @@ class Container(object):
             cluster_id=json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None,
             parent_container_id=json_obj['containerParentContainerID'] if 'containerParentContainerID' is json_obj else
             None,
-            containers_id=json_obj['containerChildContainersID'],
+            child_containers_id=json_obj['containerChildContainersID'],
             gates_id=json_obj['containerGatesID'],
             nodes_id=json_obj['containerNodesID'],
             company=json_obj['containerCompany'],
             product=json_obj['containerProduct'],
-            c_type=json_obj['containerType']
+            c_type=json_obj['containerType'],
+            properties=json_obj['containerProperties'] if 'containerProperties' in json_obj else None
         )
 
     def container_2_json(self):
@@ -430,13 +500,14 @@ class Container(object):
             'containerGateURI': self.gate_uri,
             'containerPrimaryAdminGateID': self.primary_admin_gate_id,
             'containerParentContainerID': self.parent_container_id,
-            'containerClusterID': self.containers_id,
-            'containerChildContainersID': self.containers_id,
+            'containerClusterID': self.child_containers_id,
+            'containerChildContainersID': self.child_containers_id,
             'containerGatesID': self.gates_id,
             'containerNodesID': self.nodes_id,
             'containerCompany': self.company,
             'containerProduct': self.product,
-            'containerType': self.type
+            'containerType': self.type,
+            'containerProperties': self.properties
         }
         return json_obj
 
@@ -461,16 +532,88 @@ class Container(object):
                 self.cluster_id = json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None
                 self.parent_container_id = json_obj['containerParentContainerID'] if 'containerParentContainerID' \
                                                                                      in json_obj else None
-                self.containers_id = json_obj['containerChildContainersID']
+                self.child_containers_id = json_obj['containerChildContainersID']
                 self.gates_id = json_obj['containerGatesID']
                 self.nodes_id = json_obj['containerNodesID']
                 self.company = json_obj['containerCompany']
                 self.product = json_obj['containerProduct']
                 self.type = json_obj['containerType']
+                self.properties = json_obj['containerProperties'] if 'containerProperties' in json_obj else None
+
+    def add_property(self, c_property_tuple, sync=True):
+        """
+        add property to this container. if this container has no id then it's like sync=False.
+        :param c_property_tuple: property tuple defined like this :
+               => property name = c_property_tuple[0]
+               => property value = c_property_tuple[1]
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be added on next save().
+        :return:
+        """
+        if not sync or self.cid is None:
+            self.properties_2_add.append(c_property_tuple)
+        else:
+            params = MappingService.property_params(self.cid, c_property_tuple[0], c_property_tuple[1])
+
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
+
+    def del_property(self, c_property_name, sync=True):
+        """
+        delete property from this container. if this container has no id then it's like sync=False.
+        :param c_property_name: property tuple defined like this :
+               => property name = c_property_tuple[0]
+               => property value = c_property_tuple[1]
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be deleted on next save().
+        :return:
+        """
+        if not sync or self.cid is None:
+            self.properties_2_rm.append(c_property_name)
+        else:
+            params = {
+                'ID': self.cid,
+                'propertyName': c_property_name
+            }
+
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+            response = ContainerService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
+
+    def add_child_container(self, child_container, sync=True):
+        pass
+
+    def del_child_container(self, child_container, sync=True):
+        pass
+
+    def add_gate(self, gate, sync=True):
+        pass
+
+    def del_gate(self, gate, sync=True):
+        pass
+
+    def add_node(self, node, sync=True):
+        pass
+
+    def del_node(self, node, sync=True):
+        pass
 
     def __init__(self, cid=None, name=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
-                 cluster_id=None, parent_container_id=None, containers_id=None, gates_id=None, nodes_id=None,
-                 company=None, product=None, c_type=None):
+                 cluster_id=None, parent_container_id=None, child_containers_id=None, gates_id=None, nodes_id=None,
+                 company=None, product=None, c_type=None, properties=None):
         """
         initialize container object
         :param cid: container ID - return by Ariane server on save or __sync__
@@ -478,12 +621,13 @@ class Container(object):
         :param gate_uri: primary admin gate uri
         :param primary_admin_gate_id: primary admin gate ID
         :param cluster_id: cluster ID
-        :param containers_id: list of child container
+        :param child_containers_id: list of child container
         :param gates_id: list of child gates
         :param nodes_id: list of child nodes
         :param company: company responsible of the product container
         :param product: product launched by this container
         :param c_type: specify the type in the product spectrum type - optional
+        :param properties: the container properties
         :return:
         """
         self.cid = cid
@@ -492,13 +636,22 @@ class Container(object):
         self.primary_admin_gate_id = primary_admin_gate_id
         self.primary_admin_gate_name = primary_admin_gate_name
         self.cluster_id = cluster_id
-        self.containers_id = containers_id
         self.parent_container_id = parent_container_id
+        self.child_containers_id = child_containers_id
+        self.child_containers_2_add = []
+        self.child_containers_2_rm = []
         self.gates_id = gates_id
+        self.gates_2_add = []
+        self.gates_2_rm = []
         self.nodes_id = nodes_id
+        self.nodes_2_add = []
+        self.nodes_2_rm = []
         self.company = company
         self.product = product
         self.type = c_type
+        self.properties = properties
+        self.properties_2_add = []
+        self.properties_2_rm = []
 
     def save(self):
         """
@@ -623,6 +776,92 @@ class Container(object):
                     'Error while updating container' + self.gate_uri + ' name. Reason: ' +
                     str(response.error_message)
                 )
+                ok = False
+
+        if ok and self.properties_2_add.__len__() > 0:
+            for c_property_tuple in self.properties_2_add:
+                params = MappingService.property_params(self.cid, c_property_tuple[0], c_property_tuple[1])
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+                response = ContainerService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+            self.properties_2_add.clear()
+
+        if ok and self.properties_2_rm.__len__() > 0:
+            for c_property_name in self.properties_2_rm:
+                params = {
+                    'ID': self.cid,
+                    'propertyName': c_property_name
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+                response = ContainerService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+            self.properties_2_rm.clear()
+
+        if ok and self.child_containers_2_add.__len__() > 0:
+            for child_c in self.child_containers_2_add:
+                if child_c.cid is None:
+                    child_c.save()
+                if child_c.cid is not None:
+                    params = {
+                        'ID': self.cid,
+                        'childContainerID': child_c.cid
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add',
+                            'parameters': params}
+                    response = ContainerService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating container ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+            self.child_containers_2_add.clear()
+
+        if ok and self.child_containers_2_rm.__len__() > 0:
+            for child_c in self.child_containers_2_rm:
+                if child_c.cid is None:
+                    child_c.save()
+                if child_c.cid is not None:
+                    params = {
+                        'ID': self.cid,
+                        'childContainerID': child_c.cid
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/delete',
+                            'parameters': params}
+                    response = ContainerService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating container ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+            self.child_containers_2_rm.clear()
+
+        if ok and self.gates_2_add.__len__() > 0:
+            pass
+
+        if ok and self.gates_2_rm.__len__() > 0:
+            pass
+
+        if ok and self.nodes_2_add.__len__() > 0:
+            pass
+
+        if ok and self.nodes_2_rm.__len__() > 0:
+            pass
 
         self.__sync__()
 
