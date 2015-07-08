@@ -266,7 +266,7 @@ class Cluster(object):
             self.containers_2_rm.append(container)
         else:
             if container.cid is None:
-                container.save()
+                container.__sync__()
             if container.cid is not None:
                 params = {
                     'ID': self.cid,
@@ -594,10 +594,62 @@ class Container(object):
                 self.__sync__()
 
     def add_child_container(self, child_container, sync=True):
-        pass
+        """
+
+        :param child_container:
+        :param sync:
+        :return:
+        """
+        if not sync or self.cid is None:
+            self.child_containers_2_add.append(child_container)
+        else:
+            if child_container.cid is None:
+                child_container.save()
+            if child_container.cid is not None:
+                params = {
+                    'ID': self.cid,
+                    'childContainerID': child_container.cid
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add', 'parameters': params}
+                response = ContainerService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    child_container.__sync__()
+                    self.__sync__()
 
     def del_child_container(self, child_container, sync=True):
-        pass
+        """
+
+        :param child_container:
+        :param sync:
+        :return:
+        """
+        if not sync or self.cid is None:
+            self.child_containers_2_rm.append(child_container)
+        else:
+            if child_container.cid is None:
+                child_container.__sync__()
+            if child_container.cid is not None:
+                params = {
+                    'ID': self.cid,
+                    'childContainerID': child_container.cid
+                }
+                args = {'http_operation': 'GET',
+                        'operation_path': 'update/childContainers/delete',
+                        'parameters': params}
+                response = ContainerService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    child_container.__sync__()
+                    self.__sync__()
 
     def add_gate(self, gate, sync=True):
         pass
@@ -828,6 +880,8 @@ class Container(object):
                         )
                         ok = False
                         break
+                    else:
+                        child_c.__sync__()
             self.child_containers_2_add.clear()
 
         if ok and self.child_containers_2_rm.__len__() > 0:
@@ -849,6 +903,8 @@ class Container(object):
                         )
                         ok = False
                         break
+                    else:
+                        child_c.__sync__()
             self.child_containers_2_rm.clear()
 
         if ok and self.gates_2_add.__len__() > 0:

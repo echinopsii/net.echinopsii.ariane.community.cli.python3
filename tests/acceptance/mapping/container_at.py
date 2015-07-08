@@ -115,3 +115,32 @@ class ContainerTest(unittest.TestCase):
         self.assertFalse('string_prop' in container.properties)
         self.assertFalse('array_prop' in container.properties)
         container.remove()
+
+    def test_child_containers(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        MappingService(args)
+        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+                              primary_admin_gate_name="container name space (pid)", company="Docker",
+                              product="Docker", c_type="container")
+        child_container = Container(name="containerized_mysql", gate_uri="mysql://container_ip:mysql_port",
+                                    primary_admin_gate_name="mysql cli sock", company="Oracle",
+                                    product="MySQL", c_type="MySQL server")
+        container.add_child_container(child_container, sync=False)
+        self.assertTrue(child_container in container.child_containers_2_add)
+        self.assertIsNone(container.child_containers_id)
+        self.assertIsNone(child_container.parent_container_id)
+        container.save()
+        self.assertFalse(child_container in container.child_containers_2_add)
+        self.assertTrue(child_container.cid in container.child_containers_id)
+        self.assertTrue(child_container.parent_container_id == container.cid)
+        container.del_child_container(child_container, sync=False)
+        self.assertTrue(child_container in container.child_containers_2_rm)
+        self.assertTrue(child_container.cid in container.child_containers_id)
+        self.assertTrue(child_container.parent_container_id == container.cid)
+        container.save()
+        self.assertFalse(child_container in container.child_containers_2_rm)
+        self.assertFalse(child_container.cid in container.child_containers_id)
+        self.assertIsNone(child_container.parent_container_id)
+        child_container.remove()
+        container.remove()
+
