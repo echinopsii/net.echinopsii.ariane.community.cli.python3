@@ -34,7 +34,7 @@ class NodeTest(unittest.TestCase):
     def tearDown(self):
         self.container1.remove()
 
-    def test_create_remove_node_1(self):
+    def test_create_remove_node_basic(self):
         node = Node(name="mysqld", container_id=self.container1.cid)
         node.save()
         self.assertIsNotNone(node.nid)
@@ -44,7 +44,7 @@ class NodeTest(unittest.TestCase):
         self.container1.__sync__()
         self.assertFalse(node.nid in self.container1.nodes_id)
 
-    def test_create_remove_node_2(self):
+    def test_create_remove_node_parent_container(self):
         container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
@@ -56,7 +56,7 @@ class NodeTest(unittest.TestCase):
         self.assertFalse(node.nid in container2.nodes_id)
         container2.remove()
 
-    def test_create_remove_node_3(self):
+    def test_create_remove_node_parent_node(self):
         container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
@@ -69,8 +69,38 @@ class NodeTest(unittest.TestCase):
         self.assertTrue(node_db.parent_node_id == node_mysql.nid)
         node_db.remove()
         self.assertFalse(node_db.nid in node_mysql.child_nodes_id)
+
         node_mysql.remove()
         container2.remove()
+
+    def test_twin_nodes_link(self):
+        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        node_mysql1 = Node(name="mysqld1", container=self.container1)
+        node_mysql2 = Node(name="mysqld2", container=container2)
+        node_mysql1.add_twin_node(node_mysql2, sync=False)
+        self.assertTrue(node_mysql2 in node_mysql1.twin_nodes_2_add)
+        node_mysql1.save()
+        self.assertFalse(node_mysql2 in node_mysql1.twin_nodes_2_add)
+        self.assertTrue(node_mysql2.nid in node_mysql1.twin_nodes_id)
+        self.assertTrue(node_mysql1.nid in node_mysql2.twin_nodes_id)
+        node_mysql2.del_twin_node(node_mysql1, sync=False)
+        self.assertTrue(node_mysql1 in node_mysql2.twin_nodes_2_rm)
+        self.assertTrue(node_mysql2.nid in node_mysql1.twin_nodes_id)
+        self.assertTrue(node_mysql1.nid in node_mysql2.twin_nodes_id)
+        node_mysql2.save()
+        self.assertFalse(node_mysql1 in node_mysql2.twin_nodes_2_rm)
+        self.assertFalse(node_mysql2.nid in node_mysql1.twin_nodes_id)
+        self.assertFalse(node_mysql1.nid in node_mysql2.twin_nodes_id)
+        node_mysql1.add_twin_node(node_mysql2)
+        self.assertTrue(node_mysql2.nid in node_mysql1.twin_nodes_id)
+        self.assertTrue(node_mysql1.nid in node_mysql2.twin_nodes_id)
+        node_mysql2.del_twin_node(node_mysql1)
+        self.assertFalse(node_mysql2.nid in node_mysql1.twin_nodes_id)
+        self.assertFalse(node_mysql1.nid in node_mysql2.twin_nodes_id)
+        node_mysql1.remove()
+        node_mysql2.remove()
 
     def test_find_node_by_id(self):
         node = Node(name="mysqld", container_id=self.container1.cid)
@@ -89,4 +119,3 @@ class NodeTest(unittest.TestCase):
         self.assertEqual(NodeService.get_nodes().__len__(), init_node_count + 1)
         node.remove()
         self.assertEqual(NodeService.get_nodes().__len__(), init_node_count)
-

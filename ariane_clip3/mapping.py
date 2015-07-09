@@ -662,18 +662,6 @@ class Container(object):
                     child_container.__sync__()
                     self.__sync__()
 
-#    def add_gate(self, gate, sync=True):
-#        pass
-
-#    def del_gate(self, gate, sync=True):
-#        pass
-
-#    def add_node(self, node, sync=True):
-#        pass
-
-#    def del_node(self, node, sync=True):
-#        pass
-
     def __init__(self, cid=None, name=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
                  cluster_id=None, parent_container_id=None, child_containers_id=None, gates_id=None, nodes_id=None,
                  company=None, product=None, c_type=None, properties=None):
@@ -918,18 +906,6 @@ class Container(object):
                         child_c.__sync__()
             self.child_containers_2_rm.clear()
 
-#        if ok and self.gates_2_add.__len__() > 0:
-#            pass
-
-#        if ok and self.gates_2_rm.__len__() > 0:
-#            pass
-
-#        if ok and self.nodes_2_add.__len__() > 0:
-#            pass
-
-#        if ok and self.nodes_2_rm.__len__() > 0:
-#            pass
-
         self.__sync__()
 
     def remove(self):
@@ -1104,7 +1080,57 @@ class Node(object):
         self.parent_node = parent_node
         self.child_nodes_id = child_nodes_id
         self.twin_nodes_id = twin_nodes_id
+        self.twin_nodes_2_add = []
+        self.twin_nodes_2_rm = []
         self.endpoints_id = endpoints_id
+
+    def add_twin_node(self, twin_node, sync=True):
+        if self.nid is None or not sync:
+            self.twin_nodes_2_add.append(twin_node)
+        else:
+            if twin_node.nid is None:
+                twin_node.__sync__()
+            if twin_node.nid is not None:
+                params = {
+                    'ID': self.nid,
+                    'twinNodeID': twin_node.nid
+                }
+                args = {'http_operation': 'GET',
+                        'operation_path': 'update/twinNodes/add',
+                        'parameters': params}
+                response = NodeService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating node ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    twin_node.__sync__()
+                    self.__sync__()
+
+    def del_twin_node(self, twin_node, sync=True):
+        if self.nid is None or not sync:
+            self.twin_nodes_2_rm.append(twin_node)
+        else:
+            if twin_node.nid is None:
+                twin_node.__sync__()
+            if twin_node.nid is not None:
+                params = {
+                    'ID': self.nid,
+                    'twinNodeID': twin_node.nid
+                }
+                args = {'http_operation': 'GET',
+                        'operation_path': 'update/twinNodes/delete',
+                        'parameters': params}
+                response = NodeService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating node ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    twin_node.__sync__()
+                    self.__sync__()
 
     def save(self):
         """
@@ -1174,7 +1200,53 @@ class Node(object):
                                  str(response.error_message))
                     ok = False
 
-        # TODO: UP LINK
+        if ok and self.twin_nodes_2_add.__len__() > 0:
+            for twin_node in self.twin_nodes_2_add:
+                if twin_node.nid is None:
+                    twin_node.save()
+                if twin_node.nid is not None:
+                    params = {
+                        'ID': self.nid,
+                        'twinNodeID': twin_node.nid
+                    }
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinNodes/add',
+                            'parameters': params}
+                    response = NodeService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating node ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        twin_node.__sync__()
+            self.twin_nodes_2_add.clear()
+
+        if ok and self.twin_nodes_2_rm.__len__() > 0:
+            for twin_node in self.twin_nodes_2_rm:
+                if twin_node.nid is None:
+                    twin_node.save()
+                if twin_node.nid is not None:
+                    params = {
+                        'ID': self.nid,
+                        'twinNodeID': twin_node.nid
+                    }
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinNodes/delete',
+                            'parameters': params}
+                    response = NodeService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating node ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        break
+                    else:
+                        twin_node.__sync__()
+            self.twin_nodes_2_rm.clear()
+
         if self.container is not None:
             self.container.__sync__()
         if self.parent_node is not None:
