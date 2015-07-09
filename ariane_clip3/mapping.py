@@ -415,7 +415,7 @@ class ContainerService(object):
     def __init__(self, mapping_driver):
         """
         initialize ContainerService (setup the requester)
-        :param mapping_driver: the driver coming from MappingService
+        :param mapping_driver: the driver comming from MappingService
         :return:
         """
         args = {'repository_path': 'rest/mapping/domain/containers/'}
@@ -423,6 +423,13 @@ class ContainerService(object):
 
     @staticmethod
     def find_container(cid=None, primary_admin_gate_url=None):
+        """
+        find container according ID or primary admin gate url. If both are defined this will return container
+        according container ID.
+        :param cid: container ID
+        :param primary_admin_gate_url: container primary admin gate url
+        :return:
+        """
         ret = None
         if (cid is None or not cid) and (primary_admin_gate_url is None or not primary_admin_gate_url):
             raise exceptions.ArianeCallParametersError('id and primary_admin_gate_url')
@@ -451,6 +458,10 @@ class ContainerService(object):
 
     @staticmethod
     def get_containers():
+        """
+        get all known containers from Ariane Server
+        :return:
+        """
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = ContainerService.requester.call(args)
         ret = None
@@ -651,17 +662,17 @@ class Container(object):
                     child_container.__sync__()
                     self.__sync__()
 
-    def add_gate(self, gate, sync=True):
-        pass
+#    def add_gate(self, gate, sync=True):
+#        pass
 
-    def del_gate(self, gate, sync=True):
-        pass
+#    def del_gate(self, gate, sync=True):
+#        pass
 
-    def add_node(self, node, sync=True):
-        pass
+#    def add_node(self, node, sync=True):
+#        pass
 
-    def del_node(self, node, sync=True):
-        pass
+#    def del_node(self, node, sync=True):
+#        pass
 
     def __init__(self, cid=None, name=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
                  cluster_id=None, parent_container_id=None, child_containers_id=None, gates_id=None, nodes_id=None,
@@ -907,17 +918,17 @@ class Container(object):
                         child_c.__sync__()
             self.child_containers_2_rm.clear()
 
-        if ok and self.gates_2_add.__len__() > 0:
-            pass
+#        if ok and self.gates_2_add.__len__() > 0:
+#            pass
 
-        if ok and self.gates_2_rm.__len__() > 0:
-            pass
+#        if ok and self.gates_2_rm.__len__() > 0:
+#            pass
 
-        if ok and self.nodes_2_add.__len__() > 0:
-            pass
+#        if ok and self.nodes_2_add.__len__() > 0:
+#            pass
 
-        if ok and self.nodes_2_rm.__len__() > 0:
-            pass
+#        if ok and self.nodes_2_rm.__len__() > 0:
+#            pass
 
         self.__sync__()
 
@@ -955,9 +966,238 @@ class NodeService(object):
         args = {'repository_path': 'rest/mapping/domain/nodes/'}
         NodeService.requester = mapping_driver.make_requester(args)
 
+    @staticmethod
+    def find_node(endpoint_url=None, nid=None):
+        """
+        find node according to endpoint url or node ID. if both are defined then search will focus on ID only
+        :param endpoint_url: endpoint's url owned by node to found
+        :param nid: node id
+        :return: the found node or None if not found
+        """
+        ret = None
+        if (nid is None or not nid) and (endpoint_url is None or not endpoint_url):
+            raise exceptions.ArianeCallParametersError('id and endpoint_url')
+
+        if (nid is not None and nid) and (endpoint_url is not None and endpoint_url):
+            LOGGER.warn('Both id and endpoint url are defined. Will give you search on id.')
+            endpoint_url = None
+
+        params = None
+        if nid is not None and nid:
+            params = {'ID': nid}
+        elif endpoint_url is not None and endpoint_url:
+            params = {'endpointURL': endpoint_url}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc == 0:
+                ret = Node.json_2_node(response.response_content)
+            else:
+                err_msg = 'Error while finding container (id:' + str(nid) + ', primary admin gate url ' \
+                          + str(endpoint_url) + ' ). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(err_msg)
+        return ret
+
+    @staticmethod
+    def get_nodes():
+        """
+        get all nodes known on the Ariane server
+        :return:
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = NodeService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for node in response.response_content['nodes']:
+                ret.append(Node.json_2_node(node))
+        else:
+            err_msg = 'Error while getting nodes. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
 
 class Node(object):
-    pass
+    @staticmethod
+    def json_2_node(json_obj):
+        """
+        transform json payload coming from Ariane server to local object
+        :param json_obj: the json payload coming from Ariane server
+        :return: local node object
+        """
+        return Node(
+            nid=json_obj['nodeID'],
+            name=json_obj['nodeName'],
+            ndepth=json_obj['nodeDepth'],
+            container_id=json_obj['nodeContainerID'],
+            parent_node_id=json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None,
+            child_nodes_id=json_obj['nodeChildNodeID'],
+            twin_nodes_id=json_obj['nodeTwinNodeID'],
+            endpoints_id=json_obj['nodeEndpointID']
+        )
+
+    def node_2_json(self):
+        """
+        transform local object to JSON
+        :return: JSON object
+        """
+        json_obj = {
+            'nodeID': self.nid,
+            'nodeName': self.name,
+            'nodeDepth': self.depth,
+            'nodeContainerID': self.container_id,
+            'nodeParentNodeID': self.parent_node_id,
+            'nodeChildNodeID': self.child_nodes_id,
+            'nodeTwinNodeID': self.twin_nodes_id,
+            'nodeEndpointID': self.endpoints_id
+        }
+        return json_obj
+
+    def __sync__(self):
+        """
+        synchronize this node with the Ariane server node
+        :return:
+        """
+        params = None
+        if self.nid is not None:
+            params = {'ID': self.nid}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc is 0:
+                json_obj = response.response_content
+                self.nid = json_obj['nodeID']
+                self.name = json_obj['nodeName']
+                self.depth = json_obj['nodeDepth']
+                self.container_id = json_obj['nodeContainerID']
+                self.parent_node_id = json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None
+                self.child_nodes_id = json_obj['nodeChildNodeID']
+                self.twin_nodes_id = json_obj['nodeTwinNodeID']
+                self.endpoints_id = json_obj['nodeEndpointID']
+
+    def __init__(self, nid=None, name=None, ndepth=None, container_id=None, container=None,
+                 parent_node_id=None, parent_node=None, child_nodes_id=None, twin_nodes_id=None,
+                 endpoints_id=None):
+        """
+        initialize container object
+        :param nid: node id - defined by ariane server
+        :param name: node name
+        :param ndepth: node depth - defined by ariane server
+        :param container_id: parent container id
+        :param container: parent container
+        :param parent_node_id: parent node id
+        :param parent_node: parent node
+        :param child_nodes_id: child nodes id list
+        :param twin_nodes_id: twin nodes id list
+        :param endpoints_id: endpoints id list
+        :return:
+        """
+        self.nid = nid
+        self.name = name
+        self.depth = ndepth
+        self.container_id = container_id
+        self.container = container
+        self.parent_node_id = parent_node_id
+        self.parent_node = parent_node
+        self.child_nodes_id = child_nodes_id
+        self.twin_nodes_id = twin_nodes_id
+        self.endpoints_id = endpoints_id
+
+    def save(self):
+        """
+        save or update this node in Ariane server
+        :return:
+        """
+        ok = True
+        if self.nid is None:
+            if self.container is not None:
+                self.container_id = self.container.cid
+            params = {
+                'name': self.name,
+                'containerID': self.container_id,
+                'parentNodeID': self.parent_node_id if self.parent_node_id is not None else 0
+            }
+
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while saving node' + self.name + '. Reason: ' +
+                             str(response.error_message))
+                ok = False
+            else:
+                self.nid = response.response_content['nodeID']
+                self.depth = response.response_content['nodeDepth']
+                if self.container is not None:
+                    self.container.__sync__()
+        else:
+            params = {
+                'ID': self.nid,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while updating node' + self.name + '. Reason: ' +
+                             str(response.error_message))
+                ok = False
+
+            if ok:
+                if self.container is not None:
+                    self.container_id = self.container.cid
+                params = {
+                    'ID': self.nid,
+                    'containerID': self.container_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/container', 'parameters': params}
+                response = NodeService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error('Error while updating node' + self.name + '. Reason: ' +
+                                 str(response.error_message))
+                    ok = False
+                else:
+                    if self.container is not None:
+                        self.container.__sync__()
+
+            if ok and self.parent_node_id is not None:
+                params = {
+                    'ID': self.nid,
+                    'parentNodeID': self.parent_node_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/parentNode', 'parameters': params}
+                response = NodeService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error('Error while updating node' + self.name + '. Reason: ' +
+                                 str(response.error_message))
+                    ok = False
+
+        # TODO: UP LINK
+        self.__sync__()
+
+    def remove(self):
+        """
+        remove this node from Ariane server
+        :return:
+        """
+        if self.nid is None:
+            return None
+        else:
+            params = {
+                'ID': self.nid
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting node ' + self.nid + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                if self.container is not None:
+                    self.container.__sync__()
+                return None
 
 
 class GateService(object):
@@ -973,7 +1213,7 @@ class GateService(object):
         GateService.requester = mapping_driver.make_requester(args)
 
 
-class Gate(object):
+class Gate(Node):
     pass
 
 
