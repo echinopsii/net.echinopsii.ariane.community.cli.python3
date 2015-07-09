@@ -1112,15 +1112,23 @@ class Node(object):
         :return:
         """
         ok = True
+
+        if self.container is not None:
+            if self.container.cid is None:
+                self.container.save()
+            self.container_id = self.container.cid
+
+        if self.parent_node is not None:
+            if self.parent_node.nid is None:
+                self.parent_node.save()
+            self.parent_node_id = self.parent_node.nid
+
         if self.nid is None:
-            if self.container is not None:
-                self.container_id = self.container.cid
             params = {
                 'name': self.name,
                 'containerID': self.container_id,
                 'parentNodeID': self.parent_node_id if self.parent_node_id is not None else 0
             }
-
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is not 0:
@@ -1130,8 +1138,6 @@ class Node(object):
             else:
                 self.nid = response.response_content['nodeID']
                 self.depth = response.response_content['nodeDepth']
-                if self.container is not None:
-                    self.container.__sync__()
         else:
             params = {
                 'ID': self.nid,
@@ -1145,8 +1151,6 @@ class Node(object):
                 ok = False
 
             if ok:
-                if self.container is not None:
-                    self.container_id = self.container.cid
                 params = {
                     'ID': self.nid,
                     'containerID': self.container_id
@@ -1157,9 +1161,6 @@ class Node(object):
                     LOGGER.error('Error while updating node' + self.name + '. Reason: ' +
                                  str(response.error_message))
                     ok = False
-                else:
-                    if self.container is not None:
-                        self.container.__sync__()
 
             if ok and self.parent_node_id is not None:
                 params = {
@@ -1174,6 +1175,10 @@ class Node(object):
                     ok = False
 
         # TODO: UP LINK
+        if self.container is not None:
+            self.container.__sync__()
+        if self.parent_node is not None:
+            self.parent_node.__sync__()
         self.__sync__()
 
     def remove(self):
@@ -1197,6 +1202,8 @@ class Node(object):
             else:
                 if self.container is not None:
                     self.container.__sync__()
+                if self.parent_node is not None:
+                    self.parent_node.__sync__()
                 return None
 
 
