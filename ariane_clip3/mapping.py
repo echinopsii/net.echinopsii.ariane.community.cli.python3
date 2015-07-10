@@ -225,7 +225,7 @@ class Cluster(object):
         add container to this cluster. if this cluster has no id then it's like sync=False.
         :param container: container to add to this cluster
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the subnet object on list to be added on next save().
+        add the container object on list to be added on next save().
         :return:
         """
         if not sync or self.cid is None:
@@ -259,7 +259,7 @@ class Cluster(object):
         delete container from this cluster. if this cluster has no id then it's like sync=False.
         :param container: container to delete from this cluster
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the subnet object on list to be added on next save().
+        add the container object on list to be deleted on next save().
         :return:
         """
         if not sync or self.cid is None:
@@ -558,7 +558,7 @@ class Container(object):
                => property name = c_property_tuple[0]
                => property value = c_property_tuple[1]
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the subnet object on list to be added on next save().
+        add the property tuple object on list to be added on next save().
         :return:
         """
         if not sync or self.cid is None:
@@ -579,11 +579,9 @@ class Container(object):
     def del_property(self, c_property_name, sync=True):
         """
         delete property from this container. if this container has no id then it's like sync=False.
-        :param c_property_name: property tuple defined like this :
-               => property name = c_property_tuple[0]
-               => property value = c_property_tuple[1]
-        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the subnet object on list to be deleted on next save().
+        :param c_property_name: property name to remove
+        :param sync: If sync=True(default) synchronize with Ariane server. else
+        add the property name on list to be deleted on next save().
         :return:
         """
         if not sync or self.cid is None:
@@ -1011,7 +1009,8 @@ class Node(object):
             parent_node_id=json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None,
             child_nodes_id=json_obj['nodeChildNodeID'],
             twin_nodes_id=json_obj['nodeTwinNodeID'],
-            endpoints_id=json_obj['nodeEndpointID']
+            endpoints_id=json_obj['nodeEndpointID'],
+            properties=json_obj['nodeProperties']
         )
 
     def node_2_json(self):
@@ -1027,7 +1026,8 @@ class Node(object):
             'nodeParentNodeID': self.parent_node_id,
             'nodeChildNodeID': self.child_nodes_id,
             'nodeTwinNodeID': self.twin_nodes_id,
-            'nodeEndpointID': self.endpoints_id
+            'nodeEndpointID': self.endpoints_id,
+            'nodeProperties': self.properties
         }
         return json_obj
 
@@ -1053,10 +1053,11 @@ class Node(object):
                 self.child_nodes_id = json_obj['nodeChildNodeID']
                 self.twin_nodes_id = json_obj['nodeTwinNodeID']
                 self.endpoints_id = json_obj['nodeEndpointID']
+                self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
 
     def __init__(self, nid=None, name=None, ndepth=None, container_id=None, container=None,
                  parent_node_id=None, parent_node=None, child_nodes_id=None, twin_nodes_id=None,
-                 endpoints_id=None):
+                 endpoints_id=None, properties=None):
         """
         initialize container object
         :param nid: node id - defined by ariane server
@@ -1069,6 +1070,7 @@ class Node(object):
         :param child_nodes_id: child nodes id list
         :param twin_nodes_id: twin nodes id list
         :param endpoints_id: endpoints id list
+        :param properties: node properties
         :return:
         """
         self.nid = nid
@@ -1083,8 +1085,69 @@ class Node(object):
         self.twin_nodes_2_add = []
         self.twin_nodes_2_rm = []
         self.endpoints_id = endpoints_id
+        self.properties = properties
+        self.properties_2_add = []
+        self.properties_2_rm = []
+
+    def add_property(self, n_property_tuple, sync=True):
+        """
+        add property to this node. if this container has no id then it's like sync=False.
+        :param n_property_tuple: property tuple defined like this :
+               => property name = n_property_tuple[0]
+               => property value = n_property_tuple[1]
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the property tuple on list to be added on next save().
+        :return:
+        """
+        if not sync or self.nid is None:
+            self.properties_2_add.append(n_property_tuple)
+        else:
+            params = MappingService.property_params(self.nid, n_property_tuple[0], n_property_tuple[1])
+
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
+
+    def del_property(self, n_property_name, sync=True):
+        """
+        delete property from this node. if this container has no id then it's like sync=False.
+        :param n_property_name: property name to remove
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the property name on list to be deleted on next save().
+        :return:
+        """
+        if not sync or self.nid is None:
+            self.properties_2_rm.append(n_property_name)
+        else:
+            params = {
+                'ID': self.nid,
+                'propertyName': n_property_name
+            }
+
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
 
     def add_twin_node(self, twin_node, sync=True):
+        """
+        add twin node to this node
+        :param twin_node: twin node to add
+        :param sync: if sync=True(default) synchronize with Ariane server. If sync=False,
+        add the node object on list to be added on next save()
+        :return:
+        """
         if self.nid is None or not sync:
             self.twin_nodes_2_add.append(twin_node)
         else:
@@ -1109,6 +1172,13 @@ class Node(object):
                     self.__sync__()
 
     def del_twin_node(self, twin_node, sync=True):
+        """
+        delete twin node from this node
+        :param twin_node: the twin node to delete
+        :param sync: if sync=True(default) synchronize with Ariane server else add
+        the node on list to be deleted on next save()
+        :return:
+        """
         if self.nid is None or not sync:
             self.twin_nodes_2_rm.append(twin_node)
         else:
@@ -1199,6 +1269,37 @@ class Node(object):
                     LOGGER.error('Error while updating node' + self.name + '. Reason: ' +
                                  str(response.error_message))
                     ok = False
+
+        if ok and self.properties_2_add.__len__() > 0:
+            for n_property_tuple in self.properties_2_add:
+                params = MappingService.property_params(self.nid, n_property_tuple[0], n_property_tuple[1])
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+                response = NodeService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating node ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+            self.properties_2_add.clear()
+
+        if ok and self.properties_2_rm.__len__() > 0:
+            for n_property_name in self.properties_2_rm:
+                params = {
+                    'ID': self.nid,
+                    'propertyName': n_property_name
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+                response = NodeService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating node ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+            self.properties_2_rm.clear()
 
         if ok and self.twin_nodes_2_add.__len__() > 0:
             for twin_node in self.twin_nodes_2_add:
