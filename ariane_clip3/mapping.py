@@ -1429,13 +1429,13 @@ class EndpointService(object):
         if eid is not None and eid:
             params = {'ID': eid}
         elif url is not None and url:
-            params = {'endpointURL': url}
+            params = {'URL': url}
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc == 0:
-                ret = Node.json_2_node(response.response_content)
+                ret = Endpoint.json_2_endpoint(response.response_content)
             else:
                 err_msg = 'Error while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
                           + str(url) + ' ). ' + \
@@ -1475,7 +1475,7 @@ class Endpoint(object):
             url=json_obj['endpointURL'],
             parent_node_id=json_obj['endpointParentNodeID'],
             twin_endpoints_id=json_obj['endpointTwinEndpointID'],
-            properties=json_obj['endpointProperties']
+            properties=json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
         )
 
     def endpoint_2_json(self):
@@ -1497,7 +1497,20 @@ class Endpoint(object):
         synchronize this endpoint with the Ariane server endpoint
         :return:
         """
-        pass
+        params = None
+        if self.id is not None:
+            params = {'ID': self.id}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = EndpointService.requester.call(args)
+            if response.rc is 0:
+                json_obj = response.response_content
+                self.id = json_obj['endpointID']
+                self.url = json_obj['endpointURL']
+                self.parent_node_id = json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None
+                self.twin_endpoints_id = json_obj['endpointTwinEndpointID']
+                self.properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
 
     def __init__(self, eid=None, url=None, parent_node_id=None, parent_node=None, twin_endpoints_id=None,
                  properties=None):
@@ -1520,10 +1533,56 @@ class Endpoint(object):
 
     def save(self):
         """
-
+        save or update endpoint to Ariane server
         :return:
         """
-        pass
+        ok = True
+        if self.parent_node is not None:
+            if self.parent_node.nid is None:
+                self.parent_node.save()
+            self.parent_node_id = self.parent_node.nid
+
+        if self.id is None:
+            params = {
+                'endpointURL': self.url,
+                'parentNodeID': self.parent_node_id if self.parent_node_id is not None else 0
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = EndpointService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while saving endpoint' + self.url + '. Reason: ' +
+                             str(response.error_message))
+                ok = False
+            else:
+                self.id = response.response_content['endpointID']
+        else:
+            params = {
+                'ID': self.id,
+                'URL': self.url
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/url', 'parameters': params}
+            response = EndpointService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while updating endpoint' + self.url + '. Reason: ' +
+                             str(response.error_message))
+                ok = False
+
+            if ok:
+                params = {
+                    'ID': self.id,
+                    'parentNodeID': self.parent_node_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/parentNode', 'parameters': params}
+                response = EndpointService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error('Error while updating endpoint' + self.url + '. Reason: ' +
+                                 str(response.error_message))
+                    ok = False
+
+        # TODO : properties and twin endpoints
+        if self.parent_node is not None:
+            self.parent_node.__sync__()
+        self.__sync__()
 
     def remove(self):
         """
@@ -1537,10 +1596,10 @@ class Endpoint(object):
                 'ID': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = NodeService.requester.call(args)
+            response = EndpointService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while deleting endpoint ' + self.id + '. Reason: ' + str(response.error_message)
+                    'Error while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
