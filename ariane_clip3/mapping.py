@@ -968,7 +968,7 @@ class NodeService(object):
             if response.rc == 0:
                 ret = Node.json_2_node(response.response_content)
             else:
-                err_msg = 'Error while finding container (id:' + str(nid) + ', primary admin gate url ' \
+                err_msg = 'Error while searching node (id:' + str(nid) + ', primary admin gate url ' \
                           + str(endpoint_url) + ' ). ' + \
                           'Reason: ' + str(response.error_message)
                 LOGGER.error(err_msg)
@@ -1409,9 +1409,144 @@ class EndpointService(object):
         args = {'repository_path': 'rest/mapping/domain/endpoints/'}
         EndpointService.requester = mapping_driver.make_requester(args)
 
+    @staticmethod
+    def find_endpoint(url=None, eid=None):
+        """
+        find endpoint according to endpoint url or endpoint ID. if both are defined then search will focus on ID only
+        :param url: endpoint's url
+        :param eid: endpoint id
+        :return: the endpoint if found or None if not found
+        """
+        ret = None
+        if (eid is None or not eid) and (url is None or not url):
+            raise exceptions.ArianeCallParametersError('id and endpoint_url')
+
+        if (eid is not None and eid) and (url is not None and url):
+            LOGGER.warn('Both id and endpoint url are defined. Will give you search on id.')
+            url = None
+
+        params = None
+        if eid is not None and eid:
+            params = {'ID': eid}
+        elif url is not None and url:
+            params = {'endpointURL': url}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = EndpointService.requester.call(args)
+            if response.rc == 0:
+                ret = Node.json_2_node(response.response_content)
+            else:
+                err_msg = 'Error while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
+                          + str(url) + ' ). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(err_msg)
+        return ret
+
+    @staticmethod
+    def get_endpoints():
+        """
+        get all endpoints known on the Ariane server
+        :return:
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = EndpointService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for endpoint in response.response_content['endpoints']:
+                ret.append(Endpoint.json_2_endpoint(endpoint))
+        else:
+            err_msg = 'Error while getting nodes. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
 
 class Endpoint(object):
-    pass
+    @staticmethod
+    def json_2_endpoint(json_obj):
+        """
+        transform json payload coming from Ariane server to local object
+        :param json_obj: the json payload coming from Ariane server
+        :return: local endpoint object
+        """
+        return Endpoint(
+            eid=json_obj['endpointID'],
+            url=json_obj['endpointURL'],
+            parent_node_id=json_obj['endpointParentNodeID'],
+            twin_endpoints_id=json_obj['endpointTwinEndpointID'],
+            properties=json_obj['endpointProperties']
+        )
+
+    def endpoint_2_json(self):
+        """
+        transform local object to JSON
+        :return: JSON object
+        """
+        json_obj = {
+            "endpointID": self.id,
+            "endpointURL": self.url,
+            "endpointParentNodeID": self.parent_node_id,
+            "endpointTwinEndpointID": self.twin_endpoints_id,
+            "endpointProperties": self.properties
+        }
+        return json_obj
+
+    def __sync__(self):
+        """
+        synchronize this endpoint with the Ariane server endpoint
+        :return:
+        """
+        pass
+
+    def __init__(self, eid=None, url=None, parent_node_id=None, parent_node=None, twin_endpoints_id=None,
+                 properties=None):
+        """
+        init endpoint
+        :param eid: endpoint id
+        :param url: endpoint url
+        :param parent_node_id: endpoint parent node id
+        :param parent_node: endpoint parent node
+        :param twin_endpoints_id: twin endpoint ids
+        :param properties: endpoint properties
+        :return:
+        """
+        self.id = eid
+        self.url = url
+        self.parent_node_id = parent_node_id
+        self.parent_node = parent_node
+        self.twin_endpoints_id = twin_endpoints_id
+        self.properties = properties
+
+    def save(self):
+        """
+
+        :return:
+        """
+        pass
+
+    def remove(self):
+        """
+        remove this node from Ariane server
+        :return:
+        """
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'ID': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = NodeService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting endpoint ' + self.id + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                if self.parent_node is not None:
+                    self.parent_node.__sync__()
+                return None
 
 
 class LinkService(object):
