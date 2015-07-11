@@ -39,6 +39,7 @@ class DirectoryService(object):
         self.company_service = CompanyService(self.driver)
         self.environment_service = EnvironmentService(self.driver)
         self.team_service = TeamService(self.driver)
+        self.ipAddress_service = IPAddressService(self.driver)
 
 
 class DatacenterService(object):
@@ -1469,13 +1470,236 @@ class Subnet(object):
                 return None
 
 
-#class IPAddressService(object):
-#    pass
+class IPAddressService(object):
+    requester = None
 
+    def __init__(self, directory_driver):
+        args = {'repository_path': 'rest/directories/common/infrastructure/network/ipAddress/'}
+        IPAddressService.requester = directory_driver.make_requester(args)
 
-#class IPAddress(object):
-#    pass
+    @staticmethod
+    def find_ipAddress(ipa_id=None, ipa_ipAddress=None):
+        """
+        find the IP Address (ipa) according ipa id (prioritary) or ipa ipAddress
+        :param ipa_id: the IP Address id
+        :param ipa_ipAddress: the IP Address
+        :return: found IP Address or None if not found
+        """
+        if (ipa_id is None or not ipa_id) and (ipa_ipAddress is None or not ipa_ipAddress):
+            raise exceptions.ArianeCallParametersError('id and ipAddress')
 
+        if (ipa_id is not None and ipa_id) and (ipa_ipAddress is not None and ipa_ipAddress):
+            LOGGER.warn('Both id and ipAddress are defined. Will give you search on id.')
+            ipa_ipAddress = None
+
+        params = None
+        if ipa_id is not None and ipa_id:
+            params = {'id': ipa_id}
+        elif ipa_ipAddress is not None and ipa_ipAddress:
+            params = {'ipAddress': ipa_ipAddress}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            if response.rc is 0:
+                ret = IPAddress.json_2_ipAddress(response.response_content)
+            else:
+                err_msg = 'Error while finding IP Address (id:' + str(ipa_id) + ', ipAddress:' + str(ipa_ipAddress) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(
+                    err_msg
+                )
+
+        return ret
+
+    @staticmethod
+    def get_ipAddresses():
+        """
+        :return: all knows IP Address
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = IPAddressService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for ipAddress in response.response_content['ipAddresses']:
+                ret.append(IPAddress.json_2_ipAddress(ipAddress))
+        else:
+            err_msg = 'Error while getting IP Address. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+class IPAddress(object):
+    @staticmethod
+    def json_2_ipAddress(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 IP Address object
+        """
+        return IPAddress(ipa_id=json_obj['ipAddressID'],
+                         ipAddress=json_obj['ipAddressIPA'],
+                         fqdn=json_obj['ipAddressFQDN'],
+                         ipa_osInstance_id=json_obj['ipAddressOSInstanceID'],
+                         ipa_subnet_id=json_obj['ipAddressSubnetID'])
+
+    def ipAddress_2_json(self):
+        """
+        transform ariane_clip3 OS Instance object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
+        json_obj = {
+            'ipAddressID': self.id,
+            'ipAddressIPA': self.ipAddress,
+            'ipAddressFQDN': self.fqdn,
+            'ipAddressOSInstanceID': self.ipa_osInstance_id,
+            'ipAddressSubnetID': self.ipa_subnet_id,
+        }
+        return json.dumps(json_obj)
+
+    def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (priority) or name
+        :return:
+        """
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.ipAddress is not None:
+            params = {'ipAddress': self.ipAddress}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['ipAddressID']
+            self.ipAddress = json_obj['ipAddressIPA']
+            self.fqdn = json_obj['ipAddressFQDN']
+            self.ipa_osInstance_id = json_obj['isAddressOSInstanceID']
+            self.ipa_subnet_id = json_obj['ipAddressSubnetID']
+
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
+    def __init__(self, ipa_id=None, ipAddress=None, fqdn=None, ipa_osInstance_id=None,
+                 ipa_subnet_id=None):
+        """
+        build ariane_clip3 OS instance object
+        :param ipa_id: default None. it will be erased by any interaction with Ariane server
+        :param ipAddress: default None
+        :param fqdn: default None
+        :param ipa_osInstance_id: default None
+        :param ipa_subnet_id: default None
+        :return:
+        """
+        self.id = ipa_id
+        self.ipAddress = ipAddress
+        self.fqdn = fqdn
+        self.ipa_osInstance_id = ipa_osInstance_id
+        self.ipa_subnet_id = ipa_subnet_id
+
+    def save(self):
+        """
+        :return: save this IP Address on Ariane server (create or update)
+        """
+        ok = True
+        if self.id is None:
+            params = {
+                'ipAddress': self.ipAddress,
+                'fqdn': self.fqdn,
+                'osInstance' : self.ipa_osInstance_id,
+                'networkSubnet': self.ipa_subnet_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            print(response.response_content)
+            if response.rc is 0:
+                self.id = response.response_content['ipAddressID']
+            else:
+                LOGGER.error(
+                    'Error while saving IP Address' + self.ipAddress + '. Reason: ' + str(response.error_message)
+                )
+                ok = False
+        else:
+            params = {
+                'id': self.id,
+                'ipAddress': self.ipAddress
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/ipAddress', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' + str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'fqdn': self.fqdn
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/fqdn', 'parameters': params}
+                response = IPAddressService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'subnetID': self.ipa_subnet_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/subnet', 'parameters': params}
+                response = IPAddressService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'osInstanceID': self.ipa_osInstance_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/osInstance', 'parameters': params}
+                response = IPAddressService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+        return self
+
+    def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting IP Address' + self.ipAddress + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 class OSInstanceService(object):
     requester = None
@@ -1530,13 +1754,12 @@ class OSInstanceService(object):
         ret = None
         if response.rc is 0:
             ret = []
-            for subnet in response.response_content['osInstances']:
-                ret.append(OSInstance.json_2_osinstance(subnet))
+            for osInstance in response.response_content['osInstances']:
+                ret.append(OSInstance.json_2_osinstance(osInstance))
         else:
             err_msg = 'Error while getting os instances. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
         return ret
-    pass
 
 
 class OSInstance(object):
