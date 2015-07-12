@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.mapping import MappingService, Node, Container, NodeService, Endpoint, EndpointService
+from ariane_clip3.mapping import MappingService, Node, Container, Endpoint, EndpointService
 
 __author__ = 'mffrench'
 
@@ -83,3 +83,81 @@ class EndpointTest(unittest.TestCase):
         self.assertEqual(EndpointService.get_endpoints().__len__(), init_endpoint_count + 1)
         endpoint.remove()
         self.assertEqual(EndpointService.get_endpoints().__len__(), init_endpoint_count)
+
+    def test_endpoint_properties(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        MappingService(args)
+        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint.add_property(('int_prop', 10), sync=False)
+        endpoint.add_property(('long_prop', 10000000), sync=False)
+        endpoint.add_property(('double_prop', 3.1414), sync=False)
+        endpoint.add_property(('boolean_prop', True), sync=False)
+        endpoint.add_property(('string_prop', "value"), sync=False)
+        datacenter = {"dc": ["String", "Sagittarius"], "gpsLng": ["double", 2.251088],
+                      "address": ["String", "2 rue Baudin"], "gpsLat": ["double", 48.895345],
+                      "town": ["String", "Courbevoie"], "country": ["String", "France"]}
+        endpoint.add_property(('map_prop_datacenter', datacenter), sync=False)
+        endpoint.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
+        self.assertIsNone(endpoint.properties)
+        endpoint.save()
+        self.assertTrue('boolean_prop' in endpoint.properties)
+        self.assertTrue('double_prop' in endpoint.properties)
+        self.assertTrue('int_prop' in endpoint.properties)
+        self.assertTrue('long_prop' in endpoint.properties)
+        self.assertTrue('map_prop_datacenter' in endpoint.properties)
+        self.assertTrue('string_prop' in endpoint.properties)
+        self.assertTrue('array_prop' in endpoint.properties)
+        endpoint.del_property('int_prop', sync=False)
+        endpoint.del_property('long_prop', sync=False)
+        endpoint.del_property('double_prop', sync=False)
+        endpoint.del_property('boolean_prop', sync=False)
+        endpoint.del_property('string_prop', sync=False)
+        endpoint.del_property('map_prop_datacenter', sync=False)
+        endpoint.del_property('array_prop', sync=False)
+        self.assertTrue('boolean_prop' in endpoint.properties)
+        self.assertTrue('double_prop' in endpoint.properties)
+        self.assertTrue('int_prop' in endpoint.properties)
+        self.assertTrue('long_prop' in endpoint.properties)
+        self.assertTrue('map_prop_datacenter' in endpoint.properties)
+        self.assertTrue('string_prop' in endpoint.properties)
+        self.assertTrue('array_prop' in endpoint.properties)
+        endpoint.save()
+        self.assertFalse(endpoint.properties is not None and 'boolean_prop' in endpoint.properties)
+        self.assertFalse(endpoint.properties is not None and 'double_prop' in endpoint.properties)
+        self.assertFalse(endpoint.properties is not None and 'int_prop' in endpoint.properties)
+        self.assertFalse(endpoint.properties is not None and 'long_prop' in endpoint.properties)
+        self.assertFalse(endpoint.properties is not None and 'map_prop_datacenter' in endpoint.properties)
+        self.assertFalse(endpoint.properties is not None and 'string_prop' in endpoint.properties)
+        self.assertFalse(endpoint.properties is not None and 'array_prop' in endpoint.properties)
+        endpoint.remove()
+
+    def test_twin_endpoints_link(self):
+        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        node2 = Node(name="mysqld2", container=container2)
+        endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint2 = Endpoint(url="mysql://test_container2:4385", parent_node=node2)
+        endpoint1.add_twin_endpoint(endpoint2, sync=False)
+        self.assertTrue(endpoint2 in endpoint1.twin_endpoints_2_add)
+        endpoint1.save()
+        self.assertFalse(endpoint2 in endpoint1.twin_endpoints_2_add)
+        self.assertTrue(endpoint2.id in endpoint1.twin_endpoints_id)
+        self.assertTrue(endpoint1.id in endpoint2.twin_endpoints_id)
+        endpoint2.del_twin_endpoint(endpoint1, sync=False)
+        self.assertTrue(endpoint1 in endpoint2.twin_endpoints_2_rm)
+        self.assertTrue(endpoint2.id in endpoint1.twin_endpoints_id)
+        self.assertTrue(endpoint1.id in endpoint2.twin_endpoints_id)
+        endpoint2.save()
+        self.assertFalse(endpoint1 in endpoint2.twin_endpoints_2_rm)
+        self.assertFalse(endpoint2.id in endpoint1.twin_endpoints_id)
+        self.assertFalse(endpoint1.id in endpoint2.twin_endpoints_id)
+        endpoint1.add_twin_endpoint(endpoint2)
+        self.assertTrue(endpoint2.id in endpoint1.twin_endpoints_id)
+        self.assertTrue(endpoint1.id in endpoint2.twin_endpoints_id)
+        endpoint2.del_twin_endpoint(endpoint1)
+        self.assertFalse(endpoint2.id in endpoint1.twin_endpoints_id)
+        self.assertFalse(endpoint1.id in endpoint2.twin_endpoints_id)
+        endpoint1.remove()
+        endpoint2.remove()
+        node2.remove()

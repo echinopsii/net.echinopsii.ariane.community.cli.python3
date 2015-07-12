@@ -1091,7 +1091,7 @@ class Node(object):
 
     def add_property(self, n_property_tuple, sync=True):
         """
-        add property to this node. if this container has no id then it's like sync=False.
+        add property to this node. if this node has no id then it's like sync=False.
         :param n_property_tuple: property tuple defined like this :
                => property name = n_property_tuple[0]
                => property value = n_property_tuple[1]
@@ -1116,7 +1116,7 @@ class Node(object):
 
     def del_property(self, n_property_name, sync=True):
         """
-        delete property from this node. if this container has no id then it's like sync=False.
+        delete property from this node. if this node has no id then it's like sync=False.
         :param n_property_name: property name to remove
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the property name on list to be deleted on next save().
@@ -1152,7 +1152,7 @@ class Node(object):
             self.twin_nodes_2_add.append(twin_node)
         else:
             if twin_node.nid is None:
-                twin_node.__sync__()
+                twin_node.save()
             if twin_node.nid is not None:
                 params = {
                     'ID': self.nid,
@@ -1328,7 +1328,7 @@ class Node(object):
         if ok and self.twin_nodes_2_rm.__len__() > 0:
             for twin_node in self.twin_nodes_2_rm:
                 if twin_node.nid is None:
-                    twin_node.save()
+                    twin_node.__sync__()
                 if twin_node.nid is not None:
                     params = {
                         'ID': self.nid,
@@ -1529,7 +1529,124 @@ class Endpoint(object):
         self.parent_node_id = parent_node_id
         self.parent_node = parent_node
         self.twin_endpoints_id = twin_endpoints_id
+        self.twin_endpoints_2_add = []
+        self.twin_endpoints_2_rm = []
         self.properties = properties
+        self.properties_2_add = []
+        self.properties_2_rm = []
+
+    def add_property(self, e_property_tuple, sync=True):
+        """
+        add property to this endpoint. if this endpoint has no id then it's like sync=False.
+        :param e_property_tuple: property tuple defined like this :
+               => property name = e_property_tuple[0]
+               => property value = e_property_tuple[1]
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the property tuple on list to be added on next save().
+        :return:
+        """
+        if not sync or self.id is None:
+            self.properties_2_add.append(e_property_tuple)
+        else:
+            params = MappingService.property_params(self.id, e_property_tuple[0], e_property_tuple[1])
+
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+            response = EndpointService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container ' + self.url + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
+
+    def del_property(self, e_property_name, sync=True):
+        """
+        delete property from this endpoint. if this endpoint has no id then it's like sync=False.
+        :param e_property_name: property name to remove
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the property name on list to be deleted on next save().
+        :return:
+        """
+        if not sync or self.id is None:
+            self.properties_2_rm.append(e_property_name)
+        else:
+            params = {
+                'ID': self.id,
+                'propertyName': e_property_name
+            }
+
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+            response = EndpointService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating container ' + self.url + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
+
+    def add_twin_endpoint(self, twin_endpoint, sync=True):
+        """
+        add twin endpoint to this endpoint
+        :param twin_endpoint: twin endpoint to add
+        :param sync: if sync=True(default) synchronize with Ariane server. If sync=False,
+        add the endpoint object on list to be added on next save()
+        :return:
+        """
+        if self.id is None or not sync:
+            self.twin_endpoints_2_add.append(twin_endpoint)
+        else:
+            if twin_endpoint.id is None:
+                twin_endpoint.save()
+            if twin_endpoint.id is not None:
+                params = {
+                    'ID': self.id,
+                    'twinEndpointID': twin_endpoint.id
+                }
+                args = {'http_operation': 'GET',
+                        'operation_path': 'update/twinEndpoints/add',
+                        'parameters': params}
+                response = EndpointService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    twin_endpoint.__sync__()
+                    self.__sync__()
+
+    def del_twin_endpoint(self, twin_endpoint, sync=True):
+        """
+        delete twin endpoint from this endpoint
+        :param twin_endpoint: the twin endpoint to delete
+        :param sync: if sync=True(default) synchronize with Ariane server else add
+        the endpoint on list to be deleted on next save()
+        :return:
+        """
+        if self.id is None or not sync:
+            self.twin_endpoints_2_rm.append(twin_endpoint)
+        else:
+            if twin_endpoint.id is None:
+                twin_endpoint.__sync__()
+            if twin_endpoint.id is not None:
+                params = {
+                    'ID': self.id,
+                    'twinEndpointID': twin_endpoint.id
+                }
+                args = {'http_operation': 'GET',
+                        'operation_path': 'update/twinEndpoints/delete',
+                        'parameters': params}
+                response = EndpointService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating node ' + self.url + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    twin_endpoint.__sync__()
+                    self.__sync__()
 
     def save(self):
         """
@@ -1579,7 +1696,84 @@ class Endpoint(object):
                                  str(response.error_message))
                     ok = False
 
-        # TODO : properties and twin endpoints
+        if ok and self.properties_2_add.__len__() > 0:
+            for e_property_tuple in self.properties_2_add:
+                params = MappingService.property_params(self.id, e_property_tuple[0], e_property_tuple[1])
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+                response = EndpointService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating container ' + self.url + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+            self.properties_2_add.clear()
+
+        if ok and self.properties_2_rm.__len__() > 0:
+            for e_property_name in self.properties_2_rm:
+                params = {
+                    'ID': self.id,
+                    'propertyName': e_property_name
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+                response = EndpointService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating container ' + self.url + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+            self.properties_2_rm.clear()
+
+        if ok and self.twin_endpoints_2_add.__len__() > 0:
+            for twin_endpoint in self.twin_endpoints_2_add:
+                if twin_endpoint.id is None:
+                    twin_endpoint.save()
+                if twin_endpoint.id is not None:
+                    params = {
+                        'ID': self.id,
+                        'twinEndpointID': twin_endpoint.id
+                    }
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinEndpoints/add',
+                            'parameters': params}
+                    response = EndpointService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        twin_endpoint.__sync__()
+            self.twin_endpoints_2_add.clear()
+
+        if ok and self.twin_endpoints_2_rm.__len__() > 0:
+            for twin_endpoint in self.twin_endpoints_2_rm:
+                if twin_endpoint.id is None:
+                    twin_endpoint.__sync__()
+                if twin_endpoint.id is not None:
+                    params = {
+                        'ID': self.id,
+                        'twinEndpointID': twin_endpoint.id
+                    }
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinEndpoints/delete',
+                            'parameters': params}
+                    response = EndpointService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating node ' + self.url + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        break
+                    else:
+                        twin_endpoint.__sync__()
+            self.twin_endpoints_2_rm.clear()
+
         if self.parent_node is not None:
             self.parent_node.__sync__()
         self.__sync__()
