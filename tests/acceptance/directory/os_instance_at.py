@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application, Environment, Team
+from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application, Environment, Team, IPAddress
 
 __author__ = 'mffrench'
 
@@ -137,6 +137,56 @@ class OSInstanceTest(unittest.TestCase):
         self.assertTrue(new_emb_osinstance.id not in new_osinstance.embedded_osi_ids)
         self.assertIsNone(new_emb_osinstance.embedding_osi_id)
         new_emb_osinstance.remove()
+        new_osinstance.remove()
+
+    def test_osinstance_link_to_ipaddress(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+
+        new_osinstance = OSInstance(name='my_new_osi',
+                                    description='my new osi',
+                                    admin_gate_uri='ssh://admingateuri')
+        new_routing_area = RoutingArea(name='my_new_routing_area',
+                                       description='my new routing area',
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
+                                       multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
+        new_routing_area.save()
+
+        new_subnet = Subnet(name='my_new_subnet',
+                            description='my new subnet',
+                            ip='192.168.12.0',
+                            mask='255.255.255.0',
+                            routing_area_id=new_routing_area.id)
+        new_subnet.save()
+
+        new_ipAddress = IPAddress(ipAddress = '192.168.12.11',
+                                  fqdn = 'Fake FQDN 2',
+                                  ipa_osInstance_id = None,
+                                  ipa_subnet_id = new_subnet.id)
+        new_ipAddress.save()
+
+        new_osinstance.add_ipAddress(new_ipAddress, sync=False)
+        self.assertTrue(new_ipAddress in new_osinstance.ipAddress_2_add)
+        self.assertIsNone(new_osinstance.ipAddress_ids)
+        self.assertIsNone(new_ipAddress.ipa_osInstance_id)
+        new_osinstance.save()
+        self.assertTrue(new_ipAddress not in new_osinstance.ipAddress_2_add)
+        self.assertTrue(new_ipAddress.id in new_osinstance.ipAddress_ids)
+        self.assertTrue(new_ipAddress.ipa_osInstance_id == new_osinstance.id)
+        new_osinstance.del_ipAddress(new_ipAddress, sync=False)
+        self.assertTrue(new_ipAddress in new_osinstance.ipAddress_2_rm)
+        self.assertTrue(new_ipAddress.id in new_osinstance.ipAddress_ids)
+        self.assertTrue(new_ipAddress.ipa_osInstance_id == new_osinstance.id)
+        new_osinstance.save()
+        self.assertTrue(new_ipAddress not in new_osinstance.ipAddress_2_rm)
+        self.assertTrue(new_ipAddress.id not in new_osinstance.ipAddress_ids)
+        new_osinstance.add_ipAddress(new_ipAddress)
+        self.assertTrue(new_ipAddress.id in new_osinstance.ipAddress_ids)
+        self.assertTrue(new_ipAddress.ipa_osInstance_id == new_osinstance.id)
+        new_osinstance.del_ipAddress(new_ipAddress)
+        self.assertTrue(new_ipAddress.id not in new_osinstance.ipAddress_ids)
+        self.assertIsNone(new_ipAddress.ipa_osInstance_id)
+        new_ipAddress.remove()
         new_osinstance.remove()
 
     def test_osinstance_link_to_application(self):

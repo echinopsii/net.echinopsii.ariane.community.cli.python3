@@ -39,6 +39,7 @@ class DirectoryService(object):
         self.company_service = CompanyService(self.driver)
         self.environment_service = EnvironmentService(self.driver)
         self.team_service = TeamService(self.driver)
+        self.ipAddress_service = IPAddressService(self.driver)
 
 
 class DatacenterService(object):
@@ -1022,6 +1023,7 @@ class Subnet(object):
                       ip=json_obj['subnetIP'],
                       mask=json_obj['subnetMask'],
                       routing_area_id=json_obj['subnetRoutingAreaID'],
+                      ipAddress_ids=json_obj['subnetIPAddressesID'],
                       subnet_dc_ids=json_obj['subnetDatacentersID'],
                       subnet_osi_ids=json_obj['subnetOSInstancesID'])
 
@@ -1037,6 +1039,7 @@ class Subnet(object):
             'subnetIP': self.ip,
             'subnetMask': self.mask,
             'subnetRoutingAreaID': self.routing_area_id,
+            'subnetIPAddressesID': self.ipAddress_ids,
             'subnetDatacentersID': self.dc_ids,
             'subnetOSInstancesID': self.osi_ids
         }
@@ -1064,10 +1067,11 @@ class Subnet(object):
             self.mask = json_obj['subnetMask']
             self.routing_area_id = json_obj['subnetRoutingAreaID']
             self.dc_ids = json_obj['subnetDatacentersID']
+            self.ipAddress_ids = json_obj['subnetIPAddressesID']
             self.osi_ids = json_obj['subnetOSInstancesID']
 
     def __init__(self, subnetid=None, name=None, description=None, ip=None, mask=None,
-                 routing_area_id=None, subnet_dc_ids=None, subnet_osi_ids=None):
+                 routing_area_id=None, subnet_dc_ids=None, ipAddress_ids=None, subnet_osi_ids=None):
         """
         build ariane_clip3 subnet object
         :param subnetid: default None. it will be erased by any interaction with Ariane server
@@ -1077,6 +1081,7 @@ class Subnet(object):
         :param mask: default None
         :param routing_area_id: default None
         :param subnet_dc_ids: default None
+        :param ipAddress_ids: default None
         :param subnet_osi_ids: default None
         :return:
         """
@@ -1086,6 +1091,7 @@ class Subnet(object):
         self.ip = ip
         self.mask = mask
         self.routing_area_id = routing_area_id
+        self.ipAddress_ids = ipAddress_ids
         self.dc_ids = subnet_dc_ids
         self.dc_2_add = []
         self.dc_2_rm = []
@@ -1469,13 +1475,235 @@ class Subnet(object):
                 return None
 
 
-#class IPAddressService(object):
-#    pass
+class IPAddressService(object):
+    requester = None
 
+    def __init__(self, directory_driver):
+        args = {'repository_path': 'rest/directories/common/infrastructure/network/ipAddress/'}
+        IPAddressService.requester = directory_driver.make_requester(args)
 
-#class IPAddress(object):
-#    pass
+    @staticmethod
+    def find_ipAddress(ipa_id=None, ipa_ipAddress=None):
+        """
+        find the IP Address (ipa) according ipa id (prioritary) or ipa ipAddress
+        :param ipa_id: the IP Address id
+        :param ipa_ipAddress: the IP Address
+        :return: found IP Address or None if not found
+        """
+        if (ipa_id is None or not ipa_id) and (ipa_ipAddress is None or not ipa_ipAddress):
+            raise exceptions.ArianeCallParametersError('id and ipAddress')
 
+        if (ipa_id is not None and ipa_id) and (ipa_ipAddress is not None and ipa_ipAddress):
+            LOGGER.warn('Both id and ipAddress are defined. Will give you search on id.')
+            ipa_ipAddress = None
+
+        params = None
+        if ipa_id is not None and ipa_id:
+            params = {'id': ipa_id}
+        elif ipa_ipAddress is not None and ipa_ipAddress:
+            params = {'ipAddress': ipa_ipAddress}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            if response.rc is 0:
+                ret = IPAddress.json_2_ipAddress(response.response_content)
+            else:
+                err_msg = 'Error while finding IP Address (id:' + str(ipa_id) + ', ipAddress:' + str(ipa_ipAddress) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.error(
+                    err_msg
+                )
+
+        return ret
+
+    @staticmethod
+    def get_ipAddresses():
+        """
+        :return: all knows IP Address
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = IPAddressService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for ipAddress in response.response_content['ipAddresses']:
+                ret.append(IPAddress.json_2_ipAddress(ipAddress))
+        else:
+            err_msg = 'Error while getting IP Address. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+class IPAddress(object):
+    @staticmethod
+    def json_2_ipAddress(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 IP Address object
+        """
+        return IPAddress(ipa_id=json_obj['ipAddressID'],
+                         ipAddress=json_obj['ipAddressIPA'],
+                         fqdn=json_obj['ipAddressFQDN'],
+                         ipa_osInstance_id=json_obj['ipAddressOSInstanceID'],
+                         ipa_subnet_id=json_obj['ipAddressSubnetID'])
+
+    def ipAddress_2_json(self):
+        """
+        transform ariane_clip3 OS Instance object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
+        json_obj = {
+            'ipAddressID': self.id,
+            'ipAddressIPA': self.ipAddress,
+            'ipAddressFQDN': self.fqdn,
+            'ipAddressOSInstanceID': self.ipa_osInstance_id,
+            'ipAddressSubnetID': self.ipa_subnet_id,
+        }
+        return json.dumps(json_obj)
+
+    def __sync__(self):
+        """
+        synchronize self from Ariane server according its id (priority) or name
+        :return:
+        """
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.ipAddress is not None:
+            params = {'ipAddress': self.ipAddress}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['ipAddressID']
+            self.ipAddress = json_obj['ipAddressIPA']
+            self.fqdn = json_obj['ipAddressFQDN']
+            self.ipa_osInstance_id = json_obj['ipAddressOSInstanceID']
+            self.ipa_subnet_id = json_obj['ipAddressSubnetID']
+
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
+    def __init__(self, ipa_id=None, ipAddress=None, fqdn=None, ipa_osInstance_id=None,
+                 ipa_subnet_id=None):
+        """
+        build ariane_clip3 OS instance object
+        :param ipa_id: default None. it will be erased by any interaction with Ariane server
+        :param ipAddress: default None
+        :param fqdn: default None
+        :param ipa_osInstance_id: default None
+        :param ipa_subnet_id: default None
+        :return:
+        """
+        self.id = ipa_id
+        self.ipAddress = ipAddress
+        self.fqdn = fqdn
+        self.ipa_osInstance_id = ipa_osInstance_id
+        self.ipa_subnet_id = ipa_subnet_id
+
+    def save(self):
+        """
+        :return: save this IP Address on Ariane server (create or update)
+        """
+        ok = True
+        if self.id is None:
+            params = {
+                'ipAddress': self.ipAddress,
+                'fqdn': self.fqdn,
+                'osInstance' : self.ipa_osInstance_id,
+                'networkSubnet': self.ipa_subnet_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            if response.rc is 0:
+                self.id = response.response_content['ipAddressID']
+            else:
+                LOGGER.error(
+                    'Error while saving IP Address' + self.ipAddress + '. Reason: ' + str(response.error_message)
+                )
+                ok = False
+        else:
+            params = {
+                'id': self.id,
+                'ipAddress': self.ipAddress
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/ipAddress', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' + str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'fqdn': self.fqdn
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/fqdn', 'parameters': params}
+                response = IPAddressService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'subnetID': self.ipa_subnet_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/subnet', 'parameters': params}
+                response = IPAddressService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'osInstanceID': self.ipa_osInstance_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/osInstance', 'parameters': params}
+                response = IPAddressService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating IP Address ' + self.ipAddress + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+        return self
+
+    def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = IPAddressService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting IP Address' + self.ipAddress + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 class OSInstanceService(object):
     requester = None
@@ -1530,13 +1758,12 @@ class OSInstanceService(object):
         ret = None
         if response.rc is 0:
             ret = []
-            for subnet in response.response_content['osInstances']:
-                ret.append(OSInstance.json_2_osinstance(subnet))
+            for osInstance in response.response_content['osInstances']:
+                ret.append(OSInstance.json_2_osinstance(osInstance))
         else:
             err_msg = 'Error while getting os instances. Reason: ' + str(response.error_message)
             LOGGER.error(err_msg)
         return ret
-    pass
 
 
 class OSInstance(object):
@@ -1554,6 +1781,7 @@ class OSInstance(object):
                           osi_embedding_osi_id=json_obj['osInstanceEmbeddingOSInstanceID'],
                           osi_ost_id=json_obj['osInstanceOSTypeID'],
                           osi_embedded_osi_ids=json_obj['osInstanceEmbeddedOSInstancesID'],
+                          osi_ipAddress_ids=json_obj['osInstanceIPAddressesID'],
                           osi_application_ids=json_obj['osInstanceApplicationsID'],
                           osi_environment_ids=json_obj['osInstanceEnvironmentsID'],
                           osi_subnet_ids=json_obj['osInstanceSubnetsID'],
@@ -1572,6 +1800,7 @@ class OSInstance(object):
             'osInstanceEmbeddingOSInstanceID': self.embedding_osi_id,
             'osInstanceOSTypeID': self.ost_id,
             'osInstanceEmbeddedOSInstancesID': self.embedded_osi_ids,
+            'osInstanceIPAddressesID': self.ipaddress_ids,
             'osInstanceApplicationsID': self.application_ids,
             'osInstanceEnvironmentsID': self.environment_ids,
             'osInstanceSubnetID': self.subnet_ids,
@@ -1607,6 +1836,7 @@ class OSInstance(object):
             else:
                 self.embedding_osi_id = json_obj['osInstanceEmbeddingOSInstanceID']
             self.embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
+            self.ipAddress_ids = json_obj['osInstanceIPAddressesID']
             self.application_ids = json_obj['osInstanceApplicationsID']
             self.environment_ids = json_obj['osInstanceEnvironmentsID']
             self.subnet_ids = json_obj['osInstanceSubnetsID']
@@ -1614,7 +1844,7 @@ class OSInstance(object):
 
     def __init__(self, osiid=None, name=None, description=None, admin_gate_uri=None,
                  osi_embedding_osi_id=None, osi_ost_id=None, osi_embedded_osi_ids=None, osi_application_ids=None,
-                 osi_environment_ids=None, osi_subnet_ids=None, osi_team_ids=None):
+                 osi_environment_ids=None, osi_subnet_ids=None, osi_ipAddress_ids=None, osi_team_ids=None):
         """
         build ariane_clip3 OS instance object
         :param osiid: default None. it will be erased by any interaction with Ariane server
@@ -1627,6 +1857,7 @@ class OSInstance(object):
         :param osi_application_ids: default None
         :param osi_environment_ids: default None
         :param osi_subnet_ids: default None
+        :param osi_ipaddress_ids: default None
         :param osi_team_ids: default None
         :return:
         """
@@ -1648,6 +1879,9 @@ class OSInstance(object):
         self.subnet_ids = osi_subnet_ids
         self.subnets_2_add = []
         self.subnets_2_rm = []
+        self.ipAddress_ids = osi_ipAddress_ids
+        self.ipAddress_2_add = []
+        self.ipAddress_2_rm = []
         self.team_ids = osi_team_ids
         self.team_2_add = []
         self.team_2_rm = []
@@ -1724,6 +1958,74 @@ class OSInstance(object):
                 LOGGER.error(
                     'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
                     subnet.name + ' id is None'
+                )
+
+    def add_ipAddress(self, ipAddress, sync=True):
+        """
+        add a ipAddress to this OS instance.
+        :param ipAddress: the ipAddress to add on this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the subnet object on list to be added on next save().
+        :return:
+        """
+        if not sync:
+            self.ipAddress_2_add.append(ipAddress)
+        else:
+            if ipAddress.id is None:
+                ipAddress.save()
+            if self.id is not None and ipAddress.id is not None:
+                params = {
+                    'id': self.id,
+                    'ipAddressID': ipAddress.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/add', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.ipAddress_ids.append(ipAddress.id)
+                    ipAddress.ipa_osInstance_id = self.id
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                    ipAddress.ipAddress + ' id is None'
+                )
+
+    def del_ipAddress(self, ipAddress, sync=True):
+        """
+        delete ipAddress from this OS instance
+        :param ipAddress: the ipAddress to be deleted from this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the ipAddress object on list to be removed on next save().
+        :return:
+        """
+        if not sync:
+            self.ipAddress_2_rm.append(ipAddress)
+        else:
+            if ipAddress.id is None:
+                ipAddress.save()
+            if self.id is not None and ipAddress.id is not None:
+                params = {
+                    'id': self.id,
+                    'ipAddressID': ipAddress.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/delete', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.ipAddress_ids.remove(ipAddress.id)
+                    ipAddress.ipa_osInstance_id = None
+            else:
+                LOGGER.error(
+                    'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                    ipAddress.ipAddress + ' id is None'
                 )
 
     def add_embedded_osi(self, e_osi, sync=True):
@@ -2202,6 +2504,66 @@ class OSInstance(object):
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
                         embedded_osi.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.ipAddress_2_add.__len__() > 0:
+            for ipAddress_osi in self.ipAddress_2_add:
+                if ipAddress_osi.id is None:
+                    ipAddress_osi.save()
+                if ipAddress_osi.id is not None:
+                    params = {
+                        'id': self.id,
+                        'ipAddressID': ipAddress_osi.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/add',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.ipAddress_2_add.remove(ipAddress_osi)
+                        ipAddress_osi.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                        ipAddress_osi.ipAddress + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.ipAddress_2_rm.__len__() > 0:
+            for ipAddress_osi in self.ipAddress_2_rm:
+                if ipAddress_osi.id is None:
+                    ipAddress_osi.save()
+                if ipAddress_osi.id is not None:
+                    params = {
+                        'id': self.id,
+                        'ipAddressID': ipAddress_osi.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/delete',
+                            'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.error(
+                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.ipAddress_2_rm.remove(ipAddress_osi)
+                        ipAddress_osi.__sync__()
+                else:
+                    LOGGER.error(
+                        'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                        ipAddress_osi.ipAddress + ' id is None'
                     )
                     ok = False
                     break
