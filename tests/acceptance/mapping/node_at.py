@@ -69,7 +69,6 @@ class NodeTest(unittest.TestCase):
         self.assertTrue(node_db.parent_node_id == node_mysql.nid)
         node_db.remove()
         self.assertFalse(node_db.nid in node_mysql.child_nodes_id)
-
         node_mysql.remove()
         container2.remove()
 

@@ -104,7 +104,6 @@ class MappingService(object):
         elif isinstance(value, bool):
             p_type = 'boolean'
 
-        params = None
         if p_type is not None:
             params = {
                 'ID': o_id,
@@ -415,7 +414,7 @@ class ContainerService(object):
     def __init__(self, mapping_driver):
         """
         initialize ContainerService (setup the requester)
-        :param mapping_driver: the driver comming from MappingService
+        :param mapping_driver: the driver coming from MappingService
         :return:
         """
         args = {'repository_path': 'rest/mapping/domain/containers/'}
@@ -1108,7 +1107,7 @@ class Node(object):
             response = NodeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                    'Error while updating node ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1134,7 +1133,7 @@ class Node(object):
             response = NodeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                    'Error while updating node ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1554,7 +1553,7 @@ class Endpoint(object):
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while updating container ' + self.url + ' name. Reason: ' +
+                    'Error while updating endpoint ' + self.url + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1580,7 +1579,7 @@ class Endpoint(object):
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while updating container ' + self.url + ' name. Reason: ' +
+                    'Error while updating endpoint ' + self.url + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1641,7 +1640,7 @@ class Endpoint(object):
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
-                        'Error while updating node ' + self.url + ' name. Reason: ' +
+                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
@@ -1703,7 +1702,7 @@ class Endpoint(object):
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
-                        'Error while updating container ' + self.url + ' name. Reason: ' +
+                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1720,7 +1719,7 @@ class Endpoint(object):
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.error(
-                        'Error while updating container ' + self.url + ' name. Reason: ' +
+                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1766,7 +1765,7 @@ class Endpoint(object):
                     response = EndpointService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.error(
-                            'Error while updating node ' + self.url + ' name. Reason: ' +
+                            'Error while updating endpoint ' + self.url + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         break
@@ -1780,7 +1779,7 @@ class Endpoint(object):
 
     def remove(self):
         """
-        remove this node from Ariane server
+        remove this endpoint from Ariane server
         :return:
         """
         if self.id is None:
@@ -1814,9 +1813,194 @@ class LinkService(object):
         args = {'repository_path': 'rest/mapping/domain/links/'}
         LinkService.requester = mapping_driver.make_requester(args)
 
+    @staticmethod
+    def find_link(lid=None):
+        """
+        find link according to link ID.
+        :param lid: link id
+        :return: the link if found or None if not found
+        """
+        ret = None
+        if lid is None or not lid:
+            raise exceptions.ArianeCallParametersError('id')
+
+        params = {
+            'ID': lid
+        }
+        args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+        response = LinkService.requester.call(args)
+        if response.rc == 0:
+            ret = Link.json_2_link(response.response_content)
+        else:
+            err_msg = 'Error while searching link (id:' + str(lid) + '). ' + \
+                      'Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+    @staticmethod
+    def get_links():
+        """
+        get all known links from Ariane Server
+        :return:
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = LinkService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for link in response.response_content['links']:
+                ret.append(Link.json_2_link(link))
+        else:
+            err_msg = 'Error while getting links. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
 
 class Link(object):
-    pass
+
+    @staticmethod
+    def json_2_link(json_obj):
+        return Link(
+            lid=json_obj['linkID'],
+            source_endpoint_id=json_obj['linkSEPID'],
+            target_endpoint_id=json_obj['linkTEPID'] if 'linkTEPID' in json_obj else None,
+            transport_id=json_obj['linkTRPID']
+        )
+
+    def link_2_json(self):
+        json_obj = {
+            'linkID': self.id,
+            'linkSEPID': self.sep_id,
+            'linkTEPID': self.tep_id,
+            'linkTRPID': self.trp_id
+        }
+        return json_obj
+
+    def __sync__(self):
+        """
+        synchronize this link with the Ariane server link
+        :return:
+        """
+        params = None
+        if self.id is not None:
+            params = {'ID': self.id}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = LinkService.requester.call(args)
+            if response.rc is 0:
+                json_obj = response.response_content
+                self.id = json_obj['linkID']
+                self.sep_id = json_obj['linkSEPID']
+                self.tep_id = json_obj['linkTEPID'] if 'linkTEPID' in json_obj else None
+                self.trp_id = json_obj['linkTRPID']
+
+    def __init__(self, lid=None, source_endpoint=None, source_endpoint_id=None, target_endpoint=None,
+                 target_endpoint_id=None, transport=None, transport_id=None):
+        self.id = lid
+        self.sep = source_endpoint
+        self.sep_id = source_endpoint_id
+        self.tep = target_endpoint
+        self.tep_id = target_endpoint_id
+        self.transport = transport
+        self.trp_id = transport_id
+
+    def save(self):
+        ok = True
+
+        if self.sep is not None:
+            if self.sep.id is None:
+                self.sep.save()
+            self.sep_id = self.sep.id
+
+        if self.tep is not None:
+            if self.tep.id is None:
+                self.tep.save()
+            self.tep_id = self.tep.id
+
+        if self.transport is not None:
+            if self.transport.id is None:
+                self.transport.save()
+            self.trp_id = self.transport.id
+
+        if self.id is None:
+            params = {
+                'SEPID': self.sep_id,
+                'TEPID': self.tep_id if self.tep_id is not None else 0,
+                'transportID': self.trp_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = LinkService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while saving link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                             ' }. Reason: ' + str(response.error_message))
+                ok = False
+            else:
+                self.id = response.response_content['linkID']
+        else:
+            params = {
+                'ID': self.id,
+                'SEPID': self.sep_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/sourceEP', 'parameters': params}
+            response = LinkService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                             ' }. Reason: ' + str(response.error_message))
+                ok = False
+
+            if ok:
+                params = {
+                    'ID': self.id,
+                    'TEPID': self.tep_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/targetEP', 'parameters': params}
+                response = LinkService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error('Error while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                                 ' }. Reason: ' + str(response.error_message))
+                    ok = False
+
+            if ok:
+                params = {
+                    'ID': self.id,
+                    'transportID': self.trp_id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/transport', 'parameters': params}
+                response = LinkService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error('Error while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                                 ' }. Reason: ' + str(response.error_message))
+                    ok = False
+
+        if self.sep is not None:
+            self.sep.__sync__()
+        if self.tep is not None:
+            self.tep.__sync__()
+        if self.transport is not None:
+            self.transport.__sync__()
+        self.__sync__()
+
+    def remove(self):
+        """
+        remove this link from Ariane server
+        :return:
+        """
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'ID': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = LinkService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 
 class TransportService(object):
@@ -1831,6 +2015,231 @@ class TransportService(object):
         args = {'repository_path': 'rest/mapping/domain/transports/'}
         TransportService.requester = mapping_driver.make_requester(args)
 
+    @staticmethod
+    def find_transport(tid=None):
+        """
+        find transport according to transport ID.
+        :param tid: transport id
+        :return: the transport if found or None if not found
+        """
+        ret = None
+        if tid is None or not tid:
+            raise exceptions.ArianeCallParametersError('id')
+
+        params = {
+            'ID': tid
+        }
+        args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+        response = TransportService.requester.call(args)
+        if response.rc == 0:
+            ret = Transport.json_2_transport(response.response_content)
+        else:
+            err_msg = 'Error while searching transport (id:' + str(tid) + '). ' + \
+                      'Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+    @staticmethod
+    def get_transports():
+        """
+        get all known transports from Ariane Server
+        :return:
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = TransportService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for transport in response.response_content['transports']:
+                ret.append(Transport.json_2_transport(transport))
+        else:
+            err_msg = 'Error while getting transports. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
 
 class Transport(object):
-    pass
+    @staticmethod
+    def json_2_transport(json_obj):
+        """
+
+        :param json_obj:
+        :return:
+        """
+        return Transport(
+            tid=json_obj['transportID'],
+            name=json_obj['transportName'],
+            properties=json_obj['transportProperties']  if 'transportProperties' in json_obj else None
+        )
+
+    def transport_2_json(self):
+        """
+
+        :return:
+        """
+        json_obj = {
+            'transportID': self.id,
+            'transportName': self.name,
+            'transportProperties': self.properties
+        }
+        return json_obj
+
+    def __sync__(self):
+        """
+        synchronize this transport with the Ariane server transport
+        :return:
+        """
+        params = None
+        if self.id is not None:
+            params = {'ID': self.id}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = TransportService.requester.call(args)
+            if response.rc is 0:
+                json_obj = response.response_content
+                self.id = json_obj['transportID']
+                self.name = json_obj['transportName']
+                self.properties = json_obj['transportProperties'] if 'transportProperties' in json_obj else None
+
+    def add_property(self, t_property_tuple, sync=True):
+        """
+        add property to this transport. if this transport has no id then it's like sync=False.
+        :param t_property_tuple: property tuple defined like this :
+               => property name = t_property_tuple[0]
+               => property value = t_property_tuple[1]
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the property tuple on list to be added on next save().
+        :return:
+        """
+        if not sync or self.id is None:
+            self.properties_2_add.append(t_property_tuple)
+        else:
+            params = MappingService.property_params(self.id, t_property_tuple[0], t_property_tuple[1])
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+            response = TransportService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
+
+    def del_property(self, t_property_name, sync=True):
+        """
+        delete property from this transport. if this transport has no id then it's like sync=False.
+        :param t_property_name: property name to remove
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the property name on list to be deleted on next save().
+        :return:
+        """
+        if not sync or self.id is None:
+            self.properties_2_rm.append(t_property_name)
+        else:
+            params = {
+                'ID': self.id,
+                'propertyName': t_property_name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+            response = TransportService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                self.__sync__()
+
+    def __init__(self, tid=None, name=None, properties=None):
+        """
+
+        :param tid:
+        :param name:
+        :param properties:
+        :return:
+        """
+        self.id = tid
+        self.name = name
+        self.properties = properties
+        self.properties_2_add = []
+        self.properties_2_rm = []
+
+    def save(self):
+        ok = True
+        if self.id is None:
+            params = {
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = TransportService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while saving transport {' + self.name +
+                             '}. Reason: ' + str(response.error_message))
+                ok = False
+            else:
+                self.id = response.response_content['transportID']
+        else:
+            params = {
+                'ID': self.id,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            response = TransportService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while updating transport {' + self.name +
+                             '}. Reason: ' + str(response.error_message))
+                ok = False
+
+        if ok and self.properties_2_add.__len__() > 0:
+            for t_property_tuple in self.properties_2_add:
+                params = MappingService.property_params(self.id, t_property_tuple[0], t_property_tuple[1])
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+                response = TransportService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+                    break
+            self.properties_2_add.clear()
+
+        if ok and self.properties_2_rm.__len__() > 0:
+            for t_property_name in self.properties_2_rm:
+                params = {
+                    'ID': self.id,
+                    'propertyName': t_property_name
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+                response = TransportService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.error(
+                        'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                        str(response.error_message)
+                    )
+                    break
+            self.properties_2_rm.clear()
+
+        self.__sync__()
+
+    def remove(self):
+        """
+        remove this transport from Ariane server
+        :return:
+        """
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'ID': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = TransportService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error(
+                    'Error while deleting transport ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
