@@ -31,17 +31,17 @@ class LinkTest(unittest.TestCase):
                                     primary_admin_gate_name="container name space (pid)", company="Docker",
                                     product="Docker", c_type="container")
         self.container1.save()
-        self.node1 = Node(name="mysqld", container_id=self.container1.cid)
+        self.node1 = Node(name="mysqld", container_id=self.container1.id)
         self.node1.save()
-        self.endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        self.endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
         self.endpoint1.save()
         self.container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
                                     primary_admin_gate_name="container name space (pid)", company="Docker",
                                     product="Docker", c_type="container")
         self.container2.save()
-        self.node2 = Node(name="mysql.cli", container_id=self.container2.cid)
+        self.node2 = Node(name="mysql.cli", container_id=self.container2.id)
         self.node2.save()
-        self.endpoint2 = Endpoint(url="mysql://test_container2:12385", parent_node_id=self.node1.nid)
+        self.endpoint2 = Endpoint(url="mysql://test_container2:12385", parent_node_id=self.node1.id)
         self.endpoint2.save()
         self.transport = Transport(name="transport_test")
         self.transport.save()

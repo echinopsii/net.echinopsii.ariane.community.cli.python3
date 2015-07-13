@@ -30,7 +30,7 @@ class ContainerTest(unittest.TestCase):
                                   primary_admin_gate_name="container name space (pid)", company="Docker",
                                   product="Docker", c_type="container")
         new_container.save()
-        self.assertIsNotNone(new_container.cid)
+        self.assertIsNotNone(new_container.id)
         self.assertIsNone(new_container.remove())
 
     def test_find_container_by_id(self):
@@ -40,9 +40,9 @@ class ContainerTest(unittest.TestCase):
                                   primary_admin_gate_name="container name space (pid)", company="Docker",
                                   product="Docker", c_type="container")
         new_container.save()
-        self.assertIsNotNone(ContainerService.find_container(cid=new_container.cid))
+        self.assertIsNotNone(ContainerService.find_container(cid=new_container.id))
         new_container.remove()
-        self.assertIsNone(ContainerService.find_container(cid=new_container.cid))
+        self.assertIsNone(ContainerService.find_container(cid=new_container.id))
 
     def test_find_container_by_primary_admin_gate_url(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
@@ -131,15 +131,15 @@ class ContainerTest(unittest.TestCase):
         self.assertIsNone(child_container.parent_container_id)
         container.save()
         self.assertFalse(child_container in container.child_containers_2_add)
-        self.assertTrue(child_container.cid in container.child_containers_id)
-        self.assertTrue(child_container.parent_container_id == container.cid)
+        self.assertTrue(child_container.id in container.child_containers_id)
+        self.assertTrue(child_container.parent_container_id == container.id)
         container.del_child_container(child_container, sync=False)
         self.assertTrue(child_container in container.child_containers_2_rm)
-        self.assertTrue(child_container.cid in container.child_containers_id)
-        self.assertTrue(child_container.parent_container_id == container.cid)
+        self.assertTrue(child_container.id in container.child_containers_id)
+        self.assertTrue(child_container.parent_container_id == container.id)
         container.save()
         self.assertFalse(child_container in container.child_containers_2_rm)
-        self.assertFalse(child_container.cid in container.child_containers_id)
+        self.assertFalse(child_container.id in container.child_containers_id)
         self.assertIsNone(child_container.parent_container_id)
         child_container.remove()
         container.remove()

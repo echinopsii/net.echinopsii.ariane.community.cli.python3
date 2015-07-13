@@ -30,7 +30,7 @@ class EndpointTest(unittest.TestCase):
                                     primary_admin_gate_name="container name space (pid)", company="Docker",
                                     product="Docker", c_type="container")
         self.container1.save()
-        self.node1 = Node(name="mysqld", container_id=self.container1.cid)
+        self.node1 = Node(name="mysqld", container_id=self.container1.id)
         self.node1.save()
 
     def tearDown(self):
@@ -38,13 +38,13 @@ class EndpointTest(unittest.TestCase):
         self.container1.remove()
 
     def test_create_remove_endpoint_basic(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertIsNotNone(endpoint.id)
-        self.node1.__sync__()
+        self.node1.sync()
         self.assertTrue(endpoint.id in self.node1.endpoints_id)
         self.assertIsNone(endpoint.remove())
-        self.node1.__sync__()
+        self.node1.sync()
         self.assertFalse(endpoint.id in self.node1.endpoints_id)
 
     def test_create_remove_endpoint_parent_node(self):
@@ -63,14 +63,14 @@ class EndpointTest(unittest.TestCase):
         container2.remove()
 
     def test_find_endpoint_by_id(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertIsNotNone(EndpointService.find_endpoint(eid=endpoint.id))
         endpoint.remove()
         self.assertIsNone(EndpointService.find_endpoint(eid=endpoint.id))
 
     def test_find_endpoint_by_url(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertIsNotNone(EndpointService.find_endpoint(url=endpoint.url))
         endpoint.remove()
@@ -78,7 +78,7 @@ class EndpointTest(unittest.TestCase):
 
     def test_get_endpoints(self):
         init_endpoint_count = EndpointService.get_endpoints().__len__()
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertEqual(EndpointService.get_endpoints().__len__(), init_endpoint_count + 1)
         endpoint.remove()
@@ -87,7 +87,7 @@ class EndpointTest(unittest.TestCase):
     def test_endpoint_properties(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
         endpoint.add_property(('int_prop', 10), sync=False)
         endpoint.add_property(('long_prop', 10000000), sync=False)
         endpoint.add_property(('double_prop', 3.1414), sync=False)
@@ -136,7 +136,7 @@ class EndpointTest(unittest.TestCase):
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node2 = Node(name="mysqld2", container=container2)
-        endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.nid)
+        endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
         endpoint2 = Endpoint(url="mysql://test_container2:4385", parent_node=node2)
         endpoint1.add_twin_endpoint(endpoint2, sync=False)
         self.assertTrue(endpoint2 in endpoint1.twin_endpoints_2_add)

@@ -195,27 +195,27 @@ class Cluster(object):
         :return: the JSON object
         """
         json_obj = {
-            'clusterID': self.cid,
+            'clusterID': self.id,
             'clusterName': self.name,
             'clusterContainersID': self.containers_id
         }
         return json_obj
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id
         :return:
         """
         params = None
-        if self.cid is not None:
-            params = {'ID': self.cid}
+        if self.id is not None:
+            params = {'ID': self.id}
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = ClusterService.requester.call(args)
             if response.rc is 0:
                 json_obj = response.response_content
-                self.cid = json_obj['clusterID']
+                self.id = json_obj['clusterID']
                 self.name = json_obj['clusterName']
                 self.containers_id = json_obj['clusterContainersID']
 
@@ -227,15 +227,15 @@ class Cluster(object):
         add the container object on list to be added on next save().
         :return:
         """
-        if not sync or self.cid is None:
+        if not sync or self.id is None:
             self.containers_2_add.append(container)
         else:
-            if container.cid is None:
+            if container.id is None:
                 container.save()
-            if container.cid is not None:
+            if container.id is not None:
                 params = {
-                    'ID': self.cid,
-                    'containerID': container.cid
+                    'ID': self.id,
+                    'containerID': container.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
                 response = ClusterService.requester.call(args)
@@ -245,8 +245,8 @@ class Cluster(object):
                         str(response.error_message)
                     )
                 else:
-                    self.containers_id.append(container.cid)
-                    container.cluster_id = self.cid
+                    self.containers_id.append(container.id)
+                    container.cluster_id = self.id
             else:
                 LOGGER.error(
                     'Error while updating cluster ' + self.name + ' name. Reason: container ' +
@@ -261,15 +261,15 @@ class Cluster(object):
         add the container object on list to be deleted on next save().
         :return:
         """
-        if not sync or self.cid is None:
+        if not sync or self.id is None:
             self.containers_2_rm.append(container)
         else:
-            if container.cid is None:
-                container.__sync__()
-            if container.cid is not None:
+            if container.id is None:
+                container.sync()
+            if container.id is not None:
                 params = {
-                    'ID': self.cid,
-                    'containerID': container.cid
+                    'ID': self.id,
+                    'containerID': container.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
                 response = ClusterService.requester.call(args)
@@ -279,7 +279,7 @@ class Cluster(object):
                         str(response.error_message)
                     )
                 else:
-                    self.containers_id.remove(container.cid)
+                    self.containers_id.remove(container.id)
                     container.cluster_id = None
             else:
                 LOGGER.error(
@@ -295,7 +295,7 @@ class Cluster(object):
         :param containers_id: containers id table
         :return:
         """
-        self.cid = cid
+        self.id = cid
         self.name = name
         self.containers_id = containers_id
         self.containers_2_add = []
@@ -307,7 +307,7 @@ class Cluster(object):
         :return:
         """
         ok = True
-        if self.cid is None:
+        if self.id is None:
             params = {
                 'name': self.name
             }
@@ -317,10 +317,10 @@ class Cluster(object):
                 LOGGER.error('Error while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
                 ok = False
             else:
-                self.cid = response.response_content['clusterID']
+                self.id = response.response_content['clusterID']
         else:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
@@ -333,12 +333,12 @@ class Cluster(object):
 
         if ok and self.containers_2_add.__len__() > 0:
             for container in self.containers_2_add:
-                if container.cid is None:
+                if container.id is None:
                     container.save()
-                if container.cid is not None:
+                if container.id is not None:
                     params = {
-                        'ID': self.cid,
-                        'containerID': container.cid
+                        'ID': self.id,
+                        'containerID': container.id
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
                     response = ClusterService.requester.call(args)
@@ -348,7 +348,7 @@ class Cluster(object):
                             str(response.error_message)
                         )
                     else:
-                        container.__sync__()
+                        container.sync()
                 else:
                     LOGGER.error(
                         'Error while updating cluster ' + self.name + ' name. Reason: container ' +
@@ -360,12 +360,12 @@ class Cluster(object):
 
         if ok and self.containers_2_rm.__len__() > 0:
             for container in self.containers_2_rm:
-                if container.cid is None:
+                if container.id is None:
                     container.save()
-                if container.cid is not None:
+                if container.id is not None:
                     params = {
-                        'ID': self.cid,
-                        'containerID': container.cid
+                        'ID': self.id,
+                        'containerID': container.id
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
                     response = ClusterService.requester.call(args)
@@ -375,7 +375,7 @@ class Cluster(object):
                             str(response.error_message)
                         )
                     else:
-                        container.__sync__()
+                        container.sync()
                 else:
                     LOGGER.error(
                         'Error while updating cluster ' + self.name + ' name. Reason: container ' +
@@ -384,14 +384,14 @@ class Cluster(object):
                     break
             self.containers_2_rm.clear()
 
-        self.__sync__()
+        self.sync()
 
     def remove(self):
         """
         remove this object from Ariane server
         :return:
         """
-        if self.cid is None:
+        if self.id is None:
             return None
         else:
             params = {
@@ -505,7 +505,7 @@ class Container(object):
         :return: the JSON object
         """
         json_obj = {
-            'containerID': self.cid,
+            'containerID': self.id,
             'containerName': self.name,
             'containerGateURI': self.gate_uri,
             'containerPrimaryAdminGateID': self.primary_admin_gate_id,
@@ -521,21 +521,21 @@ class Container(object):
         }
         return json_obj
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id
         :return:
         """
         params = None
-        if self.cid is not None:
-            params = {'ID': self.cid}
+        if self.id is not None:
+            params = {'ID': self.id}
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is 0:
                 json_obj = response.response_content
-                self.cid = json_obj['containerID']
+                self.id = json_obj['containerID']
                 self.name = json_obj['containerName']
                 self.gate_uri = json_obj['containerGateURI']
                 self.primary_admin_gate_id = json_obj['containerPrimaryAdminGateID']
@@ -560,10 +560,10 @@ class Container(object):
         add the property tuple object on list to be added on next save().
         :return:
         """
-        if not sync or self.cid is None:
+        if not sync or self.id is None:
             self.properties_2_add.append(c_property_tuple)
         else:
-            params = MappingService.property_params(self.cid, c_property_tuple[0], c_property_tuple[1])
+            params = MappingService.property_params(self.id, c_property_tuple[0], c_property_tuple[1])
 
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = ContainerService.requester.call(args)
@@ -573,7 +573,7 @@ class Container(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def del_property(self, c_property_name, sync=True):
         """
@@ -583,11 +583,11 @@ class Container(object):
         add the property name on list to be deleted on next save().
         :return:
         """
-        if not sync or self.cid is None:
+        if not sync or self.id is None:
             self.properties_2_rm.append(c_property_name)
         else:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'propertyName': c_property_name
             }
 
@@ -599,7 +599,7 @@ class Container(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def add_child_container(self, child_container, sync=True):
         """
@@ -608,15 +608,15 @@ class Container(object):
         :param sync:
         :return:
         """
-        if not sync or self.cid is None:
+        if not sync or self.id is None:
             self.child_containers_2_add.append(child_container)
         else:
-            if child_container.cid is None:
+            if child_container.id is None:
                 child_container.save()
-            if child_container.cid is not None:
+            if child_container.id is not None:
                 params = {
-                    'ID': self.cid,
-                    'childContainerID': child_container.cid
+                    'ID': self.id,
+                    'childContainerID': child_container.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add', 'parameters': params}
                 response = ContainerService.requester.call(args)
@@ -626,8 +626,8 @@ class Container(object):
                         str(response.error_message)
                     )
                 else:
-                    child_container.__sync__()
-                    self.__sync__()
+                    child_container.sync()
+                    self.sync()
 
     def del_child_container(self, child_container, sync=True):
         """
@@ -636,15 +636,15 @@ class Container(object):
         :param sync:
         :return:
         """
-        if not sync or self.cid is None:
+        if not sync or self.id is None:
             self.child_containers_2_rm.append(child_container)
         else:
-            if child_container.cid is None:
-                child_container.__sync__()
-            if child_container.cid is not None:
+            if child_container.id is None:
+                child_container.sync()
+            if child_container.id is not None:
                 params = {
-                    'ID': self.cid,
-                    'childContainerID': child_container.cid
+                    'ID': self.id,
+                    'childContainerID': child_container.id
                 }
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/childContainers/delete',
@@ -656,15 +656,15 @@ class Container(object):
                         str(response.error_message)
                     )
                 else:
-                    child_container.__sync__()
-                    self.__sync__()
+                    child_container.sync()
+                    self.sync()
 
     def __init__(self, cid=None, name=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
                  cluster_id=None, parent_container_id=None, child_containers_id=None, gates_id=None, nodes_id=None,
                  company=None, product=None, c_type=None, properties=None):
         """
         initialize container object
-        :param cid: container ID - return by Ariane server on save or __sync__
+        :param cid: container ID - return by Ariane server on save or sync
         :param name: container name (optional)
         :param gate_uri: primary admin gate uri
         :param primary_admin_gate_id: primary admin gate ID
@@ -678,7 +678,7 @@ class Container(object):
         :param properties: the container properties
         :return:
         """
-        self.cid = cid
+        self.id = cid
         self.name = name
         self.gate_uri = gate_uri
         self.primary_admin_gate_id = primary_admin_gate_id
@@ -707,7 +707,7 @@ class Container(object):
         :return:
         """
         ok = True
-        if self.cid is None:
+        if self.id is None:
             if self.name is None:
                 params = {
                     'primaryAdminGateURL': self.gate_uri,
@@ -726,11 +726,11 @@ class Container(object):
                              str(response.error_message))
                 ok = False
             else:
-                self.cid = response.response_content['containerID']
+                self.id = response.response_content['containerID']
                 self.primary_admin_gate_id = response.response_content['containerPrimaryAdminGateID']
         else:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'paGateID': self.primary_admin_gate_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/primaryAdminGate', 'parameters': params}
@@ -744,7 +744,7 @@ class Container(object):
 
             if ok and self.name is not None:
                 params = {
-                    'ID': self.cid,
+                    'ID': self.id,
                     'name': self.name
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
@@ -758,7 +758,7 @@ class Container(object):
 
         if ok and self.company is not None and self.company:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'company': self.company
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
@@ -772,7 +772,7 @@ class Container(object):
 
         if ok and self.product is not None and self.product:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'product': self.product
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/product', 'parameters': params}
@@ -786,7 +786,7 @@ class Container(object):
 
         if ok and self.type is not None and self.type:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'type': self.type
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
@@ -800,7 +800,7 @@ class Container(object):
 
         if ok and self.cluster_id is not None and self.cluster_id:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'clusterID': self.cluster_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/cluster', 'parameters': params}
@@ -814,7 +814,7 @@ class Container(object):
 
         if ok and self.parent_container_id is not None and self.parent_container_id:
             params = {
-                'ID': self.cid,
+                'ID': self.id,
                 'parentContainerID': self.parent_container_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/parentContainer', 'parameters': params}
@@ -828,7 +828,7 @@ class Container(object):
 
         if ok and self.properties_2_add.__len__() > 0:
             for c_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(self.cid, c_property_tuple[0], c_property_tuple[1])
+                params = MappingService.property_params(self.id, c_property_tuple[0], c_property_tuple[1])
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
@@ -843,7 +843,7 @@ class Container(object):
         if ok and self.properties_2_rm.__len__() > 0:
             for c_property_name in self.properties_2_rm:
                 params = {
-                    'ID': self.cid,
+                    'ID': self.id,
                     'propertyName': c_property_name
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
@@ -859,12 +859,12 @@ class Container(object):
 
         if ok and self.child_containers_2_add.__len__() > 0:
             for child_c in self.child_containers_2_add:
-                if child_c.cid is None:
+                if child_c.id is None:
                     child_c.save()
-                if child_c.cid is not None:
+                if child_c.id is not None:
                     params = {
-                        'ID': self.cid,
-                        'childContainerID': child_c.cid
+                        'ID': self.id,
+                        'childContainerID': child_c.id
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add',
                             'parameters': params}
@@ -877,17 +877,17 @@ class Container(object):
                         ok = False
                         break
                     else:
-                        child_c.__sync__()
+                        child_c.sync()
             self.child_containers_2_add.clear()
 
         if ok and self.child_containers_2_rm.__len__() > 0:
             for child_c in self.child_containers_2_rm:
-                if child_c.cid is None:
+                if child_c.id is None:
                     child_c.save()
-                if child_c.cid is not None:
+                if child_c.id is not None:
                     params = {
-                        'ID': self.cid,
-                        'childContainerID': child_c.cid
+                        'ID': self.id,
+                        'childContainerID': child_c.id
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/delete',
                             'parameters': params}
@@ -900,10 +900,10 @@ class Container(object):
                         ok = False
                         break
                     else:
-                        child_c.__sync__()
+                        child_c.sync()
             self.child_containers_2_rm.clear()
 
-        self.__sync__()
+        self.sync()
 
     def remove(self):
         """
@@ -1009,7 +1009,7 @@ class Node(object):
             child_nodes_id=json_obj['nodeChildNodeID'],
             twin_nodes_id=json_obj['nodeTwinNodeID'],
             endpoints_id=json_obj['nodeEndpointID'],
-            properties=json_obj['nodeProperties']
+            properties=json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
         )
 
     def node_2_json(self):
@@ -1018,7 +1018,7 @@ class Node(object):
         :return: JSON object
         """
         json_obj = {
-            'nodeID': self.nid,
+            'nodeID': self.id,
             'nodeName': self.name,
             'nodeDepth': self.depth,
             'nodeContainerID': self.container_id,
@@ -1030,21 +1030,21 @@ class Node(object):
         }
         return json_obj
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize this node with the Ariane server node
         :return:
         """
         params = None
-        if self.nid is not None:
-            params = {'ID': self.nid}
+        if self.id is not None:
+            params = {'ID': self.id}
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is 0:
                 json_obj = response.response_content
-                self.nid = json_obj['nodeID']
+                self.id = json_obj['nodeID']
                 self.name = json_obj['nodeName']
                 self.depth = json_obj['nodeDepth']
                 self.container_id = json_obj['nodeContainerID']
@@ -1072,7 +1072,7 @@ class Node(object):
         :param properties: node properties
         :return:
         """
-        self.nid = nid
+        self.id = nid
         self.name = name
         self.depth = ndepth
         self.container_id = container_id
@@ -1098,10 +1098,10 @@ class Node(object):
         add the property tuple on list to be added on next save().
         :return:
         """
-        if not sync or self.nid is None:
+        if not sync or self.id is None:
             self.properties_2_add.append(n_property_tuple)
         else:
-            params = MappingService.property_params(self.nid, n_property_tuple[0], n_property_tuple[1])
+            params = MappingService.property_params(self.id, n_property_tuple[0], n_property_tuple[1])
 
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = NodeService.requester.call(args)
@@ -1111,7 +1111,7 @@ class Node(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def del_property(self, n_property_name, sync=True):
         """
@@ -1121,11 +1121,11 @@ class Node(object):
         add the property name on list to be deleted on next save().
         :return:
         """
-        if not sync or self.nid is None:
+        if not sync or self.id is None:
             self.properties_2_rm.append(n_property_name)
         else:
             params = {
-                'ID': self.nid,
+                'ID': self.id,
                 'propertyName': n_property_name
             }
 
@@ -1137,7 +1137,7 @@ class Node(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def add_twin_node(self, twin_node, sync=True):
         """
@@ -1147,15 +1147,15 @@ class Node(object):
         add the node object on list to be added on next save()
         :return:
         """
-        if self.nid is None or not sync:
+        if self.id is None or not sync:
             self.twin_nodes_2_add.append(twin_node)
         else:
-            if twin_node.nid is None:
+            if twin_node.id is None:
                 twin_node.save()
-            if twin_node.nid is not None:
+            if twin_node.id is not None:
                 params = {
-                    'ID': self.nid,
-                    'twinNodeID': twin_node.nid
+                    'ID': self.id,
+                    'twinNodeID': twin_node.id
                 }
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/twinNodes/add',
@@ -1167,8 +1167,8 @@ class Node(object):
                         str(response.error_message)
                     )
                 else:
-                    twin_node.__sync__()
-                    self.__sync__()
+                    twin_node.sync()
+                    self.sync()
 
     def del_twin_node(self, twin_node, sync=True):
         """
@@ -1178,15 +1178,15 @@ class Node(object):
         the node on list to be deleted on next save()
         :return:
         """
-        if self.nid is None or not sync:
+        if self.id is None or not sync:
             self.twin_nodes_2_rm.append(twin_node)
         else:
-            if twin_node.nid is None:
-                twin_node.__sync__()
-            if twin_node.nid is not None:
+            if twin_node.id is None:
+                twin_node.sync()
+            if twin_node.id is not None:
                 params = {
-                    'ID': self.nid,
-                    'twinNodeID': twin_node.nid
+                    'ID': self.id,
+                    'twinNodeID': twin_node.id
                 }
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/twinNodes/delete',
@@ -1198,8 +1198,8 @@ class Node(object):
                         str(response.error_message)
                     )
                 else:
-                    twin_node.__sync__()
-                    self.__sync__()
+                    twin_node.sync()
+                    self.sync()
 
     def save(self):
         """
@@ -1209,16 +1209,16 @@ class Node(object):
         ok = True
 
         if self.container is not None:
-            if self.container.cid is None:
+            if self.container.id is None:
                 self.container.save()
-            self.container_id = self.container.cid
+            self.container_id = self.container.id
 
         if self.parent_node is not None:
-            if self.parent_node.nid is None:
+            if self.parent_node.id is None:
                 self.parent_node.save()
-            self.parent_node_id = self.parent_node.nid
+            self.parent_node_id = self.parent_node.id
 
-        if self.nid is None:
+        if self.id is None:
             params = {
                 'name': self.name,
                 'containerID': self.container_id,
@@ -1231,11 +1231,11 @@ class Node(object):
                              str(response.error_message))
                 ok = False
             else:
-                self.nid = response.response_content['nodeID']
+                self.id = response.response_content['nodeID']
                 self.depth = response.response_content['nodeDepth']
         else:
             params = {
-                'ID': self.nid,
+                'ID': self.id,
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
@@ -1247,7 +1247,7 @@ class Node(object):
 
             if ok:
                 params = {
-                    'ID': self.nid,
+                    'ID': self.id,
                     'containerID': self.container_id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/container', 'parameters': params}
@@ -1259,7 +1259,7 @@ class Node(object):
 
             if ok and self.parent_node_id is not None:
                 params = {
-                    'ID': self.nid,
+                    'ID': self.id,
                     'parentNodeID': self.parent_node_id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/parentNode', 'parameters': params}
@@ -1271,7 +1271,7 @@ class Node(object):
 
         if ok and self.properties_2_add.__len__() > 0:
             for n_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(self.nid, n_property_tuple[0], n_property_tuple[1])
+                params = MappingService.property_params(self.id, n_property_tuple[0], n_property_tuple[1])
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = NodeService.requester.call(args)
                 if response.rc is not 0:
@@ -1286,7 +1286,7 @@ class Node(object):
         if ok and self.properties_2_rm.__len__() > 0:
             for n_property_name in self.properties_2_rm:
                 params = {
-                    'ID': self.nid,
+                    'ID': self.id,
                     'propertyName': n_property_name
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
@@ -1302,12 +1302,12 @@ class Node(object):
 
         if ok and self.twin_nodes_2_add.__len__() > 0:
             for twin_node in self.twin_nodes_2_add:
-                if twin_node.nid is None:
+                if twin_node.id is None:
                     twin_node.save()
-                if twin_node.nid is not None:
+                if twin_node.id is not None:
                     params = {
-                        'ID': self.nid,
-                        'twinNodeID': twin_node.nid
+                        'ID': self.id,
+                        'twinNodeID': twin_node.id
                     }
                     args = {'http_operation': 'GET',
                             'operation_path': 'update/twinNodes/add',
@@ -1321,17 +1321,17 @@ class Node(object):
                         ok = False
                         break
                     else:
-                        twin_node.__sync__()
+                        twin_node.sync()
             self.twin_nodes_2_add.clear()
 
         if ok and self.twin_nodes_2_rm.__len__() > 0:
             for twin_node in self.twin_nodes_2_rm:
-                if twin_node.nid is None:
-                    twin_node.__sync__()
-                if twin_node.nid is not None:
+                if twin_node.id is None:
+                    twin_node.sync()
+                if twin_node.id is not None:
                     params = {
-                        'ID': self.nid,
-                        'twinNodeID': twin_node.nid
+                        'ID': self.id,
+                        'twinNodeID': twin_node.id
                     }
                     args = {'http_operation': 'GET',
                             'operation_path': 'update/twinNodes/delete',
@@ -1344,38 +1344,38 @@ class Node(object):
                         )
                         break
                     else:
-                        twin_node.__sync__()
+                        twin_node.sync()
             self.twin_nodes_2_rm.clear()
 
         if self.container is not None:
-            self.container.__sync__()
+            self.container.sync()
         if self.parent_node is not None:
-            self.parent_node.__sync__()
-        self.__sync__()
+            self.parent_node.sync()
+        self.sync()
 
     def remove(self):
         """
         remove this node from Ariane server
         :return:
         """
-        if self.nid is None:
+        if self.id is None:
             return None
         else:
             params = {
-                'ID': self.nid
+                'ID': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.error(
-                    'Error while deleting node ' + self.nid + '. Reason: ' + str(response.error_message)
+                    'Error while deleting node ' + self.id + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
                 if self.container is not None:
-                    self.container.__sync__()
+                    self.container.sync()
                 if self.parent_node is not None:
-                    self.parent_node.__sync__()
+                    self.parent_node.sync()
                 return None
 
 
@@ -1491,7 +1491,7 @@ class Endpoint(object):
         }
         return json_obj
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize this endpoint with the Ariane server endpoint
         :return:
@@ -1557,7 +1557,7 @@ class Endpoint(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def del_property(self, e_property_name, sync=True):
         """
@@ -1583,7 +1583,7 @@ class Endpoint(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def add_twin_endpoint(self, twin_endpoint, sync=True):
         """
@@ -1613,8 +1613,8 @@ class Endpoint(object):
                         str(response.error_message)
                     )
                 else:
-                    twin_endpoint.__sync__()
-                    self.__sync__()
+                    twin_endpoint.sync()
+                    self.sync()
 
     def del_twin_endpoint(self, twin_endpoint, sync=True):
         """
@@ -1628,7 +1628,7 @@ class Endpoint(object):
             self.twin_endpoints_2_rm.append(twin_endpoint)
         else:
             if twin_endpoint.id is None:
-                twin_endpoint.__sync__()
+                twin_endpoint.sync()
             if twin_endpoint.id is not None:
                 params = {
                     'ID': self.id,
@@ -1644,8 +1644,8 @@ class Endpoint(object):
                         str(response.error_message)
                     )
                 else:
-                    twin_endpoint.__sync__()
-                    self.__sync__()
+                    twin_endpoint.sync()
+                    self.sync()
 
     def save(self):
         """
@@ -1654,9 +1654,9 @@ class Endpoint(object):
         """
         ok = True
         if self.parent_node is not None:
-            if self.parent_node.nid is None:
+            if self.parent_node.id is None:
                 self.parent_node.save()
-            self.parent_node_id = self.parent_node.nid
+            self.parent_node_id = self.parent_node.id
 
         if self.id is None:
             params = {
@@ -1747,13 +1747,13 @@ class Endpoint(object):
                         ok = False
                         break
                     else:
-                        twin_endpoint.__sync__()
+                        twin_endpoint.sync()
             self.twin_endpoints_2_add.clear()
 
         if ok and self.twin_endpoints_2_rm.__len__() > 0:
             for twin_endpoint in self.twin_endpoints_2_rm:
                 if twin_endpoint.id is None:
-                    twin_endpoint.__sync__()
+                    twin_endpoint.sync()
                 if twin_endpoint.id is not None:
                     params = {
                         'ID': self.id,
@@ -1770,12 +1770,12 @@ class Endpoint(object):
                         )
                         break
                     else:
-                        twin_endpoint.__sync__()
+                        twin_endpoint.sync()
             self.twin_endpoints_2_rm.clear()
 
         if self.parent_node is not None:
-            self.parent_node.__sync__()
-        self.__sync__()
+            self.parent_node.sync()
+        self.sync()
 
     def remove(self):
         """
@@ -1797,7 +1797,7 @@ class Endpoint(object):
                 return self
             else:
                 if self.parent_node is not None:
-                    self.parent_node.__sync__()
+                    self.parent_node.sync()
                 return None
 
 
@@ -1876,7 +1876,7 @@ class Link(object):
         }
         return json_obj
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize this link with the Ariane server link
         :return:
@@ -1974,12 +1974,12 @@ class Link(object):
                     ok = False
 
         if self.sep is not None:
-            self.sep.__sync__()
+            self.sep.sync()
         if self.tep is not None:
-            self.tep.__sync__()
+            self.tep.sync()
         if self.transport is not None:
-            self.transport.__sync__()
-        self.__sync__()
+            self.transport.sync()
+        self.sync()
 
     def remove(self):
         """
@@ -2084,7 +2084,7 @@ class Transport(object):
         }
         return json_obj
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize this transport with the Ariane server transport
         :return:
@@ -2124,7 +2124,7 @@ class Transport(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def del_property(self, t_property_name, sync=True):
         """
@@ -2149,7 +2149,7 @@ class Transport(object):
                     str(response.error_message)
                 )
             else:
-                self.__sync__()
+                self.sync()
 
     def __init__(self, tid=None, name=None, properties=None):
         """
@@ -2221,7 +2221,7 @@ class Transport(object):
                     break
             self.properties_2_rm.clear()
 
-        self.__sync__()
+        self.sync()
 
     def remove(self):
         """
