@@ -1391,9 +1391,127 @@ class GateService(object):
         args = {'repository_path': 'rest/mapping/domain/gates/'}
         GateService.requester = mapping_driver.make_requester(args)
 
+    @staticmethod
+    def find_gate(nid=None):
+        """
+        find gate according node ID.
+        :param nid: node id
+        :return: the gate if found or None if not found
+        """
+        ret = None
+        if nid is None or not nid:
+            raise exceptions.ArianeCallParametersError('id')
+        params = {'ID': nid}
+        args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+        response = GateService.requester.call(args)
+        if response.rc == 0:
+            ret = Gate.json_2_gate(response.response_content)
+        else:
+            err_msg = 'Error while searching gate (id:' + str(nid) + ' ). ' + \
+                      'Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+    @staticmethod
+    def get_gates():
+        """
+        get all gates known on the Ariane server
+        :return:
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = GateService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for gate in response.response_content['gates']:
+                ret.append(Gate.json_2_gate(gate))
+        else:
+            err_msg = 'Error while getting nodes. Reason: ' + str(response.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
 
 class Gate(Node):
-    pass
+    @staticmethod
+    def json_2_gate(json_obj):
+        node = Node.json_2_node(json_obj['node'])
+        container_gate_primary_admin_endpoint_id = json_obj['containerGatePrimaryAdminEndpointID']
+        return Gate(node=node, container_gate_primary_admin_endpoint_id=container_gate_primary_admin_endpoint_id)
+
+    def gate_2_json(self):
+        json_obj = {
+            'node': super(Gate, self).node_2_json(),
+            'containerGatePrimaryAdminEndpointID': self.primary_admin_endpoint_id
+        }
+        return json_obj
+
+    def sync(self):
+        params = None
+        if self.id is not None:
+            params = {'ID': self.id}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = GateService.requester.call(args)
+            if response.rc is 0:
+                json_obj = response.response_content
+                node = json_obj['node']
+                self.id = node['nodeID']
+                self.name = node['nodeName']
+                self.depth = node['nodeDepth']
+                self.container_id = node['nodeContainerID']
+                self.parent_node_id = node['nodeParentNodeID'] if 'nodeParentNodeID' in node else None
+                self.child_nodes_id = node['nodeChildNodeID']
+                self.twin_nodes_id = node['nodeTwinNodeID']
+                self.endpoints_id = node['nodeEndpointID']
+                self.properties = node['nodeProperties'] if 'nodeProperties' in node else None
+                self.primary_admin_endpoint_id = json_obj['containerGatePrimaryAdminEndpointID']
+
+    def __init__(self, node=None, container_gate_primary_admin_endpoint_id=None,
+                 url=None, name=None, container_id=None, container=None, is_primary_admin=None):
+        if node is not None:
+            super(Gate, self).__init__(nid=node.id, name=node.name, ndepth=node.depth, container_id=node.container_id,
+                                       child_nodes_id=node.child_nodes_id, twin_nodes_id=node.twin_nodes_id,
+                                       endpoints_id=node.endpoints_id, properties=node.properties)
+            self.primary_admin_endpoint_id = container_gate_primary_admin_endpoint_id
+        else:
+            super(Gate, self).__init__()
+            self.url = url
+            self.name = name
+            self.container_id = container_id
+            self.container = container
+            self.is_primary_admin = is_primary_admin
+
+    def save(self):
+        ok = True
+
+        if self.container is not None:
+            if self.container.id is None:
+                self.container.save()
+            self.container_id = self.container.id
+
+        if self.id is None:
+            params = {
+                'URL': self.url,
+                'name': self.name,
+                'containerID': self.container_id,
+                'isPrimaryAdmin': self.is_primary_admin
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = GateService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.error('Error while saving node' + self.name + '. Reason: ' +
+                             str(response.error_message))
+                ok = False
+            else:
+                self.id = response.response_content['node']['nodeID']
+
+        super(Gate, self).save()
+
+        self.sync()
+
+    def remove(self):
+        super(Gate, self).remove()
 
 
 class EndpointService(object):
