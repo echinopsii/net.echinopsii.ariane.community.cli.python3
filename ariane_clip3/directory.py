@@ -142,7 +142,7 @@ class Datacenter(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -255,7 +255,7 @@ class Datacenter(object):
             self.routing_areas_2_rm.append(routing_area)
         else:
             if self.id is not None and routing_area.id is None:
-                routing_area.__sync__()
+                routing_area.sync()
             if self.id is not None and routing_area.id is not None:
                 params = {
                     'id': self.id,
@@ -442,7 +442,7 @@ class Datacenter(object):
                         break
                     else:
                         self.routing_areas_2_add.remove(routing_area)
-                        routing_area.__sync__()
+                        routing_area.sync()
                 else:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' name. Reason: routing area ' +
@@ -454,7 +454,7 @@ class Datacenter(object):
         if ok and self.routing_areas_2_rm.__len__() > 0:
             for routing_area in self.routing_areas_2_rm:
                 if routing_area.id is None:
-                    routing_area.__sync__()
+                    routing_area.sync()
                 if routing_area.id is not None:
                     params = {
                         'id': self.id,
@@ -472,7 +472,7 @@ class Datacenter(object):
                         break
                     else:
                         self.routing_areas_2_rm.remove(routing_area)
-                        routing_area.__sync__()
+                        routing_area.sync()
                 else:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' name. Reason: routing area ' +
@@ -501,7 +501,7 @@ class Datacenter(object):
                         break
                     else:
                         self.subnets_2_add.remove(subnet)
-                        subnet.__sync__()
+                        subnet.sync()
                 else:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
@@ -513,7 +513,7 @@ class Datacenter(object):
         if ok and self.subnets_2_rm.__len__() > 0:
             for subnet in self.subnets_2_rm:
                 if subnet.id is None:
-                    subnet.__sync__()
+                    subnet.sync()
                 if subnet.id is not None:
                     params = {
                         'id': self.id,
@@ -530,7 +530,7 @@ class Datacenter(object):
                         break
                     else:
                         self.subnets_2_rm.remove(subnet)
-                        subnet.__sync__()
+                        subnet.sync()
                 else:
                     LOGGER.error(
                         'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
@@ -539,7 +539,7 @@ class Datacenter(object):
                     #ok = False
                     break
 
-        self.__sync__()
+        self.sync()
 
         return self
 
@@ -667,7 +667,7 @@ class RoutingArea(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -766,7 +766,7 @@ class RoutingArea(object):
             self.dc_2_rm.append(datacenter)
         else:
             if datacenter.id is None:
-                datacenter.__sync__()
+                datacenter.sync()
             if self.id is not None and datacenter.id is not None:
                 params = {
                     'id': self.id,
@@ -884,7 +884,7 @@ class RoutingArea(object):
                         break
                     else:
                         self.dc_2_add.remove(datacenter)
-                        datacenter.__sync__()
+                        datacenter.sync()
                 else:
                     LOGGER.error(
                         'Error while updating routing area ' + self.name + ' name. Reason: datacenter ' +
@@ -896,7 +896,7 @@ class RoutingArea(object):
         if ok and self.dc_2_rm.__len__() > 0:
             for datacenter in self.dc_2_rm:
                 if datacenter.id is None:
-                    datacenter.__sync__()
+                    datacenter.sync()
                 if datacenter.id is not None:
                     params = {
                         'id': self.id,
@@ -914,7 +914,7 @@ class RoutingArea(object):
                         break
                     else:
                         self.dc_2_rm.remove(datacenter)
-                        datacenter.__sync__()
+                        datacenter.sync()
                 else:
                     LOGGER.error(
                         'Error while updating routing area ' + self.name + ' name. Reason: datacenter ' +
@@ -922,7 +922,7 @@ class RoutingArea(object):
                     )
                     #ok = False
                     break
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
@@ -1045,7 +1045,7 @@ class Subnet(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -1151,7 +1151,7 @@ class Subnet(object):
             self.dc_2_rm.append(datacenter)
         else:
             if datacenter.id is None:
-                datacenter.__sync__()
+                datacenter.sync()
             if self.id is not None and datacenter.id is not None:
                 params = {
                     'id': self.id,
@@ -1219,7 +1219,7 @@ class Subnet(object):
             self.osi_2_rm.append(os_instance)
         else:
             if os_instance.id is None:
-                os_instance.__sync__()
+                os_instance.sync()
             if self.id is not None and os_instance.id is not None:
                 params = {
                     'id': self.id,
@@ -1352,7 +1352,7 @@ class Subnet(object):
                         break
                     else:
                         self.dc_2_add.remove(datacenter)
-                        datacenter.__sync__()
+                        datacenter.sync()
                 else:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
@@ -1364,7 +1364,7 @@ class Subnet(object):
         if ok and self.dc_2_rm.__len__() > 0:
             for datacenter in self.dc_2_rm:
                 if datacenter.id is None:
-                    datacenter.__sync__()
+                    datacenter.sync()
                 if datacenter.id is not None:
                     params = {
                         'id': self.id,
@@ -1382,7 +1382,7 @@ class Subnet(object):
                         break
                     else:
                         self.dc_2_rm.remove(datacenter)
-                        datacenter.__sync__()
+                        datacenter.sync()
                 else:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
@@ -1411,7 +1411,7 @@ class Subnet(object):
                         break
                     else:
                         self.osi_2_add.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
@@ -1423,7 +1423,7 @@ class Subnet(object):
         if ok and self.osi_2_rm.__len__() > 0:
             for osi in self.osi_2_rm:
                 if osi.id is None:
-                    osi.__sync__()
+                    osi.sync()
                 if osi.id is not None:
                     params = {
                         'id': self.id,
@@ -1441,7 +1441,7 @@ class Subnet(object):
                         break
                     else:
                         self.osi_2_rm.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
@@ -1450,7 +1450,7 @@ class Subnet(object):
                     #ok = False
                     break
 
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
@@ -1563,7 +1563,7 @@ class IPAddress(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (priority) or name
         :return:
@@ -1808,7 +1808,7 @@ class OSInstance(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -2056,7 +2056,7 @@ class OSInstance(object):
                     )
                 else:
                     self.embedded_osi_ids.append(e_osi.id)
-                    e_osi.__sync__()
+                    e_osi.sync()
             else:
                 LOGGER.error(
                     'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
@@ -2092,7 +2092,7 @@ class OSInstance(object):
                     )
                 else:
                     self.embedded_osi_ids.remove(e_osi.id)
-                    e_osi.__sync__()
+                    e_osi.sync()
             else:
                 LOGGER.error(
                     'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
@@ -2409,7 +2409,7 @@ class OSInstance(object):
                         break
                     else:
                         self.subnets_2_add.remove(subnet)
-                        subnet.__sync__()
+                        subnet.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
@@ -2421,7 +2421,7 @@ class OSInstance(object):
         if ok and self.subnets_2_rm.__len__() > 0:
             for subnet in self.subnets_2_rm:
                 if subnet.id is None:
-                    subnet.__sync__()
+                    subnet.sync()
                 if subnet.id is not None:
                     params = {
                         'id': self.id,
@@ -2439,7 +2439,7 @@ class OSInstance(object):
                         break
                     else:
                         self.subnets_2_rm.remove(subnet)
-                        subnet.__sync__()
+                        subnet.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
@@ -2469,7 +2469,7 @@ class OSInstance(object):
                         break
                     else:
                         self.embedded_osi_2_add.remove(embedded_osi)
-                        embedded_osi.__sync__()
+                        embedded_osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
@@ -2481,7 +2481,7 @@ class OSInstance(object):
         if ok and self.embedded_osi_2_rm.__len__() > 0:
             for embedded_osi in self.embedded_osi_2_rm:
                 if embedded_osi.id is None:
-                    embedded_osi.__sync__()
+                    embedded_osi.sync()
                 if embedded_osi.id is not None:
                     params = {
                         'id': self.id,
@@ -2499,7 +2499,7 @@ class OSInstance(object):
                         break
                     else:
                         self.embedded_osi_2_rm.remove(embedded_osi)
-                        embedded_osi.__sync__()
+                        embedded_osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
@@ -2529,7 +2529,7 @@ class OSInstance(object):
                         break
                     else:
                         self.ipAddress_2_add.remove(ipAddress_osi)
-                        ipAddress_osi.__sync__()
+                        ipAddress_osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
@@ -2559,7 +2559,7 @@ class OSInstance(object):
                         break
                     else:
                         self.ipAddress_2_rm.remove(ipAddress_osi)
-                        ipAddress_osi.__sync__()
+                        ipAddress_osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
@@ -2589,7 +2589,7 @@ class OSInstance(object):
                         break
                     else:
                         self.application_2_add.remove(application)
-                        application.__sync__()
+                        application.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
@@ -2601,7 +2601,7 @@ class OSInstance(object):
         if ok and self.application_2_rm.__len__() > 0:
             for application in self.application_2_rm:
                 if application.id is None:
-                    application.__sync__()
+                    application.sync()
                 if application.id is not None:
                     params = {
                         'id': self.id,
@@ -2619,7 +2619,7 @@ class OSInstance(object):
                         break
                     else:
                         self.application_2_rm.remove(application)
-                        application.__sync__()
+                        application.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
@@ -2649,7 +2649,7 @@ class OSInstance(object):
                         break
                     else:
                         self.environment_2_add.remove(environment)
-                        environment.__sync__()
+                        environment.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: environment ' +
@@ -2661,7 +2661,7 @@ class OSInstance(object):
         if ok and self.environment_2_rm.__len__() > 0:
             for environment in self.environment_2_rm:
                 if environment.id is None:
-                    environment.__sync__()
+                    environment.sync()
                 if environment.id is not None:
                     params = {
                         'id': self.id,
@@ -2679,7 +2679,7 @@ class OSInstance(object):
                         break
                     else:
                         self.environment_2_rm.remove(environment)
-                        environment.__sync__()
+                        environment.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: environment ' +
@@ -2709,7 +2709,7 @@ class OSInstance(object):
                         break
                     else:
                         self.team_2_add.remove(team)
-                        team.__sync__()
+                        team.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: team ' +
@@ -2721,7 +2721,7 @@ class OSInstance(object):
         if ok and self.team_2_rm.__len__() > 0:
             for team in self.team_2_rm:
                 if team.id is None:
-                    team.__sync__()
+                    team.sync()
                 if team.id is not None:
                     params = {
                         'id': self.id,
@@ -2738,7 +2738,7 @@ class OSInstance(object):
                         break
                     else:
                         self.team_2_rm.remove(team)
-                        team.__sync__()
+                        team.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS instance ' + self.name + ' name. Reason: team ' +
@@ -2746,7 +2746,7 @@ class OSInstance(object):
                     )
                     break
 
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
@@ -2861,7 +2861,7 @@ class OSType(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -2937,7 +2937,7 @@ class OSType(object):
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
-                    os_instance.__sync__()
+                    os_instance.sync()
             else:
                 LOGGER.error(
                     'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
@@ -2956,7 +2956,7 @@ class OSType(object):
             self.osi_2_rm.append(os_instance)
         else:
             if os_instance.id is None:
-                os_instance.__sync__()
+                os_instance.sync()
             if self.id is not None and os_instance.id is not None:
                 params = {
                     'id': self.id,
@@ -2971,7 +2971,7 @@ class OSType(object):
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
-                    os_instance.__sync__()
+                    os_instance.sync()
             else:
                 LOGGER.error(
                     'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
@@ -3057,7 +3057,7 @@ class OSType(object):
                         break
                     else:
                         self.osi_2_add.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
@@ -3069,7 +3069,7 @@ class OSType(object):
         if ok and self.osi_2_rm.__len__() > 0:
             for osi in self.osi_2_rm:
                 if osi.id is None:
-                    osi.__sync__()
+                    osi.sync()
                 if osi.id is not None:
                     params = {
                         'id': self.id,
@@ -3087,7 +3087,7 @@ class OSType(object):
                         break
                     else:
                         self.osi_2_rm.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
@@ -3096,7 +3096,7 @@ class OSType(object):
                     #ok = False
                     break
 
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
@@ -3216,7 +3216,7 @@ class Application(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -3323,7 +3323,7 @@ class Application(object):
             self.osi_2_rm.append(os_instance)
         else:
             if os_instance.id is None:
-                os_instance.__sync__()
+                os_instance.sync()
             if self.id is not None and os_instance.id is not None:
                 params = {
                     'id': self.id,
@@ -3469,7 +3469,7 @@ class Application(object):
                         break
                     else:
                         self.osi_2_add.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating application ' + self.name + ' name. Reason: OS instance ' +
@@ -3481,7 +3481,7 @@ class Application(object):
         if ok and self.osi_2_rm.__len__() > 0:
             for osi in self.osi_2_rm:
                 if osi.id is None:
-                    osi.__sync__()
+                    osi.sync()
                 if osi.id is not None:
                     params = {
                         'id': self.id,
@@ -3499,7 +3499,7 @@ class Application(object):
                         break
                     else:
                         self.osi_2_rm.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating application ' + self.name + ' name. Reason: OS instance ' +
@@ -3508,7 +3508,7 @@ class Application(object):
                     #ok = False
                     break
 
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
@@ -3618,7 +3618,7 @@ class Company(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -3693,7 +3693,7 @@ class Company(object):
                     )
                 else:
                     self.applications_ids.append(application.id)
-                    application.__sync__()
+                    application.sync()
             else:
                 LOGGER.error(
                     'Error while updating company ' + self.name + ' name. Reason: application ' +
@@ -3712,7 +3712,7 @@ class Company(object):
             self.applications_2_rm.append(application)
         else:
             if application.id is None:
-                application.__sync__()
+                application.sync()
             if self.id is not None and application.id is not None:
                 params = {
                     'id': self.id,
@@ -3727,7 +3727,7 @@ class Company(object):
                     )
                 else:
                     self.applications_ids.remove(application.id)
-                    application.__sync__()
+                    application.sync()
             else:
                 LOGGER.error(
                     'Error while updating company ' + self.name + ' name. Reason: application ' +
@@ -3761,7 +3761,7 @@ class Company(object):
                     )
                 else:
                     self.ost_ids.append(ostype.id)
-                    ostype.__sync__()
+                    ostype.sync()
             else:
                 LOGGER.error(
                     'Error while updating company ' + self.name + ' name. Reason: ostype ' +
@@ -3780,7 +3780,7 @@ class Company(object):
             self.ost_2_rm.append(ostype)
         else:
             if ostype.id is None:
-                ostype.__sync__()
+                ostype.sync()
             if self.id is not None and ostype.id is not None:
                 params = {
                     'id': self.id,
@@ -3795,7 +3795,7 @@ class Company(object):
                     )
                 else:
                     self.ost_ids.remove(ostype.id)
-                    ostype.__sync__()
+                    ostype.sync()
             else:
                 LOGGER.error(
                     'Error while updating company ' + self.name + ' name. Reason: ostype ' +
@@ -3869,7 +3869,7 @@ class Company(object):
                         break
                     else:
                         self.applications_2_add.remove(application)
-                        application.__sync__()
+                        application.sync()
                 else:
                     LOGGER.error(
                         'Error while updating company ' + self.name + ' name. Reason: application ' +
@@ -3899,7 +3899,7 @@ class Company(object):
                         break
                     else:
                         self.applications_2_rm.remove(application)
-                        application.__sync__()
+                        application.sync()
                 else:
                     LOGGER.error(
                         'Error while updating company ' + self.name + ' name. Reason: application ' +
@@ -3929,7 +3929,7 @@ class Company(object):
                         break
                     else:
                         self.ost_2_add.remove(os_type)
-                        os_type.__sync__()
+                        os_type.sync()
                 else:
                     LOGGER.error(
                         'Error while updating company ' + self.name + ' name. Reason: os_type ' +
@@ -3959,7 +3959,7 @@ class Company(object):
                         break
                     else:
                         self.ost_2_rm.remove(os_type)
-                        os_type.__sync__()
+                        os_type.sync()
                 else:
                     LOGGER.error(
                         'Error while updating company ' + self.name + ' name. Reason: os_type ' +
@@ -3968,7 +3968,7 @@ class Company(object):
                     #ok = False
                     break
 
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
@@ -4082,7 +4082,7 @@ class Environment(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -4174,7 +4174,7 @@ class Environment(object):
             self.osi_2_rm.append(os_instance)
         else:
             if os_instance.id is None:
-                os_instance.__sync__()
+                os_instance.sync()
             if self.id is not None and os_instance.id is not None:
                 params = {
                     'id': self.id,
@@ -4276,7 +4276,7 @@ class Environment(object):
                         break
                     else:
                         self.osi_2_add.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating environment ' + self.name + ' name. Reason: OS instance ' +
@@ -4288,7 +4288,7 @@ class Environment(object):
         if ok and self.osi_2_rm.__len__() > 0:
             for osi in self.osi_2_rm:
                 if osi.id is None:
-                    osi.__sync__()
+                    osi.sync()
                 if osi.id is not None:
                     params = {
                         'id': self.id,
@@ -4306,7 +4306,7 @@ class Environment(object):
                         break
                     else:
                         self.osi_2_rm.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating environment ' + self.name + ' name. Reason: OS instance ' +
@@ -4315,7 +4315,7 @@ class Environment(object):
                     #ok = False
                     break
 
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
@@ -4432,7 +4432,7 @@ class Team(object):
         }
         return json.dumps(json_obj)
 
-    def __sync__(self):
+    def sync(self):
         """
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
@@ -4529,7 +4529,7 @@ class Team(object):
             self.osi_2_rm.append(os_instance)
         else:
             if os_instance.id is None:
-                os_instance.__sync__()
+                os_instance.sync()
             if self.id is not None and os_instance.id is not None:
                 params = {
                     'id': self.id,
@@ -4578,7 +4578,7 @@ class Team(object):
                     )
                 else:
                     self.app_ids.append(application.id)
-                    application.__sync__()
+                    application.sync()
             else:
                 LOGGER.error(
                     'Error while updating team ' + self.name + ' name. Reason: application ' +
@@ -4597,7 +4597,7 @@ class Team(object):
             self.app_2_rm.append(application)
         else:
             if application.id is None:
-                application.__sync__()
+                application.sync()
             if self.id is not None and application.id is not None:
                 params = {
                     'id': self.id,
@@ -4612,7 +4612,7 @@ class Team(object):
                     )
                 else:
                     self.app_ids.remove(application.id)
-                    application.__sync__()
+                    application.sync()
             else:
                 LOGGER.error(
                     'Error while updating team ' + self.name + ' name. Reason: application ' +
@@ -4699,7 +4699,7 @@ class Team(object):
                         break
                     else:
                         self.osi_2_add.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
@@ -4711,7 +4711,7 @@ class Team(object):
         if ok and self.osi_2_rm.__len__() > 0:
             for osi in self.osi_2_rm:
                 if osi.id is None:
-                    osi.__sync__()
+                    osi.sync()
                 if osi.id is not None:
                     params = {
                         'id': self.id,
@@ -4729,7 +4729,7 @@ class Team(object):
                         break
                     else:
                         self.osi_2_rm.remove(osi)
-                        osi.__sync__()
+                        osi.sync()
                 else:
                     LOGGER.error(
                         'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
@@ -4759,7 +4759,7 @@ class Team(object):
                         break
                     else:
                         self.app_2_add.remove(application)
-                        application.__sync__()
+                        application.sync()
                 else:
                     LOGGER.error(
                         'Error while updating team ' + self.name + ' name. Reason: application ' +
@@ -4789,7 +4789,7 @@ class Team(object):
                         break
                     else:
                         self.app_2_rm.remove(application)
-                        application.__sync__()
+                        application.sync()
                 else:
                     LOGGER.error(
                         'Error while updating team ' + self.name + ' name. Reason: application ' +
@@ -4798,7 +4798,7 @@ class Team(object):
                     #ok = False
                     break
 
-        self.__sync__()
+        self.sync()
         return self
 
     def remove(self):
