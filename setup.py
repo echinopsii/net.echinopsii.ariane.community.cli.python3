@@ -19,7 +19,7 @@ long_description = ('Ariane CLIP3 (client python 3) is the python implementation
                     '   + http://confluence.echinopsii.net/confluence/display/AD/Ariane+Documentation+Home'
                     '   + IRC on freenode #ariane.echinopsii')
 
-setup(name='ariane_clip3',
+setup(name='ariane-clip3',
       version='0.1.0-b02',
       description='Ariane Python API Library',
       long_description=long_description,

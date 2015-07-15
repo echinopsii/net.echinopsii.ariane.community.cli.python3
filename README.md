@@ -6,7 +6,7 @@ Ariane Community CLI For Python 3
 # Installation
 
 ```
-pip3 install ariane_clip3
+pip3 install ariane-clip3
 ```
 
 Documentation coming soon...
