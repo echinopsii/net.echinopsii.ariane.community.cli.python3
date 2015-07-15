@@ -36,7 +36,7 @@ setup(name='ariane_clip3',
       classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',
-          'License :: OSI Approved :: GNU Affero General Public License v3'
+          'License :: OSI Approved :: GNU Affero General Public License v3',
           'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
           'Natural Language :: English',
           'Operating System :: OS Independent',
@@ -46,7 +46,6 @@ setup(name='ariane_clip3',
           'Topic :: Internet',
           'Topic :: Software Development :: Libraries',
           'Topic :: Software Development :: Libraries :: Python Modules',
-          'Topic :: Software Development :: Libraries :: Application Framework',
           'Topic :: System :: Monitoring',
           'Topic :: System :: Networking'],
       zip_safe=True)
