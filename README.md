@@ -8,7 +8,7 @@ Note: this is a beta version. First stable release is scheduled for September.
 # Installation
 
 ```
-pip3 install --pre ariane-clip3
+pip3 install --pre ariane_clip3
 ```
 
 Documentation coming soon...
