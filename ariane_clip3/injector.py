@@ -81,6 +81,10 @@ class InjectorService(object):
         :return:
         """
         self.driver.stop()
+        InjectorUITreeService.requester = None
+        InjectorCachedRegistryFactoryService.requester = None
+        InjectorCachedComponentService.requester = None
+        InjectorCachedGearService.requester = None
 
 
 class InjectorUITreeService(object):
@@ -496,6 +500,25 @@ class InjectorCachedComponentService(object):
         return ret
 
     @staticmethod
+    def get_components_cache_size():
+        """
+        :return: the Ariane components cache size defined by InjectorCachedComponentService.cache_id
+        """
+        ret = None
+        args = {'properties': {'OPERATION': 'COUNT_COMPONENTS_CACHE',
+                               'CACHE_ID': InjectorCachedComponentService.cache_id}}
+
+        result = InjectorCachedComponentService.requester.call(args).get()
+        if result.rc == 0:
+            ret = int(result.response_content)
+        else:
+            err_msg = 'Error while getting components cache size' +\
+                      'Reason: ' + str(result.error_message)
+            LOGGER.error(err_msg)
+        return ret
+
+
+    @staticmethod
     def make_refresh_on_demand_service(injector_component):
         """
         create a refresh on demand service listening to refresh order on the component admin queue
@@ -783,6 +806,24 @@ class InjectorCachedGearService(object):
             InjectorCachedGearService.requester.start()
             InjectorCachedGearService.cache_id = cache_id
             InjectorCachedGearService.driver = injector_driver
+
+    @staticmethod
+    def get_gears_cache_size():
+        """
+        :return: the Ariane gears cache size defined by InjectorCachedGearService.cache_id
+        """
+        ret = None
+        args = {'properties': {'OPERATION': 'COUNT_GEARS_CACHE',
+                               'CACHE_ID': InjectorCachedGearService.cache_id}}
+
+        result = InjectorCachedGearService.requester.call(args).get()
+        if result.rc == 0:
+            ret = int(result.response_content)
+        else:
+            err_msg = 'Error while getting gears cache size' + \
+                      'Reason: ' + str(result.error_message)
+            LOGGER.error(err_msg)
+        return ret
 
     @staticmethod
     def make_admin_on_demand_service(injector_gear):

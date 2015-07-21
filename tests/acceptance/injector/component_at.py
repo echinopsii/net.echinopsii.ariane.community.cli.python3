@@ -104,6 +104,7 @@ class InjectorComponentTest(unittest.TestCase):
         retrieved_component = InjectorCachedComponentService.find_component(
             component.cache_id().get())
         self.assertIsNotNone(retrieved_component)
+        self.assertTrue(InjectorCachedComponentService.get_components_cache_size() == 1)
         retrieved_component_object = retrieved_component.blob
         self.assertTrue(retrieved_component_object['my_object_field'] == 'my_object_field_value')
         self.assertTrue(component.remove().get())

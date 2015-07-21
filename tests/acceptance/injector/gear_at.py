@@ -21,7 +21,7 @@ import threading
 import time
 import unittest
 from ariane_clip3.injector import InjectorService, InjectorGearSkeleton, InjectorComponentSkeleton, \
-    InjectorCachedComponent, InjectorCachedComponentService
+    InjectorCachedComponent, InjectorCachedComponentService, InjectorCachedGearService
 
 __author__ = 'mffrench'
 
@@ -153,6 +153,7 @@ class InjectorGearTest(unittest.TestCase):
                                           gear_admin_queue='ariane.community.plugin.docker.gears.cache.localhost',
                                           running=False).proxy()
         self.assertTrue(gear.cache(running=True).get())
+        self.assertTrue(InjectorCachedGearService.get_gears_cache_size() == 1)
         self.assertTrue(gear.remove().get())
 
     def test_docker_component_gear(self):
