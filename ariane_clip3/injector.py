@@ -666,8 +666,8 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         """
         ret = True
         args = {'properties': {'OPERATION': 'DEL_COMPONENT_FROM_CACHE',
-                               'REMOTE_COMPONENT': str(self.injector_component_2_json(properties_only=True)).
-                                   replace("'", '"'),
+                               'REMOTE_COMPONENT':
+                                   str(self.injector_component_2_json(properties_only=True)).replace("'", '"'),
                                'CACHE_ID': InjectorCachedComponentService.cache_id}}
 
         result = InjectorCachedComponentService.requester.call(args).get()
@@ -731,15 +731,24 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         :return:
         """
         super(InjectorComponentSkeleton, self).__init__()
-        self.component_cache_actor = InjectorCachedComponent.start(component_id=component_id,
-                                                                   component_name=component_name,
-                                                                   component_admin_queue=component_admin_queue,
-                                                                   refreshing=refreshing,
-                                                                   next_action=next_action,
-                                                                   json_last_refresh=json_last_refresh,
-                                                                   attached_gear_id=attached_gear_id,
-                                                                   data_blob=data_blob,
-                                                                   parent_actor_ref=self.actor_ref).proxy()
+        retrieved_component_cache = InjectorCachedComponentService.find_component(component_id)
+        self.component_cache_actor = \
+            InjectorCachedComponent.start(component_id=component_id,
+                                          component_name=retrieved_component_cache.name
+                                          if retrieved_component_cache is not None else component_name,
+                                          component_admin_queue=retrieved_component_cache.admin_queue
+                                          if retrieved_component_cache is not None else component_admin_queue,
+                                          refreshing=retrieved_component_cache.refreshing
+                                          if retrieved_component_cache is not None else refreshing,
+                                          next_action=retrieved_component_cache.next_action
+                                          if retrieved_component_cache is not None else next_action,
+                                          json_last_refresh=retrieved_component_cache.json_last_refresh
+                                          if retrieved_component_cache is not None else json_last_refresh,
+                                          attached_gear_id=retrieved_component_cache.attached_gear_id
+                                          if retrieved_component_cache is not None else attached_gear_id,
+                                          data_blob=retrieved_component_cache.blob
+                                          if retrieved_component_cache is not None else data_blob,
+                                          parent_actor_ref=self.actor_ref).proxy()
 
     def cache(self, refreshing=None, next_action=None, data_blob=None, json_last_refresh=None):
         """
