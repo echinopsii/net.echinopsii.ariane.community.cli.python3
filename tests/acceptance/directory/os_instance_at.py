@@ -49,7 +49,7 @@ class OSInstanceTest(unittest.TestCase):
                                     description='my new osi',
                                     admin_gate_uri='ssh://admingateuri')
         new_osinstance.save()
-        ret = service.os_instance_service.get_osinstances()
+        ret = service.os_instance_service.get_os_instances()
         self.assertGreaterEqual(ret.__len__(), 1)
         new_osinstance.remove()
 
@@ -60,7 +60,7 @@ class OSInstanceTest(unittest.TestCase):
                                     description='my new osi',
                                     admin_gate_uri='ssh://admingateuri')
         new_osinstance.save()
-        self.assertIsNotNone(service.os_instance_service.find_osinstance(osi_name="my_new_osi"))
+        self.assertIsNotNone(service.os_instance_service.find_os_instance(osi_name="my_new_osi"))
         new_osinstance.remove()
 
     def test_osinstance_link_to_subnet(self):
@@ -159,34 +159,35 @@ class OSInstanceTest(unittest.TestCase):
                             routing_area_id=new_routing_area.id)
         new_subnet.save()
 
-        new_ipAddress = IPAddress(ipAddress = '192.168.12.11',
-                                  fqdn = 'Fake FQDN 2',
-                                  ipa_osInstance_id = None,
-                                  ipa_subnet_id = new_subnet.id)
-        new_ipAddress.save()
+        new_ip_address = IPAddress(ip_address='192.168.12.11',
+                                   fqdn='Fake FQDN 2',
+                                   ipa_osi_id=None,
+                                   ipa_subnet_id=new_subnet.id)
+        new_ip_address.save()
 
-        new_osinstance.add_ipAddress(new_ipAddress, sync=False)
-        self.assertTrue(new_ipAddress in new_osinstance.ipAddress_2_add)
-        self.assertIsNone(new_osinstance.ipAddress_ids)
-        self.assertIsNone(new_ipAddress.ipa_osInstance_id)
+        new_osinstance.add_ip_address(new_ip_address, sync=False)
+        self.assertTrue(new_ip_address in new_osinstance.ip_address_2_add)
+        self.assertIsNone(new_osinstance.ip_address_ids)
+        self.assertIsNone(new_ip_address.ipa_os_instance_id)
         new_osinstance.save()
-        self.assertTrue(new_ipAddress not in new_osinstance.ipAddress_2_add)
-        self.assertTrue(new_ipAddress.id in new_osinstance.ipAddress_ids)
-        self.assertTrue(new_ipAddress.ipa_osInstance_id == new_osinstance.id)
-        new_osinstance.del_ipAddress(new_ipAddress, sync=False)
-        self.assertTrue(new_ipAddress in new_osinstance.ipAddress_2_rm)
-        self.assertTrue(new_ipAddress.id in new_osinstance.ipAddress_ids)
-        self.assertTrue(new_ipAddress.ipa_osInstance_id == new_osinstance.id)
+        self.assertTrue(new_ip_address not in new_osinstance.ip_address_2_add)
+        self.assertTrue(new_ip_address.id in new_osinstance.ip_address_ids)
+        self.assertTrue(new_ip_address.ipa_os_instance_id == new_osinstance.id)
+        new_osinstance.del_ip_address(new_ip_address, sync=False)
+        self.assertTrue(new_ip_address in new_osinstance.ip_address_2_rm)
+        self.assertTrue(new_ip_address.id in new_osinstance.ip_address_ids)
+        self.assertTrue(new_ip_address.ipa_os_instance_id == new_osinstance.id)
         new_osinstance.save()
-        self.assertTrue(new_ipAddress not in new_osinstance.ipAddress_2_rm)
-        self.assertTrue(new_ipAddress.id not in new_osinstance.ipAddress_ids)
-        new_osinstance.add_ipAddress(new_ipAddress)
-        self.assertTrue(new_ipAddress.id in new_osinstance.ipAddress_ids)
-        self.assertTrue(new_ipAddress.ipa_osInstance_id == new_osinstance.id)
-        new_osinstance.del_ipAddress(new_ipAddress)
-        self.assertTrue(new_ipAddress.id not in new_osinstance.ipAddress_ids)
-        self.assertIsNone(new_ipAddress.ipa_osInstance_id)
-        new_ipAddress.remove()
+        self.assertTrue(new_ip_address not in new_osinstance.ip_address_2_rm)
+        self.assertTrue(new_ip_address.id not in new_osinstance.ip_address_ids)
+        self.assertTrue(new_ip_address.ipa_os_instance_id == -1)
+        new_osinstance.add_ip_address(new_ip_address)
+        self.assertTrue(new_ip_address.id in new_osinstance.ip_address_ids)
+        self.assertTrue(new_ip_address.ipa_os_instance_id == new_osinstance.id)
+        new_osinstance.del_ip_address(new_ip_address)
+        self.assertTrue(new_ip_address.id not in new_osinstance.ip_address_ids)
+        self.assertIsNone(new_ip_address.ipa_os_instance_id)
+        new_ip_address.remove()
         new_osinstance.remove()
 
     def test_osinstance_link_to_application(self):
