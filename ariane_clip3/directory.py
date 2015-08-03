@@ -203,6 +203,12 @@ class Datacenter(object):
         self.subnets_2_add = []
         self.subnets_2_rm = []
 
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
+
     def __str__(self):
         """
         :return: this object dict to string
@@ -716,6 +722,12 @@ class RoutingArea(object):
         self.dc_2_rm = []
         self.subnet_ids = routing_area_subnet_ids
 
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
+
     def __str__(self):
         """
         :return: this object dict to string
@@ -1100,6 +1112,12 @@ class Subnet(object):
         self.osi_ids = subnet_osi_ids
         self.osi_2_add = []
         self.osi_2_rm = []
+
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
 
     def __str__(self):
         """
@@ -1634,6 +1652,12 @@ class IPAddress(object):
         self.ipa_os_instance_id = ipa_osi_id
         self.ipa_subnet_id = ipa_subnet_id
 
+    def __eq__(self, other):
+        if self.id != other.id or self.fqdn != other.fqdn:
+            return False
+        else:
+            return True
+
     def save(self):
         """
         :return: save this IP Address on Ariane server (create or update)
@@ -1708,6 +1732,8 @@ class IPAddress(object):
                         'Error while updating IP Address ' + self.ip_address + ' name. Reason: ' +
                         str(response.error_message)
                     )
+
+        self.sync()
         return self
 
     def remove(self):
@@ -1912,6 +1938,12 @@ class OSInstance(object):
         self.team_ids = osi_team_ids
         self.team_2_add = []
         self.team_2_rm = []
+
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
 
     def __str__(self):
         """
@@ -2930,6 +2962,12 @@ class OSType(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
+
     def __str__(self):
         """
         :return: this object dict to string
@@ -3296,6 +3334,12 @@ class Application(object):
         self.osi_ids = osi_ids
         self.osi_2_add = []
         self.osi_2_rm = []
+
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
 
     def __str__(self):
         """
@@ -3685,6 +3729,12 @@ class Company(object):
         self.ost_ids = ost_ids
         self.ost_2_add = []
         self.ost_2_rm = []
+
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
 
     def __str__(self):
         """
@@ -4148,6 +4198,12 @@ class Environment(object):
         self.osi_2_add = []
         self.osi_2_rm = []
 
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
+
     def __str__(self):
         """
         :return: this object dict to string
@@ -4502,6 +4558,12 @@ class Team(object):
         self.osi_ids = osi_ids
         self.osi_2_add = []
         self.osi_2_rm = []
+
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
 
     def __str__(self):
         """
