@@ -104,9 +104,8 @@ class GateTest(unittest.TestCase):
         gate.add_property(('double_prop', 3.1414), sync=False)
         gate.add_property(('boolean_prop', True), sync=False)
         gate.add_property(('string_prop', "value"), sync=False)
-        datacenter = {"dc": ["String", "Sagittarius"], "gpsLng": ["double", 2.251088],
-                      "address": ["String", "2 rue Baudin"], "gpsLat": ["double", 48.895345],
-                      "town": ["String", "Courbevoie"], "country": ["String", "France"]}
+        datacenter = {"dc": "Sagittarius", "gpsLng": 2.251088, "address": "2 rue Baudin", "gpsLat": 48.895345,
+                      "town": "Courbevoie", "country": "France"}
         gate.add_property(('map_prop_datacenter', datacenter), sync=False)
         gate.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
         self.assertIsNone(gate.properties)

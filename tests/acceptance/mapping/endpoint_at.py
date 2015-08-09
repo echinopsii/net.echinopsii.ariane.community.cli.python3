@@ -93,9 +93,8 @@ class EndpointTest(unittest.TestCase):
         endpoint.add_property(('double_prop', 3.1414), sync=False)
         endpoint.add_property(('boolean_prop', True), sync=False)
         endpoint.add_property(('string_prop', "value"), sync=False)
-        datacenter = {"dc": ["String", "Sagittarius"], "gpsLng": ["double", 2.251088],
-                      "address": ["String", "2 rue Baudin"], "gpsLat": ["double", 48.895345],
-                      "town": ["String", "Courbevoie"], "country": ["String", "France"]}
+        datacenter = {"dc": "Sagittarius", "gpsLng": 2.251088, "address": "2 rue Baudin", "gpsLat": 48.895345,
+                      "town": "Courbevoie", "country": "France"}
         endpoint.add_property(('map_prop_datacenter', datacenter), sync=False)
         endpoint.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
         self.assertIsNone(endpoint.properties)

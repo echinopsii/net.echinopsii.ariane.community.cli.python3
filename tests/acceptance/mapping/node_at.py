@@ -110,9 +110,8 @@ class NodeTest(unittest.TestCase):
         node.add_property(('double_prop', 3.1414), sync=False)
         node.add_property(('boolean_prop', True), sync=False)
         node.add_property(('string_prop', "value"), sync=False)
-        datacenter = {"dc": ["String", "Sagittarius"], "gpsLng": ["double", 2.251088],
-                      "address": ["String", "2 rue Baudin"], "gpsLat": ["double", 48.895345],
-                      "town": ["String", "Courbevoie"], "country": ["String", "France"]}
+        datacenter = {"dc": "Sagittarius", "gpsLng": 2.251088, "address": "2 rue Baudin", "gpsLat": 48.895345,
+                      "town": "Courbevoie", "country": "France"}
         node.add_property(('map_prop_datacenter', datacenter), sync=False)
         node.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
         self.assertIsNone(node.properties)

@@ -82,7 +82,33 @@ class MappingService(object):
         return typed_array
 
     @staticmethod
-    def property_params(o_id, name, value):
+    def property_map(value):
+        ret = []
+        if isinstance(value, str):
+            ret.append('string')
+        elif isinstance(value, int):
+            if isinstance(value, bool):
+                ret.append('boolean')
+            else:
+                # in python 3 long and int are now same type
+                # by default we will use long type for the server
+                ret.append('long')
+        elif isinstance(value, float):
+            ret.append('double')
+        elif isinstance(value, list):
+            ret.append('array')
+            value = MappingService.property_array(value)
+        elif isinstance(value, dict):
+            ret.append('map')
+            for key, val in value.items():
+                value[key] = MappingService.property_map(val)
+        elif isinstance(value, bool):
+            ret.append('boolean')
+        ret.append(value)
+        return ret
+
+    @staticmethod
+    def property_params(name, value):
         p_type = None
         if isinstance(value, str):
             p_type = 'string'
@@ -100,20 +126,20 @@ class MappingService(object):
             value = str(MappingService.property_array(value)).replace("'", '"')
         elif isinstance(value, dict):
             p_type = 'map'
+            for key, val in value.items():
+                value[key] = MappingService.property_map(val)
             value = str(value).replace("'", '"')
         elif isinstance(value, bool):
             p_type = 'boolean'
 
         if p_type is not None:
             params = {
-                'ID': o_id,
                 'propertyName': name,
                 'propertyValue': value,
                 'propertyType': p_type
             }
         else:
             params = {
-                'ID': o_id,
                 'propertyName': name,
                 'propertyValue': value
             }
@@ -475,6 +501,31 @@ class ContainerService(object):
 
 
 class Container(object):
+
+    DC_MAPPING_PROPERTIES = "Datacenter"
+    DC_NAME_MAPPING_FIELD = "dc"
+    DC_ADDR_MAPPING_FIELD = "address"
+    DC_TOWN_MAPPING_FIELD = "town"
+    DC_CNTY_MAPPING_FIELD = "country"
+    DC_GPSA_MAPPING_FIELD = "gpsLat"
+    DC_GPSN_MAPPING_FIELD = "gpsLng"
+
+    SUBNET_MAPPING_PROPERTIES = "Network"
+    SUBNET_RARE_MAPPING_FIELD = "rarea"
+    SUBNET_MLTC_MAPPING_FIELD = "multicast"
+    SUBNET_TYPE_MAPPING_FIELD = "type"
+    SUBNET_NAME_MAPPING_FIELD = "lan"
+    SUBNET_IPAD_MAPPING_FIELD = "subnetip"
+    SUBNET_MASK_MAPPING_FIELD = "subnetmask"
+
+    OSI_MAPPING_PROPERTIES = "Server"
+    OSI_NAME_MAPPING_FIELD = "hostname"
+    OSI_TYPE_MAPPING_FIELD = "os"
+
+    TEAM_SUPPORT_MAPPING_PROPERTIES = "supportTeam"
+    TEAM_NAME_MAPPING_FIELD = "name"
+    TEAM_COLR_MAPPING_FIELD = "color"
+
     @staticmethod
     def json_2_container(json_obj):
         """
@@ -563,8 +614,8 @@ class Container(object):
         if not sync or self.id is None:
             self.properties_2_add.append(c_property_tuple)
         else:
-            params = MappingService.property_params(self.id, c_property_tuple[0], c_property_tuple[1])
-
+            params = MappingService.property_params(c_property_tuple[0], c_property_tuple[1])
+            params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
@@ -828,7 +879,8 @@ class Container(object):
 
         if ok and self.properties_2_add.__len__() > 0:
             for c_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(self.id, c_property_tuple[0], c_property_tuple[1])
+                params = MappingService.property_params(c_property_tuple[0], c_property_tuple[1])
+                params['ID'] = self.id
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
@@ -1101,8 +1153,8 @@ class Node(object):
         if not sync or self.id is None:
             self.properties_2_add.append(n_property_tuple)
         else:
-            params = MappingService.property_params(self.id, n_property_tuple[0], n_property_tuple[1])
-
+            params = MappingService.property_params(n_property_tuple[0], n_property_tuple[1])
+            params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is not 0:
@@ -1271,7 +1323,8 @@ class Node(object):
 
         if ok and self.properties_2_add.__len__() > 0:
             for n_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(self.id, n_property_tuple[0], n_property_tuple[1])
+                params = MappingService.property_params(n_property_tuple[0], n_property_tuple[1])
+                params['ID'] = self.id
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = NodeService.requester.call(args)
                 if response.rc is not 0:
@@ -1665,8 +1718,8 @@ class Endpoint(object):
         if not sync or self.id is None:
             self.properties_2_add.append(e_property_tuple)
         else:
-            params = MappingService.property_params(self.id, e_property_tuple[0], e_property_tuple[1])
-
+            params = MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
+            params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
@@ -1815,7 +1868,8 @@ class Endpoint(object):
 
         if ok and self.properties_2_add.__len__() > 0:
             for e_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(self.id, e_property_tuple[0], e_property_tuple[1])
+                params = MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
+                params['ID'] = self.id
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
@@ -2233,7 +2287,8 @@ class Transport(object):
         if not sync or self.id is None:
             self.properties_2_add.append(t_property_tuple)
         else:
-            params = MappingService.property_params(self.id, t_property_tuple[0], t_property_tuple[1])
+            params = MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
+            params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
@@ -2311,7 +2366,8 @@ class Transport(object):
 
         if ok and self.properties_2_add.__len__() > 0:
             for t_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(self.id, t_property_tuple[0], t_property_tuple[1])
+                params = MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
+                params['ID'] = self.id
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = TransportService.requester.call(args)
                 if response.rc is not 0:
