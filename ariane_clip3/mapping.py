@@ -71,7 +71,9 @@ class MappingService(object):
             typed_array.append("array")
         elif isinstance(value[0], dict):
             typed_array.append("map")
-
+            for value_a in value:
+                for key, val in value_a.items():
+                    value_a[key] = MappingService.property_map(val)
         if isinstance(value[0], list):
             transformed_value_array = []
             for value_array in value:
@@ -510,10 +512,11 @@ class Container(object):
     DC_GPSA_MAPPING_FIELD = "gpsLat"
     DC_GPSN_MAPPING_FIELD = "gpsLng"
 
-    SUBNET_MAPPING_PROPERTIES = "Network"
-    SUBNET_RARE_MAPPING_FIELD = "rarea"
-    SUBNET_MLTC_MAPPING_FIELD = "multicast"
-    SUBNET_TYPE_MAPPING_FIELD = "type"
+    NETWORK_MAPPING_PROPERTIES = "Network"
+    RAREA_NAME_MAPPING_FIELD = "rarea"
+    RAREA_MLTC_MAPPING_FIELD = "multicast"
+    RAREA_TYPE_MAPPING_FIELD = "type"
+    RAREA_SUBNETS = "subnets"
     SUBNET_NAME_MAPPING_FIELD = "lan"
     SUBNET_IPAD_MAPPING_FIELD = "subnetip"
     SUBNET_MASK_MAPPING_FIELD = "subnetmask"
