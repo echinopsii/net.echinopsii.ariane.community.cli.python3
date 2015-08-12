@@ -69,6 +69,12 @@ class Requester(object):
             else:
                 response = self.session.get(self.base_url + self.repository_path + my_args['operation_path'],
                                             params=my_args['parameters'])
+        elif my_args['http_operation'] is "POST":
+            if my_args['parameters'] is not None:
+                response = self.session.post(self.base_url + self.repository_path + my_args['operation_path'],
+                                             params=my_args['parameters'])
+            else:
+                raise exceptions.ArianeConfError('parameters argument is mandatory for http POST request')
         else:
             raise exceptions.ArianeNotImplemented(my_args['http_operation'])
 
