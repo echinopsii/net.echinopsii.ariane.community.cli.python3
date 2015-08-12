@@ -127,19 +127,19 @@ class MappingService(object):
             p_type = 'double'
         elif isinstance(value, list):
             p_type = 'array'
-            value = str(MappingService.property_array(value)).replace("'", '"')
+            value = json.dumps(MappingService.property_array(value))
         elif isinstance(value, dict):
             p_type = 'map'
             for key, val in value.items():
                 value[key] = MappingService.property_map(val)
-            value = str(value).replace("'", '"')
+            value = json.dumps(value)
         elif isinstance(value, bool):
             p_type = 'boolean'
 
         if p_type is not None:
             params = {
                 'propertyName': name,
-                'propertyValue': str(value),
+                'propertyValue': value,
                 'propertyType': p_type
             }
         else:
