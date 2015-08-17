@@ -101,7 +101,10 @@ class MappingService(object):
             ret.append('double')
         elif isinstance(value, list):
             ret.append('array')
-            value = MappingService.property_array(value)
+            if value.__len__() > 0:
+                value = MappingService.property_array(value)
+            else:
+                pass
         elif isinstance(value, dict):
             ret.append('map')
             for key, val in value.items():
@@ -127,7 +130,10 @@ class MappingService(object):
             p_type = 'double'
         elif isinstance(value, list):
             p_type = 'array'
-            value = json.dumps(MappingService.property_array(value))
+            if value.__len__() > 0:
+                value = json.dumps(MappingService.property_array(value))
+            else:
+                pass
         elif isinstance(value, dict):
             p_type = 'map'
             for key, val in value.items():
@@ -766,7 +772,7 @@ class Container(object):
         if self.id is None:
             if self.name is None:
                 params = {
-                    'primaryAdminGateURL': self.gate_uri,
+                    'primaryAdminURL': self.gate_uri,
                     'primaryAdminGateName': self.primary_admin_gate_name
                 }
             else:
