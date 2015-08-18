@@ -1776,125 +1776,185 @@ class Endpoint(object):
                 self.parent_node.save()
             self.parent_node_id = self.parent_node.id
 
-        if self.id is None:
-            params = {
-                'endpointURL': self.url,
-                'parentNodeID': self.parent_node_id if self.parent_node_id is not None else 0
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = EndpointService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.error('Error while saving endpoint' + self.url + '. Reason: ' +
-                             str(response.error_message))
-                ok = False
-            else:
-                self.id = response.response_content['endpointID']
+        post_payload = {}
+        consolidated_twin_endpoints_id = []
+        consolidated_properties = {}
+        consolidated_endpoint_properties = []
+
+        if self.id is not None:
+            post_payload['endpointID'] = self.id
+
+        if self.url is not None:
+            post_payload['endpointURL'] = self.url
+
+        if self.parent_node_id is not None:
+            post_payload['endpointParentNodeID'] = self.parent_node_id
+
+        if self.twin_endpoints_id is not None:
+            consolidated_twin_endpoints_id = copy.deepcopy(self.twin_endpoints_id)
+        if self.twin_endpoints_2_rm is not None:
+            for twin_node_2_rm in self.twin_endpoints_2_rm:
+                if twin_node_2_rm.id is None:
+                    twin_node_2_rm.sync()
+                consolidated_twin_endpoints_id.remove(twin_node_2_rm.id)
+        if self.twin_endpoints_2_add is not None:
+            for twin_endpoint_2_add in self.twin_endpoints_2_add:
+                if twin_endpoint_2_add.id is None:
+                    twin_endpoint_2_add.save()
+                consolidated_twin_endpoints_id.append(twin_endpoint_2_add.id)
+        post_payload['endpointTwinEndpointsID'] = consolidated_twin_endpoints_id
+
+        if self.properties is not None:
+            consolidated_properties = copy.deepcopy(self.properties)
+        if self.properties_2_rm is not None:
+            for n_property_name in self.properties_2_rm:
+                consolidated_properties.pop(n_property_name, 0)
+        if self.properties_2_add is not None:
+            for n_property_tuple in self.properties_2_add:
+                consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
+        for key, value in consolidated_properties.items():
+            consolidated_endpoint_properties.append(MappingService.property_params(key, value))
+        post_payload['endpointProperties'] = consolidated_endpoint_properties
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = EndpointService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.error('Error while saving endpoint ' + self.name + '. Reason: ' + str(response.error_message))
         else:
-            params = {
-                'ID': self.id,
-                'URL': self.url
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/url', 'parameters': params}
-            response = EndpointService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.error('Error while updating endpoint' + self.url + '. Reason: ' +
-                             str(response.error_message))
-                ok = False
-
-            if ok:
-                params = {
-                    'ID': self.id,
-                    'parentNodeID': self.parent_node_id
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/parentNode', 'parameters': params}
-                response = EndpointService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.error('Error while updating endpoint' + self.url + '. Reason: ' +
-                                 str(response.error_message))
-                    ok = False
-
-        if ok and self.properties_2_add.__len__() > 0:
-            for e_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
-                params['ID'] = self.id
-                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
-                response = EndpointService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-                    break
-            self.properties_2_add.clear()
-
-        if ok and self.properties_2_rm.__len__() > 0:
-            for e_property_name in self.properties_2_rm:
-                params = {
-                    'ID': self.id,
-                    'propertyName': e_property_name
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
-                response = EndpointService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-                    break
-            self.properties_2_rm.clear()
-
-        if ok and self.twin_endpoints_2_add.__len__() > 0:
-            for twin_endpoint in self.twin_endpoints_2_add:
-                if twin_endpoint.id is None:
-                    twin_endpoint.save()
-                if twin_endpoint.id is not None:
-                    params = {
-                        'ID': self.id,
-                        'twinEndpointID': twin_endpoint.id
-                    }
-                    args = {'http_operation': 'GET',
-                            'operation_path': 'update/twinEndpoints/add',
-                            'parameters': params}
-                    response = EndpointService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating endpoint ' + self.url + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        twin_endpoint.sync()
-            self.twin_endpoints_2_add.clear()
-
-        if ok and self.twin_endpoints_2_rm.__len__() > 0:
-            for twin_endpoint in self.twin_endpoints_2_rm:
-                if twin_endpoint.id is None:
-                    twin_endpoint.sync()
-                if twin_endpoint.id is not None:
-                    params = {
-                        'ID': self.id,
-                        'twinEndpointID': twin_endpoint.id
-                    }
-                    args = {'http_operation': 'GET',
-                            'operation_path': 'update/twinEndpoints/delete',
-                            'parameters': params}
-                    response = EndpointService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating endpoint ' + self.url + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        break
-                    else:
-                        twin_endpoint.sync()
-            self.twin_endpoints_2_rm.clear()
-
-        if self.parent_node is not None:
-            self.parent_node.sync()
+            self.id = response.response_content['endpointID']
+            if self.twin_endpoints_2_add is not None:
+                for twin_endpoint_2_add in self.twin_endpoints_2_add:
+                    twin_endpoint_2_add.sync()
+            if self.twin_endpoints_2_rm is not None:
+                for twin_node_2_rm in self.twin_endpoints_2_rm:
+                    twin_node_2_rm.sync()
+            if self.parent_node is not None:
+                self.parent_node.sync()
+        self.twin_endpoints_2_add.clear()
+        self.twin_endpoints_2_rm.clear()
+        self.properties_2_add.clear()
+        self.properties_2_rm.clear()
         self.sync()
+
+        #if self.id is None:
+        #    params = {
+        #        'endpointURL': self.url,
+        #        'parentNodeID': self.parent_node_id if self.parent_node_id is not None else 0
+        #    }
+        #    args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+        #    response = EndpointService.requester.call(args)
+        #    if response.rc is not 0:
+        #        LOGGER.error('Error while saving endpoint' + self.url + '. Reason: ' +
+        #                     str(response.error_message))
+        #        ok = False
+        #    else:
+        #        self.id = response.response_content['endpointID']
+        #else:
+        #    params = {
+        #        'ID': self.id,
+        #        'URL': self.url
+        #    }
+        #    args = {'http_operation': 'GET', 'operation_path': 'update/url', 'parameters': params}
+        #    response = EndpointService.requester.call(args)
+        #    if response.rc is not 0:
+        #        LOGGER.error('Error while updating endpoint' + self.url + '. Reason: ' +
+        #                     str(response.error_message))
+        #        ok = False
+        #
+        #    if ok:
+        #        params = {
+        #            'ID': self.id,
+        #            'parentNodeID': self.parent_node_id
+        #        }
+        #        args = {'http_operation': 'GET', 'operation_path': 'update/parentNode', 'parameters': params}
+        #        response = EndpointService.requester.call(args)
+        #        if response.rc is not 0:
+        #            LOGGER.error('Error while updating endpoint' + self.url + '. Reason: ' +
+        #                         str(response.error_message))
+        #            ok = False
+
+        #if ok and self.properties_2_add.__len__() > 0:
+        #    for e_property_tuple in self.properties_2_add:
+        #        params = MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
+        #        params['ID'] = self.id
+        #        args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+        #        response = EndpointService.requester.call(args)
+        #        if response.rc is not 0:
+        #            LOGGER.error(
+        #                'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+        #                str(response.error_message)
+        #            )
+        #            ok = False
+        #            break
+        #    self.properties_2_add.clear()
+
+        #if ok and self.properties_2_rm.__len__() > 0:
+        #    for e_property_name in self.properties_2_rm:
+        #        params = {
+        #            'ID': self.id,
+        #            'propertyName': e_property_name
+        #        }
+        #        args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+        #        response = EndpointService.requester.call(args)
+        #        if response.rc is not 0:
+        #            LOGGER.error(
+        #                'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+        #                str(response.error_message)
+        #            )
+        #            ok = False
+        #            break
+        #    self.properties_2_rm.clear()
+
+        #if ok and self.twin_endpoints_2_add.__len__() > 0:
+        #    for twin_endpoint in self.twin_endpoints_2_add:
+        #        if twin_endpoint.id is None:
+        #            twin_endpoint.save()
+        #        if twin_endpoint.id is not None:
+        #            params = {
+        #                'ID': self.id,
+        #                'twinEndpointID': twin_endpoint.id
+        #            }
+        #            args = {'http_operation': 'GET',
+        #                    'operation_path': 'update/twinEndpoints/add',
+        #                    'parameters': params}
+        #            response = EndpointService.requester.call(args)
+        #            if response.rc is not 0:
+        #                LOGGER.error(
+        #                    'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+        #                    str(response.error_message)
+        #                )
+        #                ok = False
+        #                break
+        #            else:
+        #                twin_endpoint.sync()
+        #    self.twin_endpoints_2_add.clear()
+
+        #if ok and self.twin_endpoints_2_rm.__len__() > 0:
+        #    for twin_endpoint in self.twin_endpoints_2_rm:
+        #        if twin_endpoint.id is None:
+        #            twin_endpoint.sync()
+        #        if twin_endpoint.id is not None:
+        #            params = {
+        #                'ID': self.id,
+        #                'twinEndpointID': twin_endpoint.id
+        #            }
+        #            args = {'http_operation': 'GET',
+        #                    'operation_path': 'update/twinEndpoints/delete',
+        #                    'parameters': params}
+        #            response = EndpointService.requester.call(args)
+        #            if response.rc is not 0:
+        #                LOGGER.error(
+        #                    'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+        #                    str(response.error_message)
+        #                )
+        #                break
+        #            else:
+        #                twin_endpoint.sync()
+        #    self.twin_endpoints_2_rm.clear()
+
+        #if self.parent_node is not None:
+        #    self.parent_node.sync()
+        #self.sync()
 
     def remove(self):
         """
