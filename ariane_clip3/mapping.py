@@ -186,9 +186,9 @@ class ClusterService(object):
         if response.rc == 0:
             ret = Cluster.json_2_cluster(response.response_content)
         else:
-            err_msg = 'Error while finding cluster (id:' + str(cid) + '). ' + \
+            err_msg = 'Problem while finding cluster (id:' + str(cid) + '). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -205,8 +205,8 @@ class ClusterService(object):
             for datacenter in response.response_content['clusters']:
                 ret.append(Cluster.json_2_cluster(datacenter))
         else:
-            err_msg = 'Error while getting datacenters. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting datacenters. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -276,16 +276,16 @@ class Cluster(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
                 response = ClusterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating cluster ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.containers_id.append(container.id)
                     container.cluster_id = self.id
             else:
-                LOGGER.error(
-                    'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                LOGGER.debug(
+                    'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
 
@@ -310,16 +310,16 @@ class Cluster(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
                 response = ClusterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating cluster ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.containers_id.remove(container.id)
                     container.cluster_id = None
             else:
-                LOGGER.error(
-                    'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                LOGGER.debug(
+                    'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
 
@@ -350,7 +350,7 @@ class Cluster(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = ClusterService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
+                LOGGER.debug('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
                 ok = False
             else:
                 self.id = response.response_content['clusterID']
@@ -362,8 +362,8 @@ class Cluster(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = ClusterService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating cluster' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating cluster' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -379,15 +379,15 @@ class Cluster(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
                     response = ClusterService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating cluster ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                     else:
                         container.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                    LOGGER.debug(
+                        'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
                         container.gate_uri + ' id is None'
                     )
                     ok = False
@@ -406,15 +406,15 @@ class Cluster(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
                     response = ClusterService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating cluster ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating cluster ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                     else:
                         container.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating cluster ' + self.name + ' name. Reason: container ' +
+                    LOGGER.debug(
+                        'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
                         container.gate_uri + ' id is None'
                     )
                     break
@@ -436,8 +436,8 @@ class Cluster(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = ClusterService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting cluster ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting cluster ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -485,10 +485,10 @@ class ContainerService(object):
             if response.rc == 0:
                 ret = Container.json_2_container(response.response_content)
             else:
-                err_msg = 'Error while finding container (id:' + str(cid) + ', primary admin gate url '\
+                err_msg = 'Problem while finding container (id:' + str(cid) + ', primary admin gate url '\
                           + str(primary_admin_gate_url) + ' ). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(err_msg)
+                LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -505,8 +505,8 @@ class ContainerService(object):
             for container in response.response_content['containers']:
                 ret.append(Container.json_2_container(container))
         else:
-            err_msg = 'Error while getting containers. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting containers. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -630,8 +630,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -656,8 +656,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -683,8 +683,8 @@ class Container(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add', 'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating container ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
@@ -713,8 +713,8 @@ class Container(object):
                         'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating container ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
@@ -784,7 +784,7 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while saving container' + self.gate_uri + '. Reason: ' +
+                LOGGER.debug('Problem while saving container' + self.gate_uri + '. Reason: ' +
                              str(response.error_message))
                 ok = False
             else:
@@ -798,8 +798,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/primaryAdminGate', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' primary admin gate. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container' + self.gate_uri + ' primary admin gate. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -812,8 +812,8 @@ class Container(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -826,8 +826,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -840,8 +840,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/product', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -854,8 +854,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -868,8 +868,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/cluster', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -882,8 +882,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/parentContainer', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating container' + self.gate_uri + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -895,8 +895,8 @@ class Container(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating container ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -912,8 +912,8 @@ class Container(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating container ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating container ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -933,8 +933,8 @@ class Container(object):
                             'parameters': params}
                     response = ContainerService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating container ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating container ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -956,8 +956,8 @@ class Container(object):
                             'parameters': params}
                     response = ContainerService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating container ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating container ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -982,8 +982,8 @@ class Container(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting container ' + self.gate_uri + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting container ' + self.gate_uri + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -1030,10 +1030,10 @@ class NodeService(object):
             if response.rc == 0:
                 ret = Node.json_2_node(response.response_content)
             else:
-                err_msg = 'Error while searching node (id:' + str(nid) + ', primary admin gate url ' \
+                err_msg = 'Problem while searching node (id:' + str(nid) + ', primary admin gate url ' \
                           + str(endpoint_url) + ' ). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(err_msg)
+                LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -1050,8 +1050,8 @@ class NodeService(object):
             for node in response.response_content['nodes']:
                 ret.append(Node.json_2_node(node))
         else:
-            err_msg = 'Error while getting nodes. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -1169,8 +1169,8 @@ class Node(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating node ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating node ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1195,8 +1195,8 @@ class Node(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating node ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating node ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1225,8 +1225,8 @@ class Node(object):
                         'parameters': params}
                 response = NodeService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating node ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating node ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
@@ -1256,8 +1256,8 @@ class Node(object):
                         'parameters': params}
                 response = NodeService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating node ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating node ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
@@ -1333,7 +1333,7 @@ class Node(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = NodeService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.error('Error while saving node' + self.name + '. Reason: ' + str(response.error_message))
+            LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['nodeID']
             self.depth = response.response_content['nodeDepth']
@@ -1367,8 +1367,8 @@ class Node(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting node ' + self.id + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting node ' + self.id + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -1407,9 +1407,9 @@ class GateService(object):
         if response.rc == 0:
             ret = Gate.json_2_gate(response.response_content)
         else:
-            err_msg = 'Error while searching gate (id:' + str(nid) + ' ). ' + \
+            err_msg = 'Problem while searching gate (id:' + str(nid) + ' ). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -1426,8 +1426,8 @@ class GateService(object):
             for gate in response.response_content['gates']:
                 ret.append(Gate.json_2_gate(gate))
         else:
-            err_msg = 'Error while getting nodes. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -1500,7 +1500,7 @@ class Gate(Node):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = GateService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while saving node' + self.name + '. Reason: ' +
+                LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' +
                              str(response.error_message))
                 ok = False
             else:
@@ -1554,10 +1554,10 @@ class EndpointService(object):
             if response.rc == 0:
                 ret = Endpoint.json_2_endpoint(response.response_content)
             else:
-                err_msg = 'Error while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
+                err_msg = 'Problem while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
                           + str(url) + ' ). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(err_msg)
+                LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -1574,8 +1574,8 @@ class EndpointService(object):
             for endpoint in response.response_content['endpoints']:
                 ret.append(Endpoint.json_2_endpoint(endpoint))
         else:
-            err_msg = 'Error while getting nodes. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -1670,8 +1670,8 @@ class Endpoint(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1696,8 +1696,8 @@ class Endpoint(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -1726,8 +1726,8 @@ class Endpoint(object):
                         'parameters': params}
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
@@ -1757,8 +1757,8 @@ class Endpoint(object):
                         'parameters': params}
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating endpoint ' + self.url + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
@@ -1819,7 +1819,7 @@ class Endpoint(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = EndpointService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.error('Error while saving endpoint ' + self.name + '. Reason: ' + str(response.error_message))
+            LOGGER.debug('Problem while saving endpoint ' + self.url + '. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['endpointID']
             if self.twin_endpoints_2_add is not None:
@@ -1850,8 +1850,8 @@ class Endpoint(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -1891,9 +1891,9 @@ class LinkService(object):
         if response.rc == 0:
             ret = Link.json_2_link(response.response_content)
         else:
-            err_msg = 'Error while searching link (id:' + str(lid) + '). ' + \
+            err_msg = 'Problem while searching link (id:' + str(lid) + '). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -1910,8 +1910,8 @@ class LinkService(object):
             for link in response.response_content['links']:
                 ret.append(Link.json_2_link(link))
         else:
-            err_msg = 'Error while getting links. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting links. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -1991,7 +1991,7 @@ class Link(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = LinkService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while saving link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                LOGGER.debug('Problem while saving link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
                              ' }. Reason: ' + str(response.error_message))
                 ok = False
             else:
@@ -2004,7 +2004,7 @@ class Link(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/sourceEP', 'parameters': params}
             response = LinkService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                LOGGER.debug('Problem while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
                              ' }. Reason: ' + str(response.error_message))
                 ok = False
 
@@ -2016,7 +2016,7 @@ class Link(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/targetEP', 'parameters': params}
                 response = LinkService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error('Error while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                    LOGGER.debug('Problem while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
                                  ' }. Reason: ' + str(response.error_message))
                     ok = False
 
@@ -2028,7 +2028,7 @@ class Link(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/transport', 'parameters': params}
                 response = LinkService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error('Error while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
+                    LOGGER.debug('Problem while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
                                  ' }. Reason: ' + str(response.error_message))
                     ok = False
 
@@ -2054,8 +2054,8 @@ class Link(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = LinkService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -2093,9 +2093,9 @@ class TransportService(object):
         if response.rc == 0:
             ret = Transport.json_2_transport(response.response_content)
         else:
-            err_msg = 'Error while searching transport (id:' + str(tid) + '). ' + \
+            err_msg = 'Problem while searching transport (id:' + str(tid) + '). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -2112,8 +2112,8 @@ class TransportService(object):
             for transport in response.response_content['transports']:
                 ret.append(Transport.json_2_transport(transport))
         else:
-            err_msg = 'Error while getting transports. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting transports. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -2179,8 +2179,8 @@ class Transport(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating transport ' + self.name + ' properties. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -2204,8 +2204,8 @@ class Transport(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating transport ' + self.name + ' properties. Reason: ' +
                     str(response.error_message)
                 )
             else:
@@ -2234,7 +2234,7 @@ class Transport(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while saving transport {' + self.name +
+                LOGGER.debug('Problem while saving transport {' + self.name +
                              '}. Reason: ' + str(response.error_message))
                 ok = False
             else:
@@ -2247,7 +2247,7 @@ class Transport(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while updating transport {' + self.name +
+                LOGGER.debug('Problem while updating transport {' + self.name +
                              '}. Reason: ' + str(response.error_message))
                 ok = False
 
@@ -2258,8 +2258,8 @@ class Transport(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
                 response = TransportService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating transport ' + self.name + ' properties. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -2275,8 +2275,8 @@ class Transport(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
                 response = TransportService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating transport ' + self.name + ' properties. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating transport ' + self.name + ' properties. Reason: ' +
                         str(response.error_message)
                     )
                     break
@@ -2298,8 +2298,8 @@ class Transport(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting transport ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting transport ' + str(self.id) + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:

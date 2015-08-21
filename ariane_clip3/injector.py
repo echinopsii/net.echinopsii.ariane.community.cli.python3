@@ -134,10 +134,10 @@ class InjectorUITreeService(object):
             if result.rc == 0:
                 ret = InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity(result.response_content)
             else:
-                err_msg = 'Error while finding injector UI Tree Menu Entity ('+search_criteria+':' + \
+                err_msg = 'Problem while finding injector UI Tree Menu Entity ('+search_criteria+':' + \
                           str(criteria_value) + '). ' + \
                           'Reason: ' + str(result.error_message)
-                LOGGER.error(err_msg)
+                LOGGER.debug(err_msg)
 
         return ret
 
@@ -299,9 +299,9 @@ class InjectorUITreeEntity(object):
                 args = {'properties': {'OPERATION': 'REGISTER', 'TREE_MENU_ENTITY': self_string}}
                 result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
-                    err_msg = 'Error while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+                    err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
-                    LOGGER.error(err_msg)
+                    LOGGER.debug(err_msg)
                     ok = False
 
             else:  # UPDATE
@@ -309,9 +309,9 @@ class InjectorUITreeEntity(object):
                 args = {'properties': {'OPERATION': 'UPDATE', 'TREE_MENU_ENTITY': self_string}}
                 result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
-                    err_msg = 'Error while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+                    err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
-                    LOGGER.error(err_msg)
+                    LOGGER.debug(err_msg)
                     ok = False
 
             if ok and self.parent_id is not None:
@@ -319,13 +319,13 @@ class InjectorUITreeEntity(object):
                                        'TREE_MENU_ENTITY_PARENT_ID': self.parent_id}}
                 result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
-                    err_msg = 'Error while updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+                    err_msg = 'Problem while updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
-                    LOGGER.error(err_msg)
+                    LOGGER.debug(err_msg)
         else:
-            err_msg = 'Error while saving or updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+            err_msg = 'Problem while saving or updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                       'Reason: id and/or value and/or type is/are not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
 
     def remove(self):
         """
@@ -336,13 +336,13 @@ class InjectorUITreeEntity(object):
             args = {'properties': {'OPERATION': 'UNREGISTER', 'TREE_MENU_ENTITY_ID': self.id}}
             result = InjectorUITreeService.requester.call(args).get()
             if result.rc != 0:
-                err_msg = 'Error while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+                err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                           'Reason: ' + str(result.error_message)
-                LOGGER.error(err_msg)
+                LOGGER.debug(err_msg)
         else:
-            err_msg = 'Error while removing injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+            err_msg = 'Problem while removing injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                       'Reason: id is null or injector UI Tree Menu Entity not found'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
 
 
 class InjectorCachedRegistryFactoryService(object):
@@ -368,12 +368,12 @@ class InjectorCachedRegistryFactoryService(object):
         """
         if args is None:
             err_msg = 'not args defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
 
         if 'registry.name' not in args or args['registry.name'] is None or not args['registry.name']:
             err_msg = 'registry.name is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.gears.registry.name'] = args['registry.name']
@@ -381,7 +381,7 @@ class InjectorCachedRegistryFactoryService(object):
 
         if 'registry.cache.id' not in args or args['registry.cache.id'] is None or not args['registry.cache.id']:
             err_msg = 'registry.cache.id is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.gears.registry.cache.id'] = args['registry.cache.id']
@@ -389,7 +389,7 @@ class InjectorCachedRegistryFactoryService(object):
 
         if 'registry.cache.name' not in args or args['registry.cache.name'] is None or not args['registry.cache.name']:
             err_msg = 'registry.cache.name is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.gears.registry.cache.name'] = args['registry.cache.name']
@@ -397,7 +397,7 @@ class InjectorCachedRegistryFactoryService(object):
 
         if 'cache.mgr.name' not in args or args['cache.mgr.name'] is None or not args['cache.mgr.name']:
             err_msg = 'cache.mgr.name is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.cache.mgr.name'] = args['cache.mgr.name']
@@ -416,12 +416,12 @@ class InjectorCachedRegistryFactoryService(object):
         """
         if args is None:
             err_msg = 'not args defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
 
         if 'registry.name' not in args or args['registry.name'] is None or not args['registry.name']:
             err_msg = 'registry.name is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.components.registry.name'] = args['registry.name']
@@ -429,7 +429,7 @@ class InjectorCachedRegistryFactoryService(object):
 
         if 'registry.cache.id' not in args or args['registry.cache.id'] is None or not args['registry.cache.id']:
             err_msg = 'registry.cache.id is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.components.registry.cache.id'] = args['registry.cache.id']
@@ -437,7 +437,7 @@ class InjectorCachedRegistryFactoryService(object):
 
         if 'registry.cache.name' not in args or args['registry.cache.name'] is None or not args['registry.cache.name']:
             err_msg = 'registry.cache.name is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.components.registry.cache.name'] = args['registry.cache.name']
@@ -445,7 +445,7 @@ class InjectorCachedRegistryFactoryService(object):
 
         if 'cache.mgr.name' not in args or args['cache.mgr.name'] is None or not args['cache.mgr.name']:
             err_msg = 'cache.mgr.name is not defined !'
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             return None
         else:
             args['ariane.community.injector.cache.mgr.name'] = args['cache.mgr.name']
@@ -494,9 +494,9 @@ class InjectorCachedComponentService(object):
                 ret = InjectorCachedComponent.json_2_injector_component(result.response_properties)
                 ret.blob = result.response_content
             else:
-                err_msg = 'Error while finding component ( id : ' + co_id + \
+                err_msg = 'Problem while finding component ( id : ' + co_id + \
                           'Reason: ' + str(result.error_message)
-                LOGGER.error(err_msg)
+                LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -512,9 +512,9 @@ class InjectorCachedComponentService(object):
         if result.rc == 0:
             ret = int(result.response_content)
         else:
-            err_msg = 'Error while getting components cache size' +\
+            err_msg = 'Problem while getting components cache size' +\
                       'Reason: ' + str(result.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -652,9 +652,9 @@ class InjectorCachedComponent(pykka.ThreadingActor):
 
         result = InjectorCachedComponentService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Error while saving component ( id : ' + self.id + \
+            err_msg = 'Problem while saving component ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             ret = False
 
         return ret
@@ -672,9 +672,9 @@ class InjectorCachedComponent(pykka.ThreadingActor):
 
         result = InjectorCachedComponentService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Error while saving component ( id : ' + self.id + \
+            err_msg = 'Problem while saving component ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             ret = False
 
         if self.service is not None and self.service.is_started:
@@ -829,9 +829,9 @@ class InjectorCachedGearService(object):
         if result.rc == 0:
             ret = int(result.response_content)
         else:
-            err_msg = 'Error while getting gears cache size' + \
+            err_msg = 'Problem while getting gears cache size' + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
         return ret
 
     @staticmethod
@@ -923,9 +923,9 @@ class InjectorCachedGear(pykka.ThreadingActor):
 
         result = InjectorCachedGearService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Error while saving gear ( id : ' + self.id + \
+            err_msg = 'Problem while saving gear ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             ret = False
 
         return ret
@@ -942,9 +942,9 @@ class InjectorCachedGear(pykka.ThreadingActor):
 
         result = InjectorCachedGearService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Error while deleting gear ( id : ' + self.id + \
+            err_msg = 'Problem while deleting gear ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.error(err_msg)
+            LOGGER.debug(err_msg)
             ret = False
 
         if self.service is not None and self.service.is_started:

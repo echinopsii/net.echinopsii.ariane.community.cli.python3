@@ -77,9 +77,9 @@ class DatacenterService(object):
             if response.rc is 0:
                 ret = Datacenter.json_2_datacenter(response.response_content)
             else:
-                err_msg = 'Error while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + '). ' +\
+                err_msg = 'Problem while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + ').' +\
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(err_msg)
+                LOGGER.debug(err_msg)
 
         return ret
 
@@ -96,8 +96,8 @@ class DatacenterService(object):
             for datacenter in response.response_content['datacenters']:
                 ret.append(Datacenter.json_2_datacenter(datacenter))
         else:
-            err_msg = 'Error while getting datacenters. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting datacenters. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -236,16 +236,16 @@ class Datacenter(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
                 response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.routing_area_ids.append(routing_area.id)
                     routing_area.dc_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                LOGGER.debug(
+                    'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
                     routing_area.name + ' id is None or self.id is None.'
                 )
 
@@ -270,16 +270,16 @@ class Datacenter(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete', 'parameters': params}
                 response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.routing_area_ids.remove(routing_area.id)
                     routing_area.dc_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                LOGGER.debug(
+                    'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
                     routing_area.name + ' id is None'
                 )
 
@@ -304,16 +304,16 @@ class Datacenter(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
                 response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.subnet_ids.append(subnet.id)
                     subnet.dc_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                LOGGER.debug(
+                    'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -338,16 +338,16 @@ class Datacenter(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
                 response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.subnet_ids.remove(subnet.id)
                     subnet.dc_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                LOGGER.debug(
+                    'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -365,7 +365,7 @@ class Datacenter(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = DatacenterService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error('Error while saving datacenter' + self.name + '. Reason: ' + str(response.error_message))
+                LOGGER.debug('Problem while saving datacenter' + self.name + '. Reason: ' + str(response.error_message))
                 ok = False
             else:
                 self.id = response.response_content['datacenterID']
@@ -377,8 +377,8 @@ class Datacenter(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = DatacenterService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating datacenter' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating datacenter' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -393,8 +393,8 @@ class Datacenter(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/fullAddress', 'parameters': params}
                 response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' full address. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' full address. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -408,8 +408,8 @@ class Datacenter(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/gpsCoord', 'parameters': params}
                 response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' gps coord. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' gps coord. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -422,8 +422,8 @@ class Datacenter(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = DatacenterService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -440,8 +440,8 @@ class Datacenter(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
                     response = DatacenterService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -450,8 +450,8 @@ class Datacenter(object):
                         self.routing_areas_2_add.remove(routing_area)
                         routing_area.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
                         routing_area.name + ' id is None'
                     )
                     ok = False
@@ -470,8 +470,8 @@ class Datacenter(object):
                             'parameters': params}
                     response = DatacenterService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -480,8 +480,8 @@ class Datacenter(object):
                         self.routing_areas_2_rm.remove(routing_area)
                         routing_area.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
                         routing_area.name + ' id is None'
                     )
                     ok = False
@@ -499,8 +499,8 @@ class Datacenter(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
                     response = DatacenterService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -509,8 +509,8 @@ class Datacenter(object):
                         self.subnets_2_add.remove(subnet)
                         subnet.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
                     ok = False
@@ -528,8 +528,8 @@ class Datacenter(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
                     response = DatacenterService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating datacenter ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -538,8 +538,8 @@ class Datacenter(object):
                         self.subnets_2_rm.remove(subnet)
                         subnet.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                    LOGGER.debug(
+                        'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
                     #ok = False
@@ -563,8 +563,8 @@ class Datacenter(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = DatacenterService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting datacenter ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting datacenter ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -606,9 +606,9 @@ class RoutingAreaService(object):
             if response.rc is 0:
                 ret = RoutingArea.json_2_routing_area(response.response_content)
             else:
-                err_msg = 'Error while finding routing area (id:' + str(ra_id) + ', name:' + str(ra_name) + '). ' + \
+                err_msg = 'Problem while finding routing area (id:' + str(ra_id) + ', name:' + str(ra_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -627,8 +627,8 @@ class RoutingAreaService(object):
             for routing_area in response.response_content['routingAreas']:
                 ret.append(RoutingArea.json_2_routing_area(routing_area))
         else:
-            err_msg = 'Error while getting routing areas. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting routing areas. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -755,16 +755,16 @@ class RoutingArea(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating routing area ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.dc_ids.append(datacenter.id)
                     datacenter.routing_area_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating routing area ' + self.name + ' name. Reason: datacenter ' +
+                LOGGER.debug(
+                    'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
                     datacenter.name + ' id is None or self.id is None'
                 )
 
@@ -789,16 +789,16 @@ class RoutingArea(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating routing area ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.dc_ids.remove(datacenter.id)
                     datacenter.routing_area_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating routing area ' + self.name + ' name. Reason: datacenter ' +
+                LOGGER.debug(
+                    'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
                     datacenter.name + ' id is None or self.id is None'
                 )
 
@@ -817,8 +817,8 @@ class RoutingArea(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = RoutingAreaService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while saving routing area' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving routing area' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
             else:
@@ -831,8 +831,8 @@ class RoutingArea(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = RoutingAreaService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating routing area ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating routing area ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -844,8 +844,8 @@ class RoutingArea(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating routing area ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -858,8 +858,8 @@ class RoutingArea(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating routing area ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -872,8 +872,8 @@ class RoutingArea(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/multicast', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating routing area ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -890,8 +890,8 @@ class RoutingArea(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
                     response = RoutingAreaService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating routing area ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -900,8 +900,8 @@ class RoutingArea(object):
                         self.dc_2_add.remove(datacenter)
                         datacenter.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating routing area ' + self.name + ' name. Reason: datacenter ' +
+                    LOGGER.debug(
+                        'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
                         datacenter.name + ' id is None'
                     )
                     ok = False
@@ -920,8 +920,8 @@ class RoutingArea(object):
                             'parameters': params}
                     response = RoutingAreaService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating routing area ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -930,8 +930,8 @@ class RoutingArea(object):
                         self.dc_2_rm.remove(datacenter)
                         datacenter.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating routing area ' + self.name + ' name. Reason: datacenter ' +
+                    LOGGER.debug(
+                        'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
                         datacenter.name + ' id is None'
                     )
                     #ok = False
@@ -953,8 +953,8 @@ class RoutingArea(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = RoutingAreaService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting routing area ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting routing area ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -996,9 +996,9 @@ class SubnetService(object):
             if response.rc is 0:
                 ret = Subnet.json_2_subnet(response.response_content)
             else:
-                err_msg = 'Error while finding subnet (id:' + str(sb_id) + ', name:' + str(sb_name) + '). ' + \
+                err_msg = 'Problem while finding subnet (id:' + str(sb_id) + ', name:' + str(sb_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -1017,8 +1017,8 @@ class SubnetService(object):
             for subnet in response.response_content['subnets']:
                 ret.append(Subnet.json_2_subnet(subnet))
         else:
-            err_msg = 'Error while getting subnets. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting subnets. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -1146,16 +1146,16 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.dc_ids.append(datacenter.id)
                     datacenter.subnet_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                LOGGER.debug(
+                    'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
                     datacenter.name + ' id is None or self.id is None'
                 )
 
@@ -1180,16 +1180,16 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.dc_ids.remove(datacenter.id)
                     datacenter.subnet_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                LOGGER.debug(
+                    'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
                     datacenter.name + ' id is None or self.id is None'
                 )
 
@@ -1214,16 +1214,16 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.subnet_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating subnet ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -1248,16 +1248,16 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.subnet_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating subnet ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -1279,8 +1279,8 @@ class Subnet(object):
             if response.rc is 0:
                 self.id = response.response_content['subnetID']
             else:
-                LOGGER.error(
-                    'Error while saving subnet' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving subnet' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
         else:
@@ -1291,8 +1291,8 @@ class Subnet(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = SubnetService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating subnet ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating subnet ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -1304,8 +1304,8 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1318,8 +1318,8 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnetip', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1332,8 +1332,8 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnetmask', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1346,8 +1346,8 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingarea', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1364,8 +1364,8 @@ class Subnet(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -1374,8 +1374,8 @@ class Subnet(object):
                         self.dc_2_add.remove(datacenter)
                         datacenter.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
                         datacenter.name + ' id is None'
                     )
                     ok = False
@@ -1394,8 +1394,8 @@ class Subnet(object):
                             'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -1404,8 +1404,8 @@ class Subnet(object):
                         self.dc_2_rm.remove(datacenter)
                         datacenter.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: datacenter ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
                         datacenter.name + ' id is None'
                     )
                     ok = False
@@ -1423,8 +1423,8 @@ class Subnet(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -1433,8 +1433,8 @@ class Subnet(object):
                         self.osi_2_add.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     ok = False
@@ -1453,8 +1453,8 @@ class Subnet(object):
                             'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating subnet ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -1463,8 +1463,8 @@ class Subnet(object):
                         self.osi_2_rm.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating subnet ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating subnet ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     #ok = False
@@ -1487,8 +1487,8 @@ class Subnet(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = SubnetService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting subnet ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting subnet ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -1554,9 +1554,9 @@ class IPAddressService(object):
             if response.rc is 0:
                 ret = IPAddress.json_2_ip_address(response.response_content)
             else:
-                err_msg = 'Error while finding IP Address (id:' + str(ipa_id) + ', ipAddress:' + str(ipa_ip_address) \
+                err_msg = 'Problem while finding IP Address (id:' + str(ipa_id) + ', ipAddress:' + str(ipa_ip_address) \
                           + '). Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -1575,8 +1575,8 @@ class IPAddressService(object):
             for ipAddress in response.response_content['ipAddresses']:
                 ret.append(IPAddress.json_2_ip_address(ipAddress))
         else:
-            err_msg = 'Error while getting IP Address. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting IP Address. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -1675,8 +1675,8 @@ class IPAddress(object):
             if response.rc is 0:
                 self.id = response.response_content['ipAddressID']
             else:
-                LOGGER.error(
-                    'Error while saving IP Address' + self.ip_address + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving IP Address' + self.ip_address + '. Reason: ' + str(response.error_message)
                 )
         else:
             params = {
@@ -1686,8 +1686,8 @@ class IPAddress(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/ipAddress', 'parameters': params}
             response = IPAddressService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating IP Address ' + self.ip_address + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -1700,8 +1700,8 @@ class IPAddress(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/fqdn', 'parameters': params}
                 response = IPAddressService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating IP Address ' + self.ip_address + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1714,8 +1714,8 @@ class IPAddress(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnet', 'parameters': params}
                 response = IPAddressService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating IP Address ' + self.ip_address + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1728,8 +1728,8 @@ class IPAddress(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osInstance', 'parameters': params}
                 response = IPAddressService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating IP Address ' + self.ip_address + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
                         str(response.error_message)
                     )
 
@@ -1750,8 +1750,8 @@ class IPAddress(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = IPAddressService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting IP Address' + self.ip_address + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting IP Address' + self.ip_address + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -1793,9 +1793,9 @@ class OSInstanceService(object):
             if response.rc is 0:
                 ret = OSInstance.json_2_os_instance(response.response_content)
             else:
-                err_msg = 'Error while finding OS Instance (id:' + str(osi_id) + ', name:' + str(osi_name) + '). ' + \
+                err_msg = 'Problem while finding OS Instance (id:' + str(osi_id) + ', name:' + str(osi_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -1814,8 +1814,8 @@ class OSInstanceService(object):
             for osInstance in response.response_content['osInstances']:
                 ret.append(OSInstance.json_2_os_instance(osInstance))
         else:
-            err_msg = 'Error while getting os instances. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting os instances. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -1972,16 +1972,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.subnet_ids.append(subnet.id)
                     subnet.osi_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -2006,16 +2006,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.subnet_ids.remove(subnet.id)
                     subnet.osi_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -2040,16 +2040,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.ip_address_ids.append(ip_address.id)
                     ip_address.ipa_os_instance_id = self.id
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
                     ip_address.ipAddress + ' id is None'
                 )
 
@@ -2074,16 +2074,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.ip_address_ids.remove(ip_address.id)
                     ip_address.ipa_os_instance_id = None
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
                     ip_address.ipAddress + ' id is None'
                 )
 
@@ -2109,16 +2109,16 @@ class OSInstance(object):
                         'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.embedded_osi_ids.append(e_osi.id)
                     e_osi.sync()
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
                     e_osi.name + ' id is None'
                 )
 
@@ -2144,16 +2144,16 @@ class OSInstance(object):
                         'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.embedded_osi_ids.remove(e_osi.id)
                     e_osi.sync()
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
                     e_osi.name + ' id is None'
                 )
 
@@ -2178,16 +2178,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.application_ids.append(application.id)
                     application.osi_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                     application.name + ' id is None'
                 )
 
@@ -2212,16 +2212,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.application_ids.remove(application.id)
                     application.osi_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                     application.name + ' id is None'
                 )
 
@@ -2246,16 +2246,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/environments/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.environment_ids.append(environment.id)
                     environment.osi_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                     environment.name + ' id is None'
                 )
 
@@ -2280,16 +2280,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/environments/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.environment_ids.remove(environment.id)
                     environment.osi_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                     environment.name + ' id is None'
                 )
 
@@ -2314,16 +2314,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/teams/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.team_ids.append(team.id)
                     team.osi_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                     team.name + ' id is None'
                 )
 
@@ -2348,16 +2348,16 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/teams/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.team_ids.remove(team.id)
                     team.osi_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                     team.name + ' id is None'
                 )
 
@@ -2377,8 +2377,8 @@ class OSInstance(object):
             if response.rc is 0:
                 self.id = response.response_content['osInstanceID']
             else:
-                LOGGER.error(
-                    'Error while saving OS instance' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving OS instance' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
         else:
@@ -2389,8 +2389,8 @@ class OSInstance(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = OSInstanceService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -2402,8 +2402,8 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
 
@@ -2415,8 +2415,8 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/admingateuri', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
 
@@ -2428,8 +2428,8 @@ class OSInstance(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/ostype', 'parameters': params}
             response = OSInstanceService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
 
@@ -2441,8 +2441,8 @@ class OSInstance(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/embeddingOSInstance', 'parameters': params}
             response = OSInstanceService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
 
@@ -2459,8 +2459,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2469,8 +2469,8 @@ class OSInstance(object):
                         self.subnets_2_add.remove(subnet)
                         subnet.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
                     ok = False
@@ -2489,8 +2489,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2499,8 +2499,8 @@ class OSInstance(object):
                         self.subnets_2_rm.remove(subnet)
                         subnet.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: subnet ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
                     ok = False
@@ -2519,8 +2519,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2529,8 +2529,8 @@ class OSInstance(object):
                         self.embedded_osi_2_add.remove(embedded_osi)
                         embedded_osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
                         embedded_osi.name + ' id is None'
                     )
                     ok = False
@@ -2549,8 +2549,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2559,8 +2559,8 @@ class OSInstance(object):
                         self.embedded_osi_2_rm.remove(embedded_osi)
                         embedded_osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
                         embedded_osi.name + ' id is None'
                     )
                     ok = False
@@ -2579,8 +2579,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2589,8 +2589,8 @@ class OSInstance(object):
                         self.ip_address_2_add.remove(ipAddress_osi)
                         ipAddress_osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
                         ipAddress_osi.ipAddress + ' id is None'
                     )
                     ok = False
@@ -2609,8 +2609,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2619,8 +2619,8 @@ class OSInstance(object):
                         self.ip_address_2_rm.remove(ipAddress_osi)
                         ipAddress_osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
                         ipAddress_osi.ipAddress + ' id is None'
                     )
                     ok = False
@@ -2639,8 +2639,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2649,8 +2649,8 @@ class OSInstance(object):
                         self.application_2_add.remove(application)
                         application.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
                     ok = False
@@ -2669,8 +2669,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2679,8 +2679,8 @@ class OSInstance(object):
                         self.application_2_rm.remove(application)
                         application.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: application ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
                     ok = False
@@ -2699,8 +2699,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2709,8 +2709,8 @@ class OSInstance(object):
                         self.environment_2_add.remove(environment)
                         environment.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: environment ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: environment ' +
                         environment.name + ' id is None'
                     )
                     ok = False
@@ -2729,8 +2729,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2739,8 +2739,8 @@ class OSInstance(object):
                         self.environment_2_rm.remove(environment)
                         environment.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: environment ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: environment ' +
                         environment.name + ' id is None'
                     )
                     ok = False
@@ -2759,8 +2759,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -2769,8 +2769,8 @@ class OSInstance(object):
                         self.team_2_add.remove(team)
                         team.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: team ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: team ' +
                         team.name + ' id is None'
                     )
                     ok = False
@@ -2789,8 +2789,8 @@ class OSInstance(object):
                             'parameters': params}
                     response = OSInstanceService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS instance ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         break
@@ -2798,8 +2798,8 @@ class OSInstance(object):
                         self.team_2_rm.remove(team)
                         team.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS instance ' + self.name + ' name. Reason: team ' +
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: team ' +
                         team.name + ' id is None'
                     )
                     break
@@ -2821,8 +2821,8 @@ class OSInstance(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = OSInstanceService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting OS instance ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting OS instance ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -2864,9 +2864,9 @@ class OSTypeService(object):
             if response.rc is 0:
                 ret = OSType.json_2_ostype(response.response_content)
             else:
-                err_msg = 'Error while finding OS Type (id:' + str(ost_id) + ', name:' + str(ost_name) + '). ' + \
+                err_msg = 'Problem while finding OS Type (id:' + str(ost_id) + ', name:' + str(ost_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -2885,8 +2885,8 @@ class OSTypeService(object):
             for os_type in response.response_content['osTypes']:
                 ret.append(OSType.json_2_ostype(os_type))
         else:
-            err_msg = 'Error while getting OS Types. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting OS Types. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
 
         return ret
 
@@ -2995,16 +2995,16 @@ class OSType(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = OSTypeService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS type ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS type ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.sync()
             else:
-                LOGGER.error(
-                    'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating OS type ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3029,16 +3029,16 @@ class OSType(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = OSTypeService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating OS type ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating OS type ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.sync()
             else:
-                LOGGER.error(
-                    'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating OS type ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3057,8 +3057,8 @@ class OSType(object):
             if response.rc is 0:
                 self.id = response.response_content['osTypeID']
             else:
-                LOGGER.error(
-                    'Error while saving os type' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving os type' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
         else:
@@ -3069,8 +3069,8 @@ class OSType(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = OSTypeService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -3082,8 +3082,8 @@ class OSType(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/architecture', 'parameters': params}
                 response = OSTypeService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating os type ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating os type ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -3096,8 +3096,8 @@ class OSType(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
             response = OSTypeService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -3113,8 +3113,8 @@ class OSType(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                     response = OSTypeService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS type ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS type ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -3123,8 +3123,8 @@ class OSType(object):
                         self.osi_2_add.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating OS type ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     ok = False
@@ -3143,8 +3143,8 @@ class OSType(object):
                             'parameters': params}
                     response = OSTypeService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating OS type ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating OS type ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -3153,8 +3153,8 @@ class OSType(object):
                         self.osi_2_rm.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating OS type ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating OS type ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     #ok = False
@@ -3177,8 +3177,8 @@ class OSType(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = OSTypeService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting os type ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting os type ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -3220,9 +3220,9 @@ class ApplicationService(object):
             if response.rc is 0:
                 ret = Application.json_2_application(response.response_content)
             else:
-                err_msg = 'Error while finding application (id:' + str(app_id) + ', name:' + str(app_name) + '). ' + \
+                err_msg = 'Problem while finding application (id:' + str(app_id) + ', name:' + str(app_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -3241,8 +3241,8 @@ class ApplicationService(object):
             for application in response.response_content['applications']:
                 ret.append(Application.json_2_application(application))
         else:
-            err_msg = 'Error while getting applications. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting applications. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -3368,16 +3368,16 @@ class Application(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating application ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.application_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating application ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating application ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3402,16 +3402,16 @@ class Application(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating application ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.application_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating application ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating application ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3432,8 +3432,8 @@ class Application(object):
             if response.rc is 0:
                 self.id = response.response_content['applicationID']
             else:
-                LOGGER.error(
-                    'Error while saving application' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving application' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
         else:
@@ -3444,8 +3444,8 @@ class Application(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = ApplicationService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating application ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating application ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -3457,8 +3457,8 @@ class Application(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/shortName', 'parameters': params}
                 response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating application ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -3471,8 +3471,8 @@ class Application(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating application ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -3485,8 +3485,8 @@ class Application(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
                 response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating application ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -3499,8 +3499,8 @@ class Application(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
             response = ApplicationService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating application ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating application ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -3513,8 +3513,8 @@ class Application(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/team', 'parameters': params}
             response = ApplicationService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating application ' + self.name + ' name. Reason: ' +
+                LOGGER.debug(
+                    'Problem while updating application ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
                 ok = False
@@ -3531,8 +3531,8 @@ class Application(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                     response = ApplicationService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating application ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating application ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -3541,8 +3541,8 @@ class Application(object):
                         self.osi_2_add.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating application ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     ok = False
@@ -3561,8 +3561,8 @@ class Application(object):
                             'parameters': params}
                     response = ApplicationService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating application ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating application ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -3571,8 +3571,8 @@ class Application(object):
                         self.osi_2_rm.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating application ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating application ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     #ok = False
@@ -3591,8 +3591,8 @@ class Application(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = ApplicationService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting application ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting application ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -3634,9 +3634,9 @@ class CompanyService(object):
             if response.rc is 0:
                 ret = Company.json_2_company(response.response_content)
             else:
-                err_msg = 'Error while finding company (id:' + str(cmp_id) + ', name:' + str(cmp_name) + '). ' + \
+                err_msg = 'Problem while finding company (id:' + str(cmp_id) + ', name:' + str(cmp_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -3655,8 +3655,8 @@ class CompanyService(object):
             for company in response.response_content['companies']:
                 ret.append(Company.json_2_company(company))
         else:
-            err_msg = 'Error while getting companies. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting companies. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -3763,16 +3763,16 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.applications_ids.append(application.id)
                     application.sync()
             else:
-                LOGGER.error(
-                    'Error while updating company ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating company ' + self.name + ' name. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -3797,16 +3797,16 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.applications_ids.remove(application.id)
                     application.sync()
             else:
-                LOGGER.error(
-                    'Error while updating company ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating company ' + self.name + ' name. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -3831,16 +3831,16 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/add', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.ost_ids.append(ostype.id)
                     ostype.sync()
             else:
-                LOGGER.error(
-                    'Error while updating company ' + self.name + ' name. Reason: ostype ' +
+                LOGGER.debug(
+                    'Problem while updating company ' + self.name + ' name. Reason: ostype ' +
                     ostype.name + ' id is None or self.id is None'
                 )
 
@@ -3865,16 +3865,16 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/delete', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.ost_ids.remove(ostype.id)
                     ostype.sync()
             else:
-                LOGGER.error(
-                    'Error while updating company ' + self.name + ' name. Reason: ostype ' +
+                LOGGER.debug(
+                    'Problem while updating company ' + self.name + ' name. Reason: ostype ' +
                     ostype.name + ' id is None or self.id is None'
                 )
 
@@ -3893,8 +3893,8 @@ class Company(object):
             if response.rc is 0:
                 self.id = response.response_content['companyID']
             else:
-                LOGGER.error(
-                    'Error while saving company' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving company' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
         else:
@@ -3905,8 +3905,8 @@ class Company(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = CompanyService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating company ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating company ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -3918,8 +3918,8 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -3937,8 +3937,8 @@ class Company(object):
                             'parameters': params}
                     response = CompanyService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating company ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -3947,8 +3947,8 @@ class Company(object):
                         self.applications_2_add.remove(application)
                         application.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: application ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
                     ok = False
@@ -3967,8 +3967,8 @@ class Company(object):
                             'parameters': params}
                     response = CompanyService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating company ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -3977,8 +3977,8 @@ class Company(object):
                         self.applications_2_rm.remove(application)
                         application.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: application ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
                     ok = False
@@ -3997,8 +3997,8 @@ class Company(object):
                             'parameters': params}
                     response = CompanyService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating company ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -4007,8 +4007,8 @@ class Company(object):
                         self.ost_2_add.remove(os_type)
                         os_type.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: os_type ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: os_type ' +
                         os_type.name + ' id is None'
                     )
                     ok = False
@@ -4027,8 +4027,8 @@ class Company(object):
                             'parameters': params}
                     response = CompanyService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating company ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating company ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -4037,8 +4037,8 @@ class Company(object):
                         self.ost_2_rm.remove(os_type)
                         os_type.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating company ' + self.name + ' name. Reason: os_type ' +
+                    LOGGER.debug(
+                        'Problem while updating company ' + self.name + ' name. Reason: os_type ' +
                         os_type.name + ' id is None'
                     )
                     #ok = False
@@ -4061,8 +4061,8 @@ class Company(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = CompanyService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting company ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting company ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -4104,9 +4104,9 @@ class EnvironmentService(object):
             if response.rc is 0:
                 ret = Environment.json_2_environment(response.response_content)
             else:
-                err_msg = 'Error while finding environment (id:' + str(env_id) + ', name:' + str(env_name) + '). ' + \
+                err_msg = 'Problem while finding environment (id:' + str(env_id) + ', name:' + str(env_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -4125,8 +4125,8 @@ class EnvironmentService(object):
             for environment in response.response_content['environments']:
                 ret.append(Environment.json_2_environment(environment))
         else:
-            err_msg = 'Error while getting environments. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting environments. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -4231,16 +4231,16 @@ class Environment(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = EnvironmentService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating environment ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating environment ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.environment_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating environment ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating environment ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -4265,16 +4265,16 @@ class Environment(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = EnvironmentService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating environment ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating environment ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.environment_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating environment ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating environment ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -4294,8 +4294,8 @@ class Environment(object):
             if response.rc is 0:
                 self.id = response.response_content['environmentID']
             else:
-                LOGGER.error(
-                    'Error while saving environment ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving environment ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
         else:
@@ -4306,8 +4306,8 @@ class Environment(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = EnvironmentService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating environment ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating environment ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -4319,8 +4319,8 @@ class Environment(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = EnvironmentService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating environment ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating environment ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -4333,8 +4333,8 @@ class Environment(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
                 response = EnvironmentService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating environment ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating environment ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
 
@@ -4350,8 +4350,8 @@ class Environment(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                     response = EnvironmentService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating environment ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating environment ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -4360,8 +4360,8 @@ class Environment(object):
                         self.osi_2_add.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating environment ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating environment ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     ok = False
@@ -4380,8 +4380,8 @@ class Environment(object):
                             'parameters': params}
                     response = EnvironmentService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating envionment ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating envionment ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -4390,8 +4390,8 @@ class Environment(object):
                         self.osi_2_rm.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating environment ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating environment ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     #ok = False
@@ -4414,8 +4414,8 @@ class Environment(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = EnvironmentService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting environment ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting environment ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -4457,9 +4457,9 @@ class TeamService(object):
             if response.rc is 0:
                 ret = Team.json_2_team(response.response_content)
             else:
-                err_msg = 'Error while finding team (id:' + str(team_id) + ', name:' + str(team_name) + '). ' + \
+                err_msg = 'Problem while finding team (id:' + str(team_id) + ', name:' + str(team_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.error(
+                LOGGER.debug(
                     err_msg
                 )
 
@@ -4478,8 +4478,8 @@ class TeamService(object):
             for team in response.response_content['teams']:
                 ret.append(Team.json_2_team(team))
         else:
-            err_msg = 'Error while getting teams. Reason: ' + str(response.error_message)
-            LOGGER.error(err_msg)
+            err_msg = 'Problem while getting teams. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
         return ret
 
 
@@ -4592,16 +4592,16 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.team_ids.append(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating team ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -4626,16 +4626,16 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.team_ids.remove(self.id)
             else:
-                LOGGER.error(
-                    'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                LOGGER.debug(
+                    'Problem while updating team ' + self.name + ' name. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -4660,16 +4660,16 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.app_ids.append(application.id)
                     application.sync()
             else:
-                LOGGER.error(
-                    'Error while updating team ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating team ' + self.name + ' name. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -4694,16 +4694,16 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.app_ids.remove(application.id)
                     application.sync()
             else:
-                LOGGER.error(
-                    'Error while updating team ' + self.name + ' name. Reason: application ' +
+                LOGGER.debug(
+                    'Problem while updating team ' + self.name + ' name. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -4723,8 +4723,8 @@ class Team(object):
             if response.rc is 0:
                 self.id = response.response_content['teamID']
             else:
-                LOGGER.error(
-                    'Error while saving team ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while saving team ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 ok = False
         else:
@@ -4735,8 +4735,8 @@ class Team(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
             response = TeamService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while updating team ' + self.name + ' name. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while updating team ' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -4748,8 +4748,8 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -4762,8 +4762,8 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
 
@@ -4779,8 +4779,8 @@ class Team(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                     response = TeamService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating team ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -4789,8 +4789,8 @@ class Team(object):
                         self.osi_2_add.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     ok = False
@@ -4809,8 +4809,8 @@ class Team(object):
                             'parameters': params}
                     response = TeamService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating team ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -4819,8 +4819,8 @@ class Team(object):
                         self.osi_2_rm.remove(osi)
                         osi.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: OS instance ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
                     ok = False
@@ -4839,8 +4839,8 @@ class Team(object):
                             'parameters': params}
                     response = TeamService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating team ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -4849,8 +4849,8 @@ class Team(object):
                         self.app_2_add.remove(application)
                         application.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: application ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
                     ok = False
@@ -4869,8 +4869,8 @@ class Team(object):
                             'parameters': params}
                     response = TeamService.requester.call(args)
                     if response.rc is not 0:
-                        LOGGER.error(
-                            'Error while updating team ' + self.name + ' name. Reason: ' +
+                        LOGGER.debug(
+                            'Problem while updating team ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         #ok = False
@@ -4879,8 +4879,8 @@ class Team(object):
                         self.app_2_rm.remove(application)
                         application.sync()
                 else:
-                    LOGGER.error(
-                        'Error while updating team ' + self.name + ' name. Reason: application ' +
+                    LOGGER.debug(
+                        'Problem while updating team ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
                     #ok = False
@@ -4903,8 +4903,8 @@ class Team(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = TeamService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.error(
-                    'Error while deleting team ' + self.name + '. Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    'Problem while deleting team ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
