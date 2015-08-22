@@ -549,6 +549,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         return InjectorCachedComponent(
             component_id=json_obj['componentId'],
             component_name=json_obj['componentName'],
+            component_type=json_obj['componentType'],
             component_admin_queue=json_obj['componentAdminQueue'],
             refreshing=json_obj['refreshing'],
             next_action=json_obj['nextAction'],
@@ -566,6 +567,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
             json_obj = {
                 'componentId': self.id,
                 'componentName': self.name,
+                'componentType': self.type,
                 'componentAdminQueue': self.admin_queue,
                 'refreshing': 'true' if self.refreshing else 'false',
                 'nextAction': self.next_action,
@@ -576,6 +578,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
             json_obj = {
                 'componentId': self.id,
                 'componentName': self.name,
+                'componentType': self.type,
                 'componentAdminQueue': self.admin_queue,
                 'refreshing': 'true' if self.refreshing else 'false',
                 'nextAction': self.next_action,
@@ -585,13 +588,14 @@ class InjectorCachedComponent(pykka.ThreadingActor):
             }
         return json_obj
 
-    def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
-                 next_action=None, json_last_refresh=None, attached_gear_id=None, data_blob=None,
-                 parent_actor_ref=None):
+    def __init__(self, component_id=None, component_name=None, component_type=None, component_admin_queue=None,
+                 refreshing=None, next_action=None, json_last_refresh=None, attached_gear_id=None,
+                 data_blob=None, parent_actor_ref=None):
         """
         initialize this injector cached component
         :param component_id: the component id
         :param component_name: the component name
+        :param component_type : the component type
         :param component_admin_queue: the component admin queue for refresh actions
         :param refreshing: if the component is currently being refreshed or not
         :param next_action: the next action to be done
@@ -604,6 +608,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         super(InjectorCachedComponent, self).__init__()
         self.id = component_id
         self.name = component_name
+        self.type = component_type
         self.admin_queue = component_admin_queue
         self.refreshing = refreshing
         self.next_action = next_action
@@ -715,13 +720,15 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         => sniff(): to define sniff algorithm on your component
     """
 
-    def __init__(self, component_id=None, component_name=None, component_admin_queue=None, refreshing=None,
-                 next_action=None, json_last_refresh=None, attached_gear_id=None, data_blob=None):
+    def __init__(self, component_id=None, component_name=None, component_type=None, component_admin_queue=None,
+                 refreshing=None, next_action=None, json_last_refresh=None, attached_gear_id=None,
+                 data_blob=None):
         """
         initialization of this object. you need to call InjectorComponentSkeleter.start(args...) as this is a
         pykka.ThreadingActor. Look at the tests to know more...
         :param component_id: the component id
         :param component_name: the component name
+        :param component_type : the component type
         :param component_admin_queue: the component admin queue
         :param refreshing: the refreshing value
         :param next_action: the next action value
@@ -736,6 +743,8 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
             InjectorCachedComponent.start(component_id=component_id,
                                           component_name=retrieved_component_cache.name
                                           if retrieved_component_cache is not None else component_name,
+                                          component_type=retrieved_component_cache.type
+                                          if retrieved_component_cache is not None else component_type,
                                           component_admin_queue=retrieved_component_cache.admin_queue
                                           if retrieved_component_cache is not None else component_admin_queue,
                                           refreshing=retrieved_component_cache.refreshing
