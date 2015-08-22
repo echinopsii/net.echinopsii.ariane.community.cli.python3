@@ -1991,8 +1991,8 @@ class Link(object):
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = LinkService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug('Problem while saving link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
-                             ' }. Reason: ' + str(response.error_message))
+                LOGGER.debug('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
+                             + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
                 ok = False
             else:
                 self.id = response.response_content['linkID']
@@ -2004,8 +2004,8 @@ class Link(object):
             args = {'http_operation': 'GET', 'operation_path': 'update/sourceEP', 'parameters': params}
             response = LinkService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug('Problem while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
-                             ' }. Reason: ' + str(response.error_message))
+                LOGGER.debug('Problem while updating link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
+                             + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
                 ok = False
 
             if ok:
@@ -2016,8 +2016,8 @@ class Link(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/targetEP', 'parameters': params}
                 response = LinkService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug('Problem while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
-                                 ' }. Reason: ' + str(response.error_message))
+                    LOGGER.debug('Problem while updating link {' + str(self.sep_id) + ',' + str(self.tep_id) + ',' +
+                                 str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
                     ok = False
 
             if ok:
@@ -2028,8 +2028,8 @@ class Link(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/transport', 'parameters': params}
                 response = LinkService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug('Problem while updating link {' + self.sep_id + ',' + self.tep_id + ',' + self.trp_id +
-                                 ' }. Reason: ' + str(response.error_message))
+                    LOGGER.debug('Problem while updating link {' + str(self.sep_id) + ',' + str(self.tep_id) + ',' +
+                                 str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
                     ok = False
 
         if self.sep is not None:
