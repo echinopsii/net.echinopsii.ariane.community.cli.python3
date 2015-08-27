@@ -22,7 +22,6 @@ from ariane_clip3 import exceptions
 
 __author__ = 'mffrench'
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -40,6 +39,7 @@ class DirectoryService(object):
         self.environment_service = EnvironmentService(self.driver)
         self.team_service = TeamService(self.driver)
         self.ipAddress_service = IPAddressService(self.driver)
+        self.niCard_service = NICardService(self.driver)
 
 
 class DatacenterService(object):
@@ -77,7 +77,7 @@ class DatacenterService(object):
             if response.rc is 0:
                 ret = Datacenter.json_2_datacenter(response.response_content)
             else:
-                err_msg = 'Problem while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + ').' +\
+                err_msg = 'Problem while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + ').' + \
                           'Reason: ' + str(response.error_message)
                 LOGGER.debug(err_msg)
 
@@ -102,7 +102,6 @@ class DatacenterService(object):
 
 
 class Datacenter(object):
-
     @staticmethod
     def json_2_datacenter(json_obj):
         """
@@ -532,7 +531,7 @@ class Datacenter(object):
                             'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.subnets_2_rm.remove(subnet)
@@ -542,7 +541,7 @@ class Datacenter(object):
                         'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
 
         self.sync()
@@ -633,7 +632,6 @@ class RoutingAreaService(object):
 
 
 class RoutingArea(object):
-
     RA_TYPE_LAN = "LAN"
     RA_TYPE_MAN = "MAN"
     RA_TYPE_WAN = "WAN"
@@ -924,7 +922,7 @@ class RoutingArea(object):
                             'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.dc_2_rm.remove(datacenter)
@@ -934,7 +932,7 @@ class RoutingArea(object):
                         'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
                         datacenter.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
         self.sync()
         return self
@@ -1023,7 +1021,6 @@ class SubnetService(object):
 
 
 class Subnet(object):
-
     @staticmethod
     def json_2_subnet(json_obj):
         """
@@ -1457,7 +1454,7 @@ class Subnet(object):
                             'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.osi_2_rm.remove(osi)
@@ -1467,7 +1464,7 @@ class Subnet(object):
                         'Problem while updating subnet ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
 
         self.sync()
@@ -1512,17 +1509,17 @@ class IPAddressService(object):
         """
         if (ipa_id is None or not ipa_id) and (ipa_fqdn is None or not ipa_fqdn) and \
                 (
-                    (ipa_ip_address is None or not ipa_ip_address) and
-                    (
-                        (ipa_subnet_id is None or not ipa_subnet_id) or
-                        (ipa_osi_id is None or not ipa_osi_id)
-                    )
+                            (ipa_ip_address is None or not ipa_ip_address) and
+                            (
+                                        (ipa_subnet_id is None or not ipa_subnet_id) or
+                                        (ipa_osi_id is None or not ipa_osi_id)
+                            )
                 ):
             raise exceptions.ArianeCallParametersError('id and fqdn and (ip_address,(ip_subnet_id|ip_osi_id))')
 
         if (ipa_id is not None and ipa_id) and (
-                (ipa_fqdn is not None and ipa_fqdn) or
-                (ipa_ip_address is not None and ipa_ip_address)
+                    (ipa_fqdn is not None and ipa_fqdn) or
+                    (ipa_ip_address is not None and ipa_ip_address)
         ):
             LOGGER.warn('Both id and (fqdn or ipAddress) are defined. Will give you search on id.')
             ipa_fqdn = None
@@ -1756,6 +1753,84 @@ class IPAddress(object):
                 return self
             else:
                 return None
+
+
+class NICardService(object):
+    requester = None
+
+    def __init__(self, directory_driver):
+        args = {'repository_path': 'rest/directories/common/infrastructure/network/niCard/'}
+        NICardService.requester = directory_driver.make_requester(args)
+
+    @staticmethod
+    def find_niCard(nic_id=None, nic_mac_Address=None, nic_name=None):
+        """
+        find the NICard (nic) according nic id (prioritary) or name or mac_Address
+        :rtype : object
+        :param nic_id: the NIC id
+        :param nic_mac_Address: the NIC mac Address
+        :param nic_name : name
+        :return: found NIC or None if not found
+        """
+        if (nic_id is None or not nic_id) and (nic_name is None or not nic_name) and \
+                (
+                    (nic_mac_Address is None or not nic_mac_Address)
+
+                ):
+            raise exceptions.ArianeCallParametersError('id and name and (mac_Address))')
+
+        if (nic_id is not None and nic_id) and (
+                    (nic_name is not None and nic_name) or
+                    (nic_mac_Address is not None and nic_mac_Address)
+        ):
+            LOGGER.warn('Both id and (name or macAddress) are defined. Will give you search on id.')
+            nic_name = None
+            nic_mac_Address = None
+
+        if (nic_id is None or not nic_id) and (nic_name is not None and nic_name) and \
+                (nic_mac_Address is not None and nic_mac_Address):
+            LOGGER.warn('Both name and macAddress are defined. Will give you search on name.')
+            nic_mac_Address = None
+
+        params = None
+        if nic_id is not None and nic_id:
+            params = {'id': nic_id}
+        elif nic_name is not None and nic_name:
+            params = {'name': nic_name}
+        elif (nic_mac_Address is not None and nic_mac_Address) and (nic_id is not None and nic_id):
+            params = {'macAddress': nic_mac_Address, 'id': nic_id}
+
+        ret = None
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = NICardService.requester.call(args)
+            if response.rc is 0:
+                ret = NICard.json_2_nic(response.response_content)
+            else:
+                err_msg = 'Problem while finding NIC (id:' + str(nic_id) + ', name:' + str(nic_name) \
+                          + '). Reason: ' + str(response.error_message)
+                LOGGER.debug(
+                    err_msg
+                )
+
+        return ret
+
+    @staticmethod
+    def get_nics():
+        """
+        :return: all knows NIC
+        """
+        args = {'http_operation': 'GET', 'operation_path': ''}
+        response = NICardService.requester.call(args)
+        ret = None
+        if response.rc is 0:
+            ret = []
+            for nic in response.response_content['niCards']:
+                ret.append(NICard.json_2_nic(nic))
+        else:
+            err_msg = 'Problem while getting NIC. Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
+        return ret
 
 
 class OSInstanceService(object):
@@ -3147,7 +3222,7 @@ class OSType(object):
                             'Problem while updating OS type ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.osi_2_rm.remove(osi)
@@ -3157,7 +3232,7 @@ class OSType(object):
                         'Problem while updating OS type ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
 
         self.sync()
@@ -3565,7 +3640,7 @@ class Application(object):
                             'Problem while updating application ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.osi_2_rm.remove(osi)
@@ -3575,7 +3650,7 @@ class Application(object):
                         'Problem while updating application ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
 
         self.sync()
@@ -4031,7 +4106,7 @@ class Company(object):
                             'Problem while updating company ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.ost_2_rm.remove(os_type)
@@ -4041,7 +4116,7 @@ class Company(object):
                         'Problem while updating company ' + self.name + ' name. Reason: os_type ' +
                         os_type.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
 
         self.sync()
@@ -4384,7 +4459,7 @@ class Environment(object):
                             'Problem while updating envionment ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.osi_2_rm.remove(osi)
@@ -4394,7 +4469,7 @@ class Environment(object):
                         'Problem while updating environment ' + self.name + ' name. Reason: OS instance ' +
                         osi.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
 
         self.sync()
@@ -4484,7 +4559,6 @@ class TeamService(object):
 
 
 class Team(object):
-
     @staticmethod
     def json_2_team(json_obj):
         """
@@ -4536,7 +4610,7 @@ class Team(object):
             self.osi_ids = json_obj['teamOSInstancesID']
             self.app_ids = json_obj['teamApplicationsID']
 
-    def __init__(self,  teamid=None, name=None, description=None,
+    def __init__(self, teamid=None, name=None, description=None,
                  color_code=None, app_ids=None, osi_ids=None):
         """
         build ariane_clip3 team object
@@ -4873,7 +4947,7 @@ class Team(object):
                             'Problem while updating team ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
-                        #ok = False
+                        # ok = False
                         break
                     else:
                         self.app_2_rm.remove(application)
@@ -4883,7 +4957,7 @@ class Team(object):
                         'Problem while updating team ' + self.name + ' name. Reason: application ' +
                         application.name + ' id is None'
                     )
-                    #ok = False
+                    # ok = False
                     break
 
         self.sync()
