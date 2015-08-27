@@ -1754,7 +1754,6 @@ class IPAddress(object):
             else:
                 return None
 
-
 class NICardService(object):
     requester = None
 
@@ -1831,6 +1830,201 @@ class NICardService(object):
             err_msg = 'Problem while getting NIC. Reason: ' + str(response.error_message)
             LOGGER.debug(err_msg)
         return ret
+
+class NICard(object):
+    @staticmethod
+    def json_2_niCard(json_obj):
+        """
+        transform JSON obj coming from Ariane to ariane_clip3 object
+        :param json_obj: the JSON obj coming from Ariane
+        :return: ariane_clip3 NICard object
+        """
+        return NICard(nic_id=json_obj['niCardID'],
+                      mac_Address=json_obj['niCardMacAddress'],
+                      name=json_obj['niCardName'],
+                      speed=json_obj['niCardSpeed'],
+                      duplex=json_obj['niCardDuplex'],
+                      mtu=json_obj['niCardMtu'],
+                      nic_osi_id=['niCardOSInstanceID'],
+                      nic_ipa_id=json_obj['niCardIPAddressID'])
+
+    def niCard_2_json(self):
+        """
+        transform ariane_clip3 OS Instance object to Ariane server JSON obj
+        :return: Ariane JSON obj
+        """
+        json_obj = {
+            'niCardID': self.id,
+            'niCardName': self.name,
+            'niCardMacAddress': self.macAddress,
+            'niCardDuplex': self.duplex,
+            'niCardSpeed': self.speed,
+            'niCardMtu':self.mtu,
+            'niCardOSInstanceID':self.nic_osi_id,
+            'niCardIPAddressID':self.nic_ipa_id
+        }
+        return json.dumps(json_obj)
+
+    def sync(self):
+        """
+        synchronize self from Ariane server according its id (priority) or name
+        :return:
+        """
+        params = None
+        if self.id is not None:
+            params = {'id': self.id}
+        elif self.name is not None:
+            params = {'name': self.name}
+
+        if params is not None:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            response = NICardService.requester.call(args)
+            json_obj = response.response_content
+            self.id = json_obj['niCardID']
+            self.name = json_obj['niCardName']
+            self.macAddress = json_obj['niCardMacAddress']
+            self.duplex = json_obj['niCardDuplex']
+            self.speed = json_obj['niCardSpeed']
+            self.mtu = json_obj['niCardMtu']
+            self.nic_ipa_id = json_obj['niCardIPAddressID']
+            self.nic_osi_id = json_obj['niCardOSInstanceID']
+
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
+    def __init__(self, nic_id=None, name=None, macAddress=None, duplex=None,
+                 speed=None, mtu=None, nic_osi_id=None, nic_ipa_id=None):
+        """
+        build ariane_clip3 OS instance object
+        :param nic_id: default None. it will be erased by any interaction with Ariane server
+        :param macAddress: default None
+        :param name: default None
+        :param duplex: default None
+        :param speed: default None
+        :param mtu: default None
+        :param nic_osi_ids: default None
+        :param nic_ipa_id: default None
+        :return:
+        """
+        self.id = nic_id
+        self.name = name
+        self.macAddress = macAddress
+        self.duplex = duplex
+        self.speed = speed
+        self.mtu = mtu
+        self.nic_osi_id = nic_osi_id
+        self.nic_ipa_id = nic_ipa_id
+
+    def __eq__(self, other):
+        if self.id != other.id or self.name != other.name:
+            return False
+        else:
+            return True
+
+    def save(self):
+        """
+        :return: save this NIC on Ariane server (create or update)
+        """
+        ok = True
+        if self.id is None:
+            params = {
+                'name': self.name,
+                'macAddress': self.macAddress,
+                'duplex': self.duplex,
+                'speed' : self.speed,
+                'mtu':self.mtu,
+                'osInstance': self.nic_osi_id,
+                'ipAddress':self.nic_ipa_id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+            response = NICardService.requester.call(args)
+            if response.rc is 0:
+                self.id = response.response_content['niCardID']
+            else:
+                LOGGER.debug(
+                    'Problem while saving NIC ' + self.name + '. Reason: ' + str(response.error_message)
+                )
+        else:
+            params = {
+                'id': self.id,
+                'name': self.name
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
+            response = NICardService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.debug(
+                    'Problem while updating NIC ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+                ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'macAddress': self.macAddress
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/macAddress', 'parameters': params}
+                response = NICardService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.debug(
+                        'Problem while updating NIC ' + self.macAddress + ' macAddress. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'duplex': self.duplex
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/duplex', 'parameters': params}
+                response = NICardService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.debug(
+                        'Problem while updating NIC ' + self.duplex+ ' duplex. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+
+            if ok:
+                params = {
+                    'id': self.id,
+                    'speed': self.speed
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/speed', 'parameters': params}
+                response = NICardService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.debug(
+                        'Problem while updating NIC ' + self.speed+ ' speed. Reason: ' +
+                        str(response.error_message)
+                    )
+
+        self.sync()
+        return self
+
+    def remove(self):
+        """
+        remove this object from Ariane server
+        :return:
+        """
+        if self.id is None:
+            return None
+        else:
+            params = {
+                'id': self.id
+            }
+            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            response = NICardService.requester.call(args)
+            if response.rc is not 0:
+                LOGGER.debug(
+                    'Problem while deleting NIC' + self.name + '. Reason: ' + str(response.error_message)
+                )
+                return self
+            else:
+                return None
 
 
 class OSInstanceService(object):
