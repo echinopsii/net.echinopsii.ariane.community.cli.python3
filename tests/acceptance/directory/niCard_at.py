@@ -68,3 +68,54 @@ class NICardTest(unittest.TestCase):
         new_niCard.save()
         self.assertIsNotNone(new_niCard.id)
         new_niCard.remove()
+
+    def test_remove_niCard(self):
+        rm_niCard = NICard(name='Fake NIC name',
+                           macAddress='00:00:00:00:00:10',
+                           duplex="fake duplex",
+                           speed=20,
+                           mtu=40,
+                           nic_osi_id=self.new_os_instance.id,
+                           nic_ipa_id=self.new_ipAddress.id)
+
+        rm_niCard.save()
+        self.assertIsNone(rm_niCard.remove())
+
+    def test_niCard_get(self):
+        new_niCard = NICard(name='Fake NIC name',
+                            macAddress='00:00:00:00:00:10',
+                            duplex="fake duplex",
+                            speed=20,
+                            mtu=40,
+                            nic_osi_id=self.new_os_instance.id,
+                            nic_ipa_id=self.new_ipAddress.id)
+        new_niCard.save()
+        ret = NICardService.get_nics()
+        self.assertGreaterEqual(ret.__len__(), 1)
+        new_niCard.remove()
+
+    def test_niCard_find_by_id(self):
+        new_niCard = NICard(name='Fake NIC name',
+                            macAddress='00:00:00:00:00:10',
+                            duplex="fake duplex",
+                            speed=20,
+                            mtu=40,
+                            nic_osi_id=self.new_os_instance.id,
+                            nic_ipa_id=self.new_ipAddress.id)
+        new_niCard.save()
+
+        self.assertIsNotNone(NICardService.find_niCard(nic_id=new_niCard.id))
+        new_niCard.remove()
+
+    def test_niCard_find_by_name(self):
+        new_niCard = NICard(name='Fake NIC name',
+                            macAddress='00:00:00:00:00:10',
+                            duplex="fake duplex",
+                            speed=20,
+                            mtu=40,
+                            nic_osi_id=self.new_os_instance.id,
+                            nic_ipa_id=self.new_ipAddress.id)
+        new_niCard.save()
+
+        self.assertIsNotNone(NICardService.find_niCard(nic_name=new_niCard.name))
+        new_niCard.remove()

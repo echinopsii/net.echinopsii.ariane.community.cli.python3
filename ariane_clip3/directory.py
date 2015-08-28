@@ -1754,6 +1754,7 @@ class IPAddress(object):
             else:
                 return None
 
+
 class NICardService(object):
     requester = None
 
@@ -1773,21 +1774,19 @@ class NICardService(object):
         """
         if (nic_id is None or not nic_id) and (nic_name is None or not nic_name) and \
                 (
-                    (nic_mac_Address is None or not nic_mac_Address)
+                        (nic_mac_Address is None or not nic_mac_Address)
 
                 ):
             raise exceptions.ArianeCallParametersError('id and name and (mac_Address))')
 
         if (nic_id is not None and nic_id) and (
-                    (nic_name is not None and nic_name) or
-                    (nic_mac_Address is not None and nic_mac_Address)
+                (nic_name is not None and nic_name)
         ):
             LOGGER.warn('Both id and (name or macAddress) are defined. Will give you search on id.')
             nic_name = None
             nic_mac_Address = None
 
-        if (nic_id is None or not nic_id) and (nic_name is not None and nic_name) and \
-                (nic_mac_Address is not None and nic_mac_Address):
+        if (nic_id is None or not nic_id) and (nic_name is not None and nic_name):
             LOGGER.warn('Both name and macAddress are defined. Will give you search on name.')
             nic_mac_Address = None
 
@@ -1796,15 +1795,13 @@ class NICardService(object):
             params = {'id': nic_id}
         elif nic_name is not None and nic_name:
             params = {'name': nic_name}
-        elif (nic_mac_Address is not None and nic_mac_Address) and (nic_id is not None and nic_id):
-            params = {'macAddress': nic_mac_Address, 'id': nic_id}
 
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = NICardService.requester.call(args)
             if response.rc is 0:
-                ret = NICard.json_2_nic(response.response_content)
+                ret = NICard.json_2_niCard(response.response_content)
             else:
                 err_msg = 'Problem while finding NIC (id:' + str(nic_id) + ', name:' + str(nic_name) \
                           + '). Reason: ' + str(response.error_message)
@@ -1824,12 +1821,13 @@ class NICardService(object):
         ret = None
         if response.rc is 0:
             ret = []
-            for nic in response.response_content['niCards']:
-                ret.append(NICard.json_2_nic(nic))
+            for nic in response.response_content['nicards']:
+                ret.append(NICard.json_2_niCard(nic))
         else:
             err_msg = 'Problem while getting NIC. Reason: ' + str(response.error_message)
             LOGGER.debug(err_msg)
         return ret
+
 
 class NICard(object):
     @staticmethod
@@ -1840,7 +1838,7 @@ class NICard(object):
         :return: ariane_clip3 NICard object
         """
         return NICard(nic_id=json_obj['niCardID'],
-                      mac_Address=json_obj['niCardMacAddress'],
+                      macAddress=json_obj['niCardMacAddress'],
                       name=json_obj['niCardName'],
                       speed=json_obj['niCardSpeed'],
                       duplex=json_obj['niCardDuplex'],
@@ -1859,9 +1857,9 @@ class NICard(object):
             'niCardMacAddress': self.macAddress,
             'niCardDuplex': self.duplex,
             'niCardSpeed': self.speed,
-            'niCardMtu':self.mtu,
-            'niCardOSInstanceID':self.nic_osi_id,
-            'niCardIPAddressID':self.nic_ipa_id
+            'niCardMtu': self.mtu,
+            'niCardOSInstanceID': self.nic_osi_id,
+            'niCardIPAddressID': self.nic_ipa_id
         }
         return json.dumps(json_obj)
 
@@ -1934,10 +1932,10 @@ class NICard(object):
                 'name': self.name,
                 'macAddress': self.macAddress,
                 'duplex': self.duplex,
-                'speed' : self.speed,
-                'mtu':self.mtu,
+                'speed': self.speed,
+                'mtu': self.mtu,
                 'osInstance': self.nic_osi_id,
-                'ipAddress':self.nic_ipa_id
+                'ipAddress': self.nic_ipa_id
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = NICardService.requester.call(args)
@@ -1984,7 +1982,7 @@ class NICard(object):
                 response = NICardService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating NIC ' + self.duplex+ ' duplex. Reason: ' +
+                        'Problem while updating NIC ' + self.duplex + ' duplex. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -1998,7 +1996,7 @@ class NICard(object):
                 response = NICardService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating NIC ' + self.speed+ ' speed. Reason: ' +
+                        'Problem while updating NIC ' + self.speed + ' speed. Reason: ' +
                         str(response.error_message)
                     )
 
