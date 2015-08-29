@@ -1835,6 +1835,7 @@ class OSInstance(object):
                           osi_ost_id=json_obj['osInstanceOSTypeID'],
                           osi_embedded_osi_ids=json_obj['osInstanceEmbeddedOSInstancesID'],
                           osi_ip_address_ids=json_obj['osInstanceIPAddressesID'],
+                          osi_niCard_ids=json_obj['osInstanceNICardsID'],
                           osi_application_ids=json_obj['osInstanceApplicationsID'],
                           osi_environment_ids=json_obj['osInstanceEnvironmentsID'],
                           osi_subnet_ids=json_obj['osInstanceSubnetsID'],
@@ -1854,6 +1855,7 @@ class OSInstance(object):
             'osInstanceOSTypeID': self.ost_id,
             'osInstanceEmbeddedOSInstancesID': self.embedded_osi_ids,
             'osInstanceIPAddressesID': self.ip_address_ids,
+            'osInstanceNICardsID' : self.niCard_ids,
             'osInstanceApplicationsID': self.application_ids,
             'osInstanceEnvironmentsID': self.environment_ids,
             'osInstanceSubnetID': self.subnet_ids,
@@ -1890,6 +1892,7 @@ class OSInstance(object):
                 self.embedding_osi_id = json_obj['osInstanceEmbeddingOSInstanceID']
             self.embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
             self.ip_address_ids = json_obj['osInstanceIPAddressesID']
+            self.niCard_ids = json_obj['osInstanceNICardsID']
             self.application_ids = json_obj['osInstanceApplicationsID']
             self.environment_ids = json_obj['osInstanceEnvironmentsID']
             self.subnet_ids = json_obj['osInstanceSubnetsID']
@@ -1897,7 +1900,8 @@ class OSInstance(object):
 
     def __init__(self, osiid=None, name=None, description=None, admin_gate_uri=None,
                  osi_embedding_osi_id=None, osi_ost_id=None, osi_embedded_osi_ids=None, osi_application_ids=None,
-                 osi_environment_ids=None, osi_subnet_ids=None, osi_ip_address_ids=None, osi_team_ids=None):
+                 osi_environment_ids=None, osi_subnet_ids=None, osi_ip_address_ids=None, osi_nicard_ids=None,
+                 osi_team_ids=None):
         """
         build ariane_clip3 OS instance object
         :param osiid: default None. it will be erased by any interaction with Ariane server
@@ -1935,6 +1939,9 @@ class OSInstance(object):
         self.ip_address_ids = osi_ip_address_ids
         self.ip_address_2_add = []
         self.ip_address_2_rm = []
+        self.niCard_ids = osi_nicard_ids
+        self.niCard_2_add = []
+        self.niCard_2_rm = []
         self.team_ids = osi_team_ids
         self.team_2_add = []
         self.team_2_rm = []
@@ -2085,6 +2092,75 @@ class OSInstance(object):
                 LOGGER.debug(
                     'Problem while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
                     ip_address.ipAddress + ' id is None'
+                )
+
+
+    def add_niCard(self, niCard, sync=True):
+        """
+        add a niCard to this OS instance.
+        :param niCard: the niCard to add on this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the niCard object on list to be added on next save().
+        :return:
+        """
+        if not sync:
+            self.niCard_2_add.append(niCard)
+        else:
+            if niCard.id is None:
+                niCard.save()
+            if self.id is not None and niCard.id is not None:
+                params = {
+                    'id': self.id,
+                    'niCardID': niCard.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/niCards/add', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.niCard_ids.append(niCard.id)
+                    niCard.nic_osi_id = self.id
+            else:
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
+                    niCard.name  + ' id is None'
+                )
+
+    def del_niCard(self, niCard, sync=True):
+        """
+        delete niCard from this OS instance
+        :param niCard: the niCard to be deleted from this OS instance
+        :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
+        add the niCard object on list to be removed on next save().
+        :return:
+        """
+        if not sync:
+            self.niCard_2_rm.append(niCard)
+        else:
+            if niCard.id is None:
+                niCard.save()
+            if self.id is not None and niCard.id is not None:
+                params = {
+                    'id': self.id,
+                    'niCardID': niCard.id
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/niCards/delete', 'parameters': params}
+                response = OSInstanceService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                else:
+                    self.niCard_ids.remove(niCard.id)
+                    niCard.nic_osi_id = None
+            else:
+                LOGGER.debug(
+                    'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
+                    niCard.name + ' id is None'
                 )
 
     def add_embedded_osi(self, e_osi, sync=True):
