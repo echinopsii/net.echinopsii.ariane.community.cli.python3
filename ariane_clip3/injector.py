@@ -567,7 +567,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
             json_obj = {
                 'componentId': self.id,
                 'componentName': self.name,
-                'componentType': self.type,
+                'componentType': self.type if self.type is not None else "not defined",
                 'componentAdminQueue': self.admin_queue,
                 'refreshing': 'true' if self.refreshing else 'false',
                 'nextAction': self.next_action,
@@ -578,7 +578,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
             json_obj = {
                 'componentId': self.id,
                 'componentName': self.name,
-                'componentType': self.type,
+                'componentType': self.type if self.type is not None else "not defined",
                 'componentAdminQueue': self.admin_queue,
                 'refreshing': 'true' if self.refreshing else 'false',
                 'nextAction': self.next_action,
