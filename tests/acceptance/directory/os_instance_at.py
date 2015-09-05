@@ -168,7 +168,7 @@ class OSInstanceTest(unittest.TestCase):
         new_osinstance.add_ip_address(new_ip_address, sync=False)
         self.assertTrue(new_ip_address in new_osinstance.ip_address_2_add)
         self.assertIsNone(new_osinstance.ip_address_ids)
-        self.assertIsNone(new_ip_address.ipa_os_instance_id)
+        self.assertTrue(new_ip_address.ipa_os_instance_id == -1)
         new_osinstance.save()
         self.assertTrue(new_ip_address not in new_osinstance.ip_address_2_add)
         self.assertTrue(new_ip_address.id in new_osinstance.ip_address_ids)
