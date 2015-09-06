@@ -39,6 +39,9 @@ class InjectorUITreeTest(unittest.TestCase):
                 'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
 
         cls.injector_service = InjectorService(args)
+        cls.injector_ui_mapping_entity = InjectorUITreeEntity(uitid="mappingDir", value="Mapping",
+                                                              uitype=InjectorUITreeEntity.entity_dir_type)
+        cls.injector_ui_mapping_entity.save()
 
     @classmethod
     def tearDownClass(cls):
