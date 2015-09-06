@@ -2271,7 +2271,7 @@ class OSInstance(object):
             self.subnets_2_rm.append(subnet)
         else:
             if subnet.id is None:
-                subnet.save()
+                subnet.sync()
             if self.id is not None and subnet.id is not None:
                 params = {
                     'id': self.id,
@@ -2339,7 +2339,7 @@ class OSInstance(object):
             self.ip_address_2_rm.append(ip_address)
         else:
             if ip_address.id is None:
-                ip_address.save()
+                ip_address.sync()
             if self.id is not None and ip_address.id is not None:
                 params = {
                     'id': self.id,
@@ -2361,24 +2361,23 @@ class OSInstance(object):
                     ip_address.ipAddress + ' id is None'
                 )
 
-
-    def add_niCard(self, niCard, sync=True):
+    def add_nicard(self, nic, sync=True):
         """
         add a niCard to this OS instance.
-        :param niCard: the niCard to add on this OS instance
+        :param nic: the niCard to add on this OS instance
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the niCard object on list to be added on next save().
         :return:
         """
         if not sync:
-            self.niCard_2_add.append(niCard)
+            self.niCard_2_add.append(nic)
         else:
-            if niCard.id is None:
-                niCard.save()
-            if self.id is not None and niCard.id is not None:
+            if nic.id is None:
+                nic.save()
+            if self.id is not None and nic.id is not None:
                 params = {
                     'id': self.id,
-                    'niCardID': niCard.id
+                    'niCardID': nic.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/niCards/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
@@ -2388,31 +2387,31 @@ class OSInstance(object):
                         str(response.error_message)
                     )
                 else:
-                    self.niCard_ids.append(niCard.id)
-                    niCard.nic_osi_id = self.id
+                    self.niCard_ids.append(nic.id)
+                    nic.nic_osi_id = self.id
             else:
                 LOGGER.debug(
                     'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
-                    niCard.name  + ' id is None'
+                    nic.name  + ' id is None'
                 )
 
-    def del_niCard(self, niCard, sync=True):
+    def del_nic(self, nic, sync=True):
         """
         delete niCard from this OS instance
-        :param niCard: the niCard to be deleted from this OS instance
+        :param nic: the niCard to be deleted from this OS instance
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the niCard object on list to be removed on next save().
         :return:
         """
         if not sync:
-            self.niCard_2_rm.append(niCard)
+            self.niCard_2_rm.append(nic)
         else:
-            if niCard.id is None:
-                niCard.save()
-            if self.id is not None and niCard.id is not None:
+            if nic.id is None:
+                nic.sync()
+            if self.id is not None and nic.id is not None:
                 params = {
                     'id': self.id,
-                    'niCardID': niCard.id
+                    'niCardID': nic.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/niCards/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
@@ -2422,12 +2421,12 @@ class OSInstance(object):
                         str(response.error_message)
                     )
                 else:
-                    self.niCard_ids.remove(niCard.id)
-                    niCard.nic_osi_id = None
+                    self.niCard_ids.remove(nic.id)
+                    nic.nic_osi_id = None
             else:
                 LOGGER.debug(
                     'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
-                    niCard.name + ' id is None'
+                    nic.name + ' id is None'
                 )
 
     def add_embedded_osi(self, e_osi, sync=True):
@@ -2477,7 +2476,7 @@ class OSInstance(object):
             self.embedded_osi_2_rm.append(e_osi)
         else:
             if e_osi.id is None:
-                e_osi.save()
+                e_osi.sync()
             if self.id is not None and e_osi.id is not None:
                 params = {
                     'id': self.id,
@@ -2546,7 +2545,7 @@ class OSInstance(object):
             self.application_2_rm.append(application)
         else:
             if application.id is None:
-                application.save()
+                application.sync()
             if self.id is not None and application.id is not None:
                 params = {
                     'id': self.id,
@@ -2614,7 +2613,7 @@ class OSInstance(object):
             self.environment_2_rm.append(environment)
         else:
             if environment.id is None:
-                environment.save()
+                environment.sync()
             if self.id is not None and environment.id is not None:
                 params = {
                     'id': self.id,
@@ -2682,7 +2681,7 @@ class OSInstance(object):
             self.team_2_rm.append(team)
         else:
             if team.id is None:
-                team.save()
+                team.sync()
             if self.id is not None and team.id is not None:
                 params = {
                     'id': self.id,
@@ -2905,6 +2904,64 @@ class OSInstance(object):
                     LOGGER.debug(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
                         embedded_osi.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.niCard_2_add.__len__() > 0:
+            for nic in self.niCard_2_add:
+                if nic.id is None:
+                    nic.save()
+                if nic.id is not None:
+                    params = {
+                        'id': self.id,
+                        'niCardID': nic.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/niCards/add', 'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.niCard_2_add.remove(nic)
+                        nic.sync()
+                else:
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
+                        nic.name + ' id is None'
+                    )
+                    ok = False
+                    break
+
+        if ok and self.niCard_2_rm.__len__() > 0:
+            for nic in self.niCard_2_rm:
+                if nic.id is None:
+                    nic.sync()
+                if nic.id is not None:
+                    params = {
+                        'id': self.id,
+                        'niCardID': nic.id
+                    }
+                    args = {'http_operation': 'GET', 'operation_path': 'update/niCards/delete', 'parameters': params}
+                    response = OSInstanceService.requester.call(args)
+                    if response.rc is not 0:
+                        LOGGER.debug(
+                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
+                            str(response.error_message)
+                        )
+                        ok = False
+                        break
+                    else:
+                        self.niCard_2_rm.remove(nic)
+                        nic.sync()
+                else:
+                    LOGGER.debug(
+                        'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
+                        nic.name + ' id is None'
                     )
                     ok = False
                     break
