@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application, Environment, Team, IPAddress
+from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application, Environment, Team,\
+    IPAddress, NICard
 
 __author__ = 'mffrench'
 
@@ -188,6 +189,67 @@ class OSInstanceTest(unittest.TestCase):
         self.assertTrue(new_ip_address.id not in new_osinstance.ip_address_ids)
         self.assertIsNone(new_ip_address.ipa_os_instance_id)
         new_ip_address.remove()
+        new_osinstance.remove()
+
+    def test_osinstance_link_to_niCard(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        DirectoryService(args)
+
+        new_osinstance = OSInstance(name='my_new_osi',
+                                    description='my new osi',
+                                    admin_gate_uri='ssh://admingateuri')
+        new_routing_area = RoutingArea(name='my_new_routing_area',
+                                       description='my new routing area',
+                                       ra_type=RoutingArea.RA_TYPE_LAN,
+                                       multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
+        new_routing_area.save()
+
+        new_subnet = Subnet(name='my_new_subnet',
+                            description='my new subnet',
+                            ip='192.168.12.0',
+                            mask='255.255.255.0',
+                            routing_area_id=new_routing_area.id)
+        new_subnet.save()
+
+        new_ip_address = IPAddress(ip_address='192.168.12.11',
+                                   fqdn='Fake FQDN 2',
+                                   ipa_osi_id=None,
+                                   ipa_subnet_id=new_subnet.id)
+        new_ip_address.save()
+
+        new_niCard = NICard(name='Fake NIC name',
+                            macAddress='00:00:00:00:00:10',
+                            duplex="fake duplex",
+                            speed=20,
+                            mtu=40,
+                            nic_osi_id=None,
+                            nic_ipa_id=new_ip_address.id)
+
+        new_niCard.save()
+
+        new_osinstance.add_niCard(new_niCard, sync=False)
+        self.assertTrue(new_niCard in new_osinstance.niCard_2_add)
+        self.assertIsNone(new_osinstance.niCard_ids)
+        self.assertIsNone(new_niCard.nic_osi_id)
+        new_osinstance.save()
+        self.assertTrue(new_niCard not in new_osinstance.niCard_2_add)
+        self.assertTrue(new_niCard.id in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard.nic_osi_id == new_osinstance.id)
+        new_osinstance.del_niCard(new_niCard, sync=False)
+        self.assertTrue(new_niCard in new_osinstance.niCard_2_rm)
+        self.assertTrue(new_niCard.id in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard.nic_osi_id == new_osinstance.id)
+        new_osinstance.save()
+        self.assertTrue(new_niCard not in new_osinstance.niCard_2_rm)
+        self.assertTrue(new_niCard.id not in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard.nic_osi_id == -1)
+        new_osinstance.add_niCard(new_niCard)
+        self.assertTrue(new_niCard.id in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard.nic_osi_id == new_osinstance.id)
+        new_osinstance.del_niCard(new_niCard)
+        self.assertTrue(new_niCard.id not in new_osinstance.niCard_ids)
+        self.assertIsNone(new_niCard.nic_osi_id)
+        new_niCard.remove()
         new_osinstance.remove()
 
     def test_osinstance_link_to_application(self):
