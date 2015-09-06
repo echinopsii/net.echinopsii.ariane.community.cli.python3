@@ -142,6 +142,8 @@ class Requester(pykka.ThreadingActor):
                                    properties=properties,
                                    body=str(my_args['body']))
 
+        LOGGER.debug("published msg {"+str(my_args['body'])+","+str(properties)+"}")
+
         if not self.fire_and_forget:
             while self.response is None:
                 self.connection.process_data_events()
@@ -232,9 +234,14 @@ class Service(pykka.ThreadingActor):
         """
         message consumed treatment through provided callback and basic ack
         """
-        self.cb(ch, props, body)
+        LOGGER.debug("request " + str(props) + " received")
+        try:
+            self.cb(ch, props, body)
+        except Exception as e:
+            LOGGER.warn("Exception raised while treating msg {"+str(props)+","+str(body)+"}")
+        LOGGER.debug("request " + str(props) + " treated")
         ch.basic_ack(delivery_tag=method_frame.delivery_tag)
-        pass
+        LOGGER.debug("request " + str(props) + " acked")
 
     def on_start(self):
         """

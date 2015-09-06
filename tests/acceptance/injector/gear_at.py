@@ -91,12 +91,7 @@ class DockerInjectorGearComponent(InjectorGearSkeleton):
         self.cached_gear_actor.stop()
 
     def gear_start(self):
-        if self.service is not None:
-            self.running = True
-            self.service.start()
-            self.cache(running=self.running)
-        else:
-            self.on_start()
+        self.on_start()
 
     def gear_stop(self):
         if self.running:
@@ -146,19 +141,11 @@ class InjectorGearTest(unittest.TestCase):
         cls.injector_service.stop()
         cls.admin_requestor.stop()
 
-    def test_save_gear_remove_gear(self):
-        gear = InjectorGearSkeleton.start(gear_id='ariane.community.plugin.docker.gears.cache.localhost',
-                                          gear_name='docker@localhost',
-                                          gear_description='Ariane remote injector for localhost',
-                                          gear_admin_queue='ariane.community.plugin.docker.gears.cache.localhost',
-                                          running=False).proxy()
-        self.assertTrue(gear.cache(running=True).get())
-        self.assertTrue(InjectorCachedGearService.get_gears_cache_size() == 1)
-        self.assertTrue(gear.remove().get())
-
     def test_docker_component_gear(self):
         gear = DockerInjectorGearComponent.start(sleeping_period=4).proxy()
         self.assertTrue(gear.cache(running=True).get())
+        self.assertTrue(InjectorCachedGearService.get_gears_cache_size() == 1)
+
         time.sleep(5)
         retrieved_component = InjectorCachedComponentService.find_component(
             gear.component.get().cache_id().get())
