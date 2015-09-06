@@ -230,7 +230,7 @@ class OSInstanceTest(unittest.TestCase):
         new_osinstance.add_niCard(new_niCard, sync=False)
         self.assertTrue(new_niCard in new_osinstance.niCard_2_add)
         self.assertIsNone(new_osinstance.niCard_ids)
-        self.assertIsNone(new_niCard.nic_osi_id)
+        self.assertEqual(new_niCard.nic_osi_id, -1)
         new_osinstance.save()
         self.assertTrue(new_niCard not in new_osinstance.niCard_2_add)
         self.assertTrue(new_niCard.id in new_osinstance.niCard_ids)

@@ -2102,7 +2102,7 @@ class OSInstance(object):
                           osi_ost_id=json_obj['osInstanceOSTypeID'],
                           osi_embedded_osi_ids=json_obj['osInstanceEmbeddedOSInstancesID'],
                           osi_ip_address_ids=json_obj['osInstanceIPAddressesID'],
-                          osi_niCard_ids=json_obj['osInstanceNICardsID'],
+                          osi_nicard_ids=json_obj['osInstanceNICardsID'],
                           osi_application_ids=json_obj['osInstanceApplicationsID'],
                           osi_environment_ids=json_obj['osInstanceEnvironmentsID'],
                           osi_subnet_ids=json_obj['osInstanceSubnetsID'],
