@@ -1109,6 +1109,8 @@ class Subnet(object):
         self.osi_ids = subnet_osi_ids
         self.osi_2_add = []
         self.osi_2_rm = []
+        # OS sniffing purpose only
+        self.is_default = False
 
     def __eq__(self, other):
         if self.id != other.id or self.name != other.name:

@@ -528,6 +528,7 @@ class Container(object):
     SUBNET_NAME_MAPPING_FIELD = "sname"
     SUBNET_IPAD_MAPPING_FIELD = "sip"
     SUBNET_MASK_MAPPING_FIELD = "smask"
+    SUBNET_ISDEFAULT_MAPPING_FIELD = "isdefault"
 
     OSI_MAPPING_PROPERTIES = "Server"
     OSI_NAME_MAPPING_FIELD = "hostname"
