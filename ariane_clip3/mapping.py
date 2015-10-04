@@ -722,9 +722,11 @@ class Container(object):
                     child_container.sync()
                     self.sync()
 
-    def __init__(self, cid=None, name=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
-                 cluster_id=None, parent_container_id=None, child_containers_id=None, gates_id=None, nodes_id=None,
-                 company=None, product=None, c_type=None, properties=None):
+    def __init__(self, cid=None, name=None,
+                 primary_admin_gate=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
+                 cluster=None, cluster_id=None, parent_container= None, parent_container_id=None,
+                 child_containers_id=None, gates_id=None, nodes_id=None, company=None, product=None, c_type=None,
+                 properties=None):
         """
         initialize container object
         :param cid: container ID - return by Ariane server on save or sync
@@ -746,8 +748,11 @@ class Container(object):
         self.gate_uri = gate_uri
         self.primary_admin_gate_id = primary_admin_gate_id
         self.primary_admin_gate_name = primary_admin_gate_name
+        self.primary_admin_gate = primary_admin_gate
         self.cluster_id = cluster_id
+        self.cluster = cluster
         self.parent_container_id = parent_container_id
+        self.parent_container = parent_container
         self.child_containers_id = child_containers_id
         self.child_containers_2_add = []
         self.child_containers_2_rm = []
@@ -769,204 +774,147 @@ class Container(object):
         save or update this container in Ariane Server
         :return:
         """
-        ok = True
-        if self.id is None:
-            if self.name is None:
-                params = {
-                    'primaryAdminURL': self.gate_uri,
-                    'primaryAdminGateName': self.primary_admin_gate_name
-                }
-            else:
-                params = {
-                    'name': self.name,
-                    'primaryAdminURL': self.gate_uri,
-                    'primaryAdminGateName': self.primary_admin_gate_name
-                }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug('Problem while saving container' + self.gate_uri + '. Reason: ' +
-                             str(response.error_message))
-                ok = False
-            else:
-                self.id = response.response_content['containerID']
-                self.primary_admin_gate_id = response.response_content['containerPrimaryAdminGateID']
+        if self.cluster is not None:
+            if self.cluster.id is None:
+                self.cluster.save()
+            self.cluster_id = self.cluster.id
+
+        if self.parent_container is not None:
+            if self.parent_container.id is None:
+                self.parent_container.save()
+            self.parent_container_id = self.parent_container.id
+
+        if self.primary_admin_gate is not None:
+            if self.primary_admin_gate.id is None:
+                self.primary_admin_gate.save()
+            self.primary_admin_gate_id = self.primary_admin_gate.id
+
+        post_payload = {}
+        consolidated_child_containers_id = []
+        consolidated_child_nodes_id = []
+        consolidated_child_gates_id = []
+        consolidated_properties = {}
+        consolidated_container_properties = []
+
+        if self.id is not None:
+            post_payload['containerID'] = self.id
+
+        if self.name is not None:
+            post_payload['containerName'] = self.name
+
+        if self.company is not None:
+            post_payload['containerCompany'] = self.company
+
+        if self.product is not None:
+            post_payload['containerProduct'] = self.product
+
+        if self.type is not None:
+            post_payload['containerType'] = self.type
+
+        if self.primary_admin_gate_id is not None:
+            post_payload['containerPrimaryAdminGateID'] = self.primary_admin_gate_id
+
+        if self.primary_admin_gate_name is not None:
+            post_payload['containerGateName'] = self.primary_admin_gate_name
+
+        if self.gate_uri is not None:
+            post_payload['containerGateURI'] = self.gate_uri
+
+        if self.cluster_id is not None:
+            post_payload['containerClusterID'] = self.cluster_id
+
+        if self.child_containers_id is not None:
+            consolidated_child_containers_id = copy.deepcopy(self.child_containers_id)
+        if self.child_containers_2_rm is not None:
+            for child_container_2_rm in self.child_containers_2_rm:
+                if child_container_2_rm.id is None:
+                    child_container_2_rm.sync()
+                consolidated_child_containers_id.remove(child_container_2_rm.id)
+        if self.child_containers_2_add is not None:
+            for child_container_2_add in self.child_containers_2_add:
+                if child_container_2_add.id is None:
+                    child_container_2_add.save()
+                consolidated_child_containers_id.append(child_container_2_add.id)
+        post_payload['containerChildContainersID'] = consolidated_child_containers_id
+
+        if self.gates_id is not None:
+            consolidated_child_gates_id = copy.deepcopy(self.gates_id)
+        if self.gates_2_rm is not None:
+            for gate_2_rm in self.gates_2_rm:
+                if gate_2_rm.id is None:
+                    gate_2_rm.sync()
+                consolidated_child_gates_id.remove(gate_2_rm.id)
+        if self.gates_2_add is not None:
+            for gate_2_add in self.gates_2_add:
+                if gate_2_add.id is None:
+                    gate_2_add.sync()
+                consolidated_child_gates_id.append(gate_2_add.id)
+        post_payload['containerGatesID'] = consolidated_child_gates_id
+
+        if self.nodes_id is not None:
+            consolidated_child_nodes_id = copy.deepcopy(self.nodes_id)
+        if self.nodes_2_rm is not None:
+            for node_2_rm in self.nodes_2_rm:
+                if node_2_rm.id is None:
+                    node_2_rm.sync()
+                consolidated_child_nodes_id.remove(node_2_rm.id)
+        if self.nodes_2_add is not None:
+            for node_2_add in self.nodes_2_add:
+                if node_2_add.id is None:
+                    node_2_add.sync()
+                consolidated_child_nodes_id.append(node_2_add.id)
+        post_payload['containerNodesID'] = consolidated_child_nodes_id
+
+        if self.properties is not None:
+            consolidated_properties = copy.deepcopy(self.properties)
+        if self.properties_2_rm is not None:
+            for n_property_name in self.properties_2_rm:
+                consolidated_properties.pop(n_property_name, 0)
+        if self.properties_2_add is not None:
+            for n_property_tuple in self.properties_2_add:
+                consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
+        for key, value in consolidated_properties.items():
+            consolidated_container_properties.append(MappingService.property_params(key, value))
+        post_payload['containerProperties'] = consolidated_container_properties
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = ContainerService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug('Problem while saving container' + self.name + '. Reason: ' + str(response.error_message))
         else:
-            params = {
-                'ID': self.id,
-                'paGateID': self.primary_admin_gate_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/primaryAdminGate', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating container' + self.gate_uri + ' primary admin gate. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-            if ok and self.name is not None:
-                params = {
-                    'ID': self.id,
-                    'name': self.name
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-                response = ContainerService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-        if ok and self.company is not None and self.company:
-            params = {
-                'ID': self.id,
-                'company': self.company
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.product is not None and self.product:
-            params = {
-                'ID': self.id,
-                'product': self.product
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/product', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.type is not None and self.type:
-            params = {
-                'ID': self.id,
-                'type': self.type
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.cluster_id is not None and self.cluster_id:
-            params = {
-                'ID': self.id,
-                'clusterID': self.cluster_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/cluster', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.parent_container_id is not None and self.parent_container_id:
-            params = {
-                'ID': self.id,
-                'parentContainerID': self.parent_container_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/parentContainer', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating container' + self.gate_uri + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.properties_2_add.__len__() > 0:
-            for c_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(c_property_tuple[0], c_property_tuple[1])
-                params['ID'] = self.id
-                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
-                response = ContainerService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating container ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-                    break
-            self.properties_2_add.clear()
-
-        if ok and self.properties_2_rm.__len__() > 0:
-            for c_property_name in self.properties_2_rm:
-                params = {
-                    'ID': self.id,
-                    'propertyName': c_property_name
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
-                response = ContainerService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating container ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-                    break
-            self.properties_2_rm.clear()
-
-        if ok and self.child_containers_2_add.__len__() > 0:
-            for child_c in self.child_containers_2_add:
-                if child_c.id is None:
-                    child_c.save()
-                if child_c.id is not None:
-                    params = {
-                        'ID': self.id,
-                        'childContainerID': child_c.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add',
-                            'parameters': params}
-                    response = ContainerService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating container ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        child_c.sync()
-            self.child_containers_2_add.clear()
-
-        if ok and self.child_containers_2_rm.__len__() > 0:
-            for child_c in self.child_containers_2_rm:
-                if child_c.id is None:
-                    child_c.save()
-                if child_c.id is not None:
-                    params = {
-                        'ID': self.id,
-                        'childContainerID': child_c.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/delete',
-                            'parameters': params}
-                    response = ContainerService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating container ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        child_c.sync()
-            self.child_containers_2_rm.clear()
-
+            self.id = response.response_content['containerID']
+            if self.child_containers_2_add is not None:
+                for child_container_2_add in self.child_containers_2_add:
+                    child_container_2_add.sync()
+            if self.child_containers_2_rm is not None:
+                for child_container_2_rm in self.child_containers_2_rm:
+                    child_container_2_rm.sync()
+            if self.nodes_2_add is not None:
+                for node_2_add in self.nodes_2_add:
+                    node_2_add.sync()
+            if self.nodes_2_rm is not None:
+                for node_2_rm in self.nodes_2_rm:
+                    node_2_rm.sync()
+            if self.gates_2_add is not None:
+                for gate_2_add in self.gates_2_add:
+                    gate_2_add.sync()
+            if self.gates_2_rm is not None:
+                for gate_2_rm in self.gates_2_rm:
+                    gate_2_rm.sync()
+            if self.parent_container is not None:
+                self.parent_container.sync()
+            if self.primary_admin_gate is not None:
+                self.primary_admin_gate.sync()
+            if self.cluster is not None:
+                self.cluster.sync()
+        self.child_containers_2_add.clear()
+        self.child_containers_2_rm.clear()
+        self.nodes_2_add.clear()
+        self.nodes_2_rm.clear()
+        self.gates_2_add.clear()
+        self.gates_2_rm.clear()
+        self.properties_2_add.clear()
+        self.properties_2_rm.clear()
         self.sync()
 
     def remove(self):
@@ -1270,8 +1218,6 @@ class Node(object):
         save or update this node in Ariane server
         :return:
         """
-        ok = True
-
         if self.container is not None:
             if self.container.id is None:
                 self.container.save()
