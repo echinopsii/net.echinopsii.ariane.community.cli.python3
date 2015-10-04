@@ -1912,8 +1912,6 @@ class Link(object):
         self.trp_id = transport_id
 
     def save(self):
-        ok = True
-
         if self.sep is not None:
             if self.sep.id is None:
                 self.sep.save()
@@ -1929,62 +1927,29 @@ class Link(object):
                 self.transport.save()
             self.trp_id = self.transport.id
 
-        if self.id is None:
-            params = {
-                'SEPID': self.sep_id,
-                'TEPID': self.tep_id if self.tep_id is not None else 0,
-                'transportID': self.trp_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = LinkService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
-                             + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
-                ok = False
-            else:
-                self.id = response.response_content['linkID']
+        post_payload = {}
+        if self.id is not None:
+            post_payload['linkID'] = self.id
+        if self.sep_id is not None:
+            post_payload['linkSEPID'] = self.sep_id
+        if self.tep_id is not None:
+            post_payload['linkTEPID'] = self.tep_id
+        if self.trp_id is not None:
+            post_payload['linkTRPID'] = self.trp_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = LinkService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
+                         + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
         else:
-            params = {
-                'ID': self.id,
-                'SEPID': self.sep_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/sourceEP', 'parameters': params}
-            response = LinkService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug('Problem while updating link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
-                             + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
-                ok = False
-
-            if ok:
-                params = {
-                    'ID': self.id,
-                    'TEPID': self.tep_id
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/targetEP', 'parameters': params}
-                response = LinkService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug('Problem while updating link {' + str(self.sep_id) + ',' + str(self.tep_id) + ',' +
-                                 str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
-                    ok = False
-
-            if ok:
-                params = {
-                    'ID': self.id,
-                    'transportID': self.trp_id
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/transport', 'parameters': params}
-                response = LinkService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug('Problem while updating link {' + str(self.sep_id) + ',' + str(self.tep_id) + ',' +
-                                 str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
-                    ok = False
-
-        if self.sep is not None:
-            self.sep.sync()
-        if self.tep is not None:
-            self.tep.sync()
-        if self.transport is not None:
-            self.transport.sync()
+            self.id = response.response_content['linkID']
+            if self.sep is not None:
+                self.sep.sync()
+            if self.tep is not None:
+                self.tep.sync()
+            if self.transport is not None:
+                self.transport.sync()
         self.sync()
 
     def remove(self):
