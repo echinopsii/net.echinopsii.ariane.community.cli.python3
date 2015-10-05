@@ -2138,62 +2138,35 @@ class Transport(object):
         self.properties_2_rm = []
 
     def save(self):
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = TransportService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug('Problem while saving transport {' + self.name +
-                             '}. Reason: ' + str(response.error_message))
-                ok = False
-            else:
-                self.id = response.response_content['transportID']
+        consolidated_properties = {}
+        consolidated_transport_properties = []
+
+        post_payload = {}
+        if self.id is not None:
+            post_payload['transportID'] = self.id
+        if self.name is not None:
+            post_payload['transportName'] = self.name
+
+        if self.properties is not None:
+            consolidated_properties = copy.deepcopy(self.properties)
+        if self.properties_2_rm is not None:
+            for n_property_name in self.properties_2_rm:
+                consolidated_properties.pop(n_property_name, 0)
+        if self.properties_2_add is not None:
+            for n_property_tuple in self.properties_2_add:
+                consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
+        for key, value in consolidated_properties.items():
+            consolidated_transport_properties.append(MappingService.property_params(key, value))
+        post_payload['transportProperties'] = consolidated_transport_properties
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = TransportService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug('Problem while saving transport {' + self.name + '}. Reason: ' + str(response.error_message))
         else:
-            params = {
-                'ID': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = TransportService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug('Problem while updating transport {' + self.name +
-                             '}. Reason: ' + str(response.error_message))
-                ok = False
-
-        if ok and self.properties_2_add.__len__() > 0:
-            for t_property_tuple in self.properties_2_add:
-                params = MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
-                params['ID'] = self.id
-                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
-                response = TransportService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating transport ' + self.name + ' properties. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-                    break
-            self.properties_2_add.clear()
-
-        if ok and self.properties_2_rm.__len__() > 0:
-            for t_property_name in self.properties_2_rm:
-                params = {
-                    'ID': self.id,
-                    'propertyName': t_property_name
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
-                response = TransportService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating transport ' + self.name + ' properties. Reason: ' +
-                        str(response.error_message)
-                    )
-                    break
-            self.properties_2_rm.clear()
-
+            self.id = response.response_content['transportID']
+        self.properties_2_add.clear()
+        self.properties_2_rm.clear()
         self.sync()
 
     def remove(self):
