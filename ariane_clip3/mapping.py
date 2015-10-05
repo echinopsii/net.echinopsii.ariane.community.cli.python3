@@ -342,84 +342,43 @@ class Cluster(object):
         save or update this cluster in Ariane Server
         :return:
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = ClusterService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
-                ok = False
-            else:
-                self.id = response.response_content['clusterID']
+        post_payload = {}
+        consolidated_containers_id = []
+
+        if self.id is not None:
+            post_payload['clusterID'] = self.id
+
+        if self.name is not None:
+            post_payload['clusterName'] = self.name
+
+        if self.containers_id is not None:
+            consolidated_containers_id = copy.deepcopy(self.containers_id)
+        if self.containers_2_rm is not None:
+            for container_2_rm in self.containers_2_rm:
+                if container_2_rm.id is None:
+                    container_2_rm.sync()
+                consolidated_containers_id.remove(container_2_rm.id)
+        if self.containers_2_add is not None:
+            for container_2_add in self.containers_2_add:
+                if container_2_add.id is None:
+                    container_2_add.save()
+                consolidated_containers_id.append(container_2_add.id)
+        post_payload['clusterContainersID'] = consolidated_containers_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = ClusterService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
         else:
-            params = {
-                'ID': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = ClusterService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating cluster' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.containers_2_add.__len__() > 0:
-            for container in self.containers_2_add:
-                if container.id is None:
-                    container.save()
-                if container.id is not None:
-                    params = {
-                        'ID': self.id,
-                        'containerID': container.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
-                    response = ClusterService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating cluster ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                    else:
-                        container.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
-                        container.gate_uri + ' id is None'
-                    )
-                    ok = False
-                    break
-            self.containers_2_add.clear()
-
-        if ok and self.containers_2_rm.__len__() > 0:
-            for container in self.containers_2_rm:
-                if container.id is None:
-                    container.save()
-                if container.id is not None:
-                    params = {
-                        'ID': self.id,
-                        'containerID': container.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
-                    response = ClusterService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating cluster ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                    else:
-                        container.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
-                        container.gate_uri + ' id is None'
-                    )
-                    break
-            self.containers_2_rm.clear()
-
+            self.id = response.response_content['clusterID']
+            if self.containers_2_add is not None:
+                for container_2_add in self.containers_2_add:
+                    container_2_add.sync()
+            if self.containers_2_rm is not None:
+                for container_2_rm in self.containers_2_rm:
+                    container_2_rm.sync()
+        self.containers_2_add.clear()
+        self.containers_2_rm.clear()
         self.sync()
 
     def remove(self):
