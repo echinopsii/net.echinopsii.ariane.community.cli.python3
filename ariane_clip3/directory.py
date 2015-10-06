@@ -5043,181 +5043,74 @@ class Team(object):
         """
         :return: save this team on Ariane server (create or update)
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'description': self.description,
-                'colorCode': self.color_code
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = TeamService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['teamID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving team ' + self.name + '. Reason: ' + str(response.error_message)
-                )
-                ok = False
+        post_payload = {}
+        consolidated_osi_id = []
+        consolidated_app_id = []
+
+        if self.id is not None:
+            post_payload['teamID'] = self.id
+
+        if self.name is not None:
+            post_payload['teamName'] = self.name
+
+        if self.description is not None:
+            post_payload['teamDescription'] = self.description
+
+        if self.color_code is not None:
+            post_payload['teamColorCode'] = self.color_code
+
+        if self.osi_ids is not None:
+            consolidated_osi_id = copy.deepcopy(self.osi_ids)
+        if self.osi_2_rm is not None:
+            for osi_2_rm in self.osi_2_rm:
+                if osi_2_rm.id is None:
+                    osi_2_rm.sync()
+                consolidated_osi_id.remove(osi_2_rm.id)
+        if self.osi_2_add is not None:
+            for osi_id_2_add in self.osi_2_add:
+                if osi_id_2_add.id is None:
+                    osi_id_2_add.save()
+                consolidated_osi_id.append(osi_id_2_add.id)
+        post_payload['teamOSInstancesID'] = consolidated_osi_id
+
+        if self.app_ids is not None:
+            consolidated_app_id = copy.deepcopy(self.app_ids)
+        if self.app_2_rm is not None:
+            for app_2_rm in self.app_2_rm:
+                if app_2_rm.id is None:
+                    app_2_rm.sync()
+                consolidated_app_id.remove(app_2_rm.id)
+        if self.app_2_add is not None:
+            for app_id_2_add in self.app_2_add:
+                if app_id_2_add.id is None:
+                    app_id_2_add.save()
+                consolidated_app_id.append(app_id_2_add.id)
+        post_payload['teamApplicationsID'] = consolidated_app_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = TeamService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving team ' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = TeamService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating team ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'description': self.description
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = TeamService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating team ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'colorCode': self.color_code
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
-                response = TeamService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating team ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-
-        if ok and self.osi_2_add.__len__() > 0:
-            for osi in self.osi_2_add:
-                if osi.id is None:
-                    osi.save()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
-                    response = TeamService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating team ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.osi_2_add.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating team ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.osi_2_rm.__len__() > 0:
-            for osi in self.osi_2_rm:
-                if osi.id is None:
-                    osi.sync()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete',
-                            'parameters': params}
-                    response = TeamService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating team ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.osi_2_rm.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating team ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.app_2_add.__len__() > 0:
-            for application in self.app_2_add:
-                if application.id is None:
-                    application.save()
-                if application.id is not None:
-                    params = {
-                        'id': self.id,
-                        'applicationID': application.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/add',
-                            'parameters': params}
-                    response = TeamService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating team ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.app_2_add.remove(application)
-                        application.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating team ' + self.name + ' name. Reason: application ' +
-                        application.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.app_2_rm.__len__() > 0:
-            for application in self.app_2_rm:
-                if application.id is None:
-                    application.save()
-                if application.id is not None:
-                    params = {
-                        'id': self.id,
-                        'applicationID': application.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete',
-                            'parameters': params}
-                    response = TeamService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating team ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        # ok = False
-                        break
-                    else:
-                        self.app_2_rm.remove(application)
-                        application.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating team ' + self.name + ' name. Reason: application ' +
-                        application.name + ' id is None'
-                    )
-                    # ok = False
-                    break
-
+            self.id = response.response_content['teamID']
+            if self.osi_2_add is not None:
+                for osi_2_add in self.osi_2_add:
+                    osi_2_add.sync()
+            if self.osi_2_rm is not None:
+                for osi_2_rm in self.osi_2_rm:
+                    osi_2_rm.sync()
+            if self.app_2_add is not None:
+                for app_2_add in self.app_2_add:
+                    app_2_add.sync()
+            if self.app_2_rm is not None:
+                for app_2_rm in self.app_2_rm:
+                    app_2_rm.sync()
+        self.osi_2_add.clear()
+        self.osi_2_rm.clear()
+        self.app_2_add.clear()
+        self.app_2_rm.clear()
         self.sync()
         return self
 
