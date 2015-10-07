@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.directory import DirectoryService, RoutingArea, Datacenter
+from ariane_clip3.directory import DirectoryService, RoutingArea, Location
 
 __author__ = 'mffrench'
 
@@ -67,11 +67,11 @@ class RoutingAreaTest(unittest.TestCase):
         self.assertIsNotNone(service.routing_area_service.find_routing_area(ra_name="my_new_routing_area"))
         new_routing_area.remove()
 
-    def test_routing_area_link_to_datacenter(self):
+    def test_routing_area_link_to_location(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         DirectoryService(args)
-        new_datacenter = Datacenter(name='my_new_datacenter',
-                                    description='my new datacenter',
+        new_location = Location(name='my_new_location',
+                                    description='my new location',
                                     address='somewhere',
                                     zip_code='082487',
                                     town='paris',
@@ -82,27 +82,27 @@ class RoutingAreaTest(unittest.TestCase):
                                        description='my new routing area',
                                        ra_type=RoutingArea.RA_TYPE_LAN,
                                        multicast=RoutingArea.RA_MULTICAST_NOLIMIT)
-        new_routing_area.add_datacenter(new_datacenter, sync=False)
-        self.assertTrue(new_datacenter in new_routing_area.dc_2_add)
-        self.assertIsNone(new_routing_area.dc_ids)
-        self.assertIsNone(new_datacenter.routing_area_ids)
+        new_routing_area.add_location(new_location, sync=False)
+        self.assertTrue(new_location in new_routing_area.loc_2_add)
+        self.assertIsNone(new_routing_area.loc_ids)
+        self.assertIsNone(new_location.routing_area_ids)
         new_routing_area.save()
-        self.assertTrue(new_datacenter not in new_routing_area.dc_2_add)
-        self.assertTrue(new_datacenter.id in new_routing_area.dc_ids)
-        self.assertTrue(new_routing_area.id in new_datacenter.routing_area_ids)
-        new_routing_area.del_datacenter(new_datacenter, sync=False)
-        self.assertTrue(new_datacenter in new_routing_area.dc_2_rm)
-        self.assertTrue(new_datacenter.id in new_routing_area.dc_ids)
-        self.assertTrue(new_routing_area.id in new_datacenter.routing_area_ids)
+        self.assertTrue(new_location not in new_routing_area.loc_2_add)
+        self.assertTrue(new_location.id in new_routing_area.loc_ids)
+        self.assertTrue(new_routing_area.id in new_location.routing_area_ids)
+        new_routing_area.del_location(new_location, sync=False)
+        self.assertTrue(new_location in new_routing_area.loc_2_rm)
+        self.assertTrue(new_location.id in new_routing_area.loc_ids)
+        self.assertTrue(new_routing_area.id in new_location.routing_area_ids)
         new_routing_area.save()
-        self.assertTrue(new_datacenter not in new_routing_area.dc_2_rm)
-        self.assertTrue(new_datacenter not in new_routing_area.dc_ids)
-        self.assertTrue(new_routing_area.id not in new_datacenter.routing_area_ids)
-        new_routing_area.add_datacenter(new_datacenter)
-        self.assertTrue(new_datacenter.id in new_routing_area.dc_ids)
-        self.assertTrue(new_routing_area.id in new_datacenter.routing_area_ids)
-        new_routing_area.del_datacenter(new_datacenter)
-        self.assertTrue(new_datacenter.id not in new_routing_area.dc_ids)
-        self.assertTrue(new_routing_area.id not in new_datacenter.routing_area_ids)
+        self.assertTrue(new_location not in new_routing_area.loc_2_rm)
+        self.assertTrue(new_location not in new_routing_area.loc_ids)
+        self.assertTrue(new_routing_area.id not in new_location.routing_area_ids)
+        new_routing_area.add_location(new_location)
+        self.assertTrue(new_location.id in new_routing_area.loc_ids)
+        self.assertTrue(new_routing_area.id in new_location.routing_area_ids)
+        new_routing_area.del_location(new_location)
+        self.assertTrue(new_location.id not in new_routing_area.loc_ids)
+        self.assertTrue(new_routing_area.id not in new_location.routing_area_ids)
         new_routing_area.remove()
-        new_datacenter.remove()
+        new_location.remove()
