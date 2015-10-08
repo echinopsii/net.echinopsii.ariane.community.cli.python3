@@ -4284,169 +4284,78 @@ class Company(object):
     def save(self):
         """
         :return: save this company on Ariane server (create or update)
+            'companyID': self.id,
+            'companyName': self.name,
+            'companyDescription': self.description,
+            'companyApplicationsID': self.applications_ids,
+            'companyOSTypesID': self.ost_ids
+
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'description': self.description,
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = CompanyService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['companyID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving company' + self.name + '. Reason: ' + str(response.error_message)
-                )
-                ok = False
+        post_payload = {}
+        consolidated_app_id = []
+        consolidated_ost_id = []
+
+        if self.id is not None:
+            post_payload['companyID'] = self.id
+
+        if self.name is not None:
+            post_payload['companyName'] = self.name
+
+        if self.description is not None:
+            post_payload['companyDescription'] = self.description
+
+        if self.ost_ids is not None:
+            consolidated_ost_id = copy.deepcopy(self.ost_ids)
+        if self.ost_2_rm is not None:
+            for ost_2_rm in self.ost_2_rm:
+                if ost_2_rm.id is None:
+                    ost_2_rm.sync()
+                consolidated_ost_id.remove(ost_2_rm.id)
+        if self.ost_2_add is not None:
+            for ost_id_2_add in self.ost_2_add:
+                if ost_id_2_add.id is None:
+                    ost_id_2_add.save()
+                consolidated_ost_id.append(ost_id_2_add.id)
+        post_payload['companyOSTypesID'] = consolidated_ost_id
+
+        if self.applications_ids is not None:
+            consolidated_app_id = copy.deepcopy(self.applications_ids)
+        if self.applications_2_rm is not None:
+            for app_2_rm in self.applications_2_rm:
+                if app_2_rm.id is None:
+                    app_2_rm.sync()
+                consolidated_app_id.remove(app_2_rm.id)
+        if self.applications_2_add is not None:
+            for app_id_2_add in self.applications_2_add:
+                if app_id_2_add.id is None:
+                    app_id_2_add.save()
+                consolidated_app_id.append(app_id_2_add.id)
+        post_payload['companyApplicationsID'] = consolidated_app_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = CompanyService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving company' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = CompanyService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating company ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'description': self.description
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = CompanyService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating company ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-        if ok and self.applications_2_add.__len__() > 0:
-            for application in self.applications_2_add:
-                if application.id is None:
-                    application.save()
-                if application.id is not None:
-                    params = {
-                        'id': self.id,
-                        'applicationID': application.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/add',
-                            'parameters': params}
-                    response = CompanyService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating company ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.applications_2_add.remove(application)
-                        application.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating company ' + self.name + ' name. Reason: application ' +
-                        application.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.applications_2_rm.__len__() > 0:
-            for application in self.applications_2_rm:
-                if application.id is None:
-                    application.save()
-                if application.id is not None:
-                    params = {
-                        'id': self.id,
-                        'applicationID': application.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete',
-                            'parameters': params}
-                    response = CompanyService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating company ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.applications_2_rm.remove(application)
-                        application.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating company ' + self.name + ' name. Reason: application ' +
-                        application.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.ost_2_add.__len__() > 0:
-            for os_type in self.ost_2_add:
-                if os_type.id is None:
-                    os_type.save()
-                if os_type.id is not None:
-                    params = {
-                        'id': self.id,
-                        'ostypeID': os_type.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/add',
-                            'parameters': params}
-                    response = CompanyService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating company ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.ost_2_add.remove(os_type)
-                        os_type.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating company ' + self.name + ' name. Reason: os_type ' +
-                        os_type.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.ost_2_rm.__len__() > 0:
-            for os_type in self.ost_2_rm:
-                if os_type.id is None:
-                    os_type.save()
-                if os_type.id is not None:
-                    params = {
-                        'id': self.id,
-                        'ostypeID': os_type.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/delete',
-                            'parameters': params}
-                    response = CompanyService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating company ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        # ok = False
-                        break
-                    else:
-                        self.ost_2_rm.remove(os_type)
-                        os_type.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating company ' + self.name + ' name. Reason: os_type ' +
-                        os_type.name + ' id is None'
-                    )
-                    # ok = False
-                    break
-
+            self.id = response.response_content['companyID']
+            if self.ost_2_add is not None:
+                for ost_2_add in self.ost_2_add:
+                    ost_2_add.sync()
+            if self.ost_2_rm is not None:
+                for ost_2_rm in self.ost_2_rm:
+                    ost_2_rm.sync()
+            if self.applications_2_add is not None:
+                for app_2_add in self.applications_2_add:
+                    app_2_add.sync()
+            if self.applications_2_rm is not None:
+                for app_2_rm in self.applications_2_rm:
+                    app_2_rm.sync()
+        self.ost_2_add.clear()
+        self.ost_2_rm.clear()
+        self.applications_2_add.clear()
+        self.applications_2_rm.clear()
         self.sync()
         return self
 
