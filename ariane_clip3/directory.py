@@ -3714,7 +3714,7 @@ class Application(object):
             self.osi_ids = json_obj['applicationOSInstancesID']
 
     def __init__(self, appid=None, name=None, description=None, short_name=None, color_code=None,
-                 company_id=None, team_id=None, osi_ids=None):
+                 company=None, company_id=None, team=None, team_id=None, osi_ids=None):
         """
         build ariane_clip3 Application object
         :param appid: default None. it will be erased by any interaction with Ariane server
@@ -3733,7 +3733,9 @@ class Application(object):
         self.short_name = short_name
         self.color_code = color_code
         self.company_id = company_id
+        self.company = company
         self.team_id = team_id
+        self.team = team
         self.osi_ids = osi_ids
         self.osi_2_add = []
         self.osi_2_rm = []
@@ -3822,165 +3824,70 @@ class Application(object):
         """
         :return: save this application on Ariane server (create or update)
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'shortName': self.short_name,
-                'description': self.description,
-                'colorCode': self.color_code
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = ApplicationService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['applicationID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving application' + self.name + '. Reason: ' + str(response.error_message)
-                )
-                ok = False
+        if self.company is not None:
+            if self.company.id is None:
+                self.company.save()
+            self.company_id = self.company.id
+
+        if self.team is not None:
+            if self.team.id is None:
+                self.team.save()
+            self.team_id = self.team.id
+
+        post_payload = {}
+        consolidated_osi_id = []
+
+        if self.id is not None:
+            post_payload['applicationID'] = self.id
+
+        if self.name is not None:
+            post_payload['applicationName'] = self.name
+
+        if self.description is not None:
+            post_payload['applicationDescription'] = self.description
+
+        if self.short_name is not None:
+            post_payload['applicationShortName'] = self.short_name
+
+        if self.color_code is not None:
+            post_payload['applicationColorCode'] = self.color_code
+
+        if self.company_id is not None:
+            post_payload['applicationCompanyID'] = self.company_id
+
+        if self.team_id is not None:
+            post_payload['applicationTeamID'] = self.team_id
+
+        if self.osi_ids is not None:
+            consolidated_osi_id = copy.deepcopy(self.osi_ids)
+        if self.osi_2_rm is not None:
+            for osi_2_rm in self.osi_2_rm:
+                if osi_2_rm.id is None:
+                    osi_2_rm.sync()
+                consolidated_osi_id.remove(osi_2_rm.id)
+        if self.osi_2_add is not None:
+            for osi_id_2_add in self.osi_2_add:
+                if osi_id_2_add.id is None:
+                    osi_id_2_add.save()
+                consolidated_osi_id.append(osi_id_2_add.id)
+        post_payload['applicationOSInstancesID'] = consolidated_osi_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = ApplicationService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving application ' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = ApplicationService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating application ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'shortName': self.short_name
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/shortName', 'parameters': params}
-                response = ApplicationService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating application ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'description': self.description
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = ApplicationService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating application ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'colorCode': self.color_code
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/colorCode', 'parameters': params}
-                response = ApplicationService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating application ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-        if ok and self.company_id is not None:
-            params = {
-                'id': self.id,
-                'companyID': self.company_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
-            response = ApplicationService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating application ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.team_id is not None:
-            params = {
-                'id': self.id,
-                'teamID': self.team_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/team', 'parameters': params}
-            response = ApplicationService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating application ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.osi_2_add.__len__() > 0:
-            for osi in self.osi_2_add:
-                if osi.id is None:
-                    osi.save()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
-                    response = ApplicationService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating application ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.osi_2_add.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating application ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.osi_2_rm.__len__() > 0:
-            for osi in self.osi_2_rm:
-                if osi.id is None:
-                    osi.sync()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete',
-                            'parameters': params}
-                    response = ApplicationService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating application ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        # ok = False
-                        break
-                    else:
-                        self.osi_2_rm.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating application ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    # ok = False
-                    break
-
+            self.id = response.response_content['applicationID']
+            if self.osi_2_add is not None:
+                for osi_2_add in self.osi_2_add:
+                    osi_2_add.sync()
+            if self.osi_2_rm is not None:
+                for osi_2_rm in self.osi_2_rm:
+                    osi_2_rm.sync()
+        self.osi_2_add.clear()
+        self.osi_2_rm.clear()
         self.sync()
         return self
 
@@ -4284,12 +4191,6 @@ class Company(object):
     def save(self):
         """
         :return: save this company on Ariane server (create or update)
-            'companyID': self.id,
-            'companyName': self.name,
-            'companyDescription': self.description,
-            'companyApplicationsID': self.applications_ids,
-            'companyOSTypesID': self.ost_ids
-
         """
         post_payload = {}
         consolidated_app_id = []
