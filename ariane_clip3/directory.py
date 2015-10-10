@@ -30,7 +30,7 @@ class DirectoryService(object):
     def __init__(self, my_args):
         self.driver = driver_factory.DriverFactory.make(my_args)
         self.driver.start()
-        self.datacenter_service = DatacenterService(self.driver)
+        self.location_service = LocationService(self.driver)
         self.routing_area_service = RoutingAreaService(self.driver)
         self.subnet_service = SubnetService(self.driver)
         self.os_instance_service = OSInstanceService(self.driver)
@@ -43,102 +43,102 @@ class DirectoryService(object):
         self.niCard_service = NICardService(self.driver)
 
 
-class DatacenterService(object):
+class LocationService(object):
     requester = None
 
     def __init__(self, directory_driver):
-        args = {'repository_path': 'rest/directories/common/infrastructure/network/datacenters/'}
-        DatacenterService.requester = directory_driver.make_requester(args)
+        args = {'repository_path': 'rest/directories/common/infrastructure/network/locations/'}
+        LocationService.requester = directory_driver.make_requester(args)
 
     @staticmethod
-    def find_datacenter(dc_id=None, dc_name=None):
+    def find_location(loc_id=None, loc_name=None):
         """
-        find the datacenter according datacenter id (prioritary) or datacenter name
-        :param dc_id: the datacenter id
-        :param dc_name: the datacenter name
-        :return: found datacenter or None if not found
+        find the location according location id (prioritary) or location name
+        :param loc_id: the location id
+        :param loc_name: the location name
+        :return: found location or None if not found
         """
-        if (dc_id is None or not dc_id) and (dc_name is None or not dc_name):
+        if (loc_id is None or not loc_id) and (loc_name is None or not loc_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
-        if (dc_id is not None and dc_id) and (dc_name is not None and dc_name):
+        if (loc_id is not None and loc_id) and (loc_name is not None and loc_name):
             LOGGER.warn('Both id and name are defined. Will give you search on id.')
-            dc_name = None
+            loc_name = None
 
         params = None
-        if dc_id is not None and dc_id:
-            params = {'id': dc_id}
-        elif dc_name is not None and dc_name:
-            params = {'name': dc_name}
+        if loc_id is not None and loc_id:
+            params = {'id': loc_id}
+        elif loc_name is not None and loc_name:
+            params = {'name': loc_name}
 
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = DatacenterService.requester.call(args)
+            response = LocationService.requester.call(args)
             if response.rc is 0:
-                ret = Datacenter.json_2_datacenter(response.response_content)
+                ret = Location.json_2_location(response.response_content)
             else:
-                err_msg = 'Problem while finding datacenter (id:' + str(dc_id) + ', name:' + str(dc_name) + ').' + \
+                err_msg = 'Problem while finding location (id:' + str(loc_id) + ', name:' + str(loc_name) + ').' + \
                           'Reason: ' + str(response.error_message)
                 LOGGER.debug(err_msg)
 
         return ret
 
     @staticmethod
-    def get_datacenters():
+    def get_locations():
         """
-        :return: all knows datacenters
+        :return: all knows locations
         """
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = DatacenterService.requester.call(args)
+        response = LocationService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
-            for datacenter in response.response_content['datacenters']:
-                ret.append(Datacenter.json_2_datacenter(datacenter))
+            for location in response.response_content['locations']:
+                ret.append(Location.json_2_location(location))
         else:
-            err_msg = 'Problem while getting datacenters. Reason: ' + str(response.error_message)
+            err_msg = 'Problem while getting locations. Reason: ' + str(response.error_message)
             LOGGER.debug(err_msg)
         return ret
 
 
-class Datacenter(object):
+class Location(object):
     @staticmethod
-    def json_2_datacenter(json_obj):
+    def json_2_location(json_obj):
         """
         transform JSON obj coming from Ariane to ariane_clip3 object
         :param json_obj: the JSON obj coming from Ariane
-        :return: ariane_clip3 Datacenter object
+        :return: ariane_clip3 Location object
         """
-        return Datacenter(dcid=json_obj['datacenterID'],
-                          name=json_obj['datacenterName'],
-                          description=json_obj['datacenterDescription'],
-                          address=json_obj['datacenterAddress'],
-                          zip_code=json_obj['datacenterZipCode'],
-                          town=json_obj['datacenterTown'],
-                          country=json_obj['datacenterCountry'],
-                          gps_latitude=json_obj['datacenterGPSLat'],
-                          gps_longitude=json_obj['datacenterGPSLng'],
-                          routing_area_ids=json_obj['datacenterRoutingAreasID'],
-                          subnet_ids=json_obj['datacenterSubnetsID'])
+        return Location(locid=json_obj['locationID'],
+                          name=json_obj['locationName'],
+                          description=json_obj['locationDescription'],
+                          address=json_obj['locationAddress'],
+                          zip_code=json_obj['locationZipCode'],
+                          town=json_obj['locationTown'],
+                          country=json_obj['locationCountry'],
+                          gps_latitude=json_obj['locationGPSLat'],
+                          gps_longitude=json_obj['locationGPSLng'],
+                          routing_area_ids=json_obj['locationRoutingAreasID'],
+                          subnet_ids=json_obj['locationSubnetsID'])
 
-    def datacenter_2_json(self):
+    def location_2_json(self):
         """
-        transform ariane_clip3 datacenter object to Ariane server JSON obj
+        transform ariane_clip3 location object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
         json_obj = {
-            'datacenterID': self.id,
-            'datacenterName': self.name,
-            'datacenterDescription': self.description,
-            'datacenterAddress': self.address,
-            'datacenterZipCode': self.zip_code,
-            'datacenterTown': self.town,
-            'datacenterCountry': self.country,
-            'datacenterGPSLat': self.gpsLatitude,
-            'datacenterGPSLng': self.gpsLongitude,
-            'datacenterRoutingAreasID': self.routing_area_ids,
-            'datacenterSubnetsID': self.subnet_ids
+            'locationID': self.id,
+            'locationName': self.name,
+            'locationDescription': self.description,
+            'locationAddress': self.address,
+            'locationZipCode': self.zip_code,
+            'locationTown': self.town,
+            'locationCountry': self.country,
+            'locationGPSLat': self.gpsLatitude,
+            'locationGPSLng': self.gpsLongitude,
+            'locationRoutingAreasID': self.routing_area_ids,
+            'locationSubnetsID': self.subnet_ids
         }
         return json.dumps(json_obj)
 
@@ -155,26 +155,26 @@ class Datacenter(object):
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = DatacenterService.requester.call(args)
+            response = LocationService.requester.call(args)
             if response.rc is 0:
                 json_obj = response.response_content
-                self.id = json_obj['datacenterID']
-                self.name = json_obj['datacenterName']
-                self.description = json_obj['datacenterDescription']
-                self.address = json_obj['datacenterAddress']
-                self.zip_code = json_obj['datacenterZipCode']
-                self.town = json_obj['datacenterTown']
-                self.country = json_obj['datacenterCountry']
-                self.gpsLatitude = json_obj['datacenterGPSLat']
-                self.gpsLongitude = json_obj['datacenterGPSLng']
-                self.routing_area_ids = json_obj['datacenterRoutingAreasID']
-                self.subnet_ids = json_obj['datacenterSubnetsID']
+                self.id = json_obj['locationID']
+                self.name = json_obj['locationName']
+                self.description = json_obj['locationDescription']
+                self.address = json_obj['locationAddress']
+                self.zip_code = json_obj['locationZipCode']
+                self.town = json_obj['locationTown']
+                self.country = json_obj['locationCountry']
+                self.gpsLatitude = json_obj['locationGPSLat']
+                self.gpsLongitude = json_obj['locationGPSLng']
+                self.routing_area_ids = json_obj['locationRoutingAreasID']
+                self.subnet_ids = json_obj['locationSubnetsID']
 
-    def __init__(self, dcid=None, name=None, description=None, address=None, zip_code=None, town=None,
+    def __init__(self, locid=None, name=None, description=None, address=None, zip_code=None, town=None,
                  country=None, gps_latitude=None, gps_longitude=None, routing_area_ids=None, subnet_ids=None):
         """
-        build ariane_clip3 Datacenter object
-        :param dcid: the id - default None. it will be erased by any interaction with Ariane server
+        build ariane_clip3 Location object
+        :param locid: the id - default None. it will be erased by any interaction with Ariane server
         :param name: default None
         :param description: default None
         :param address: default None
@@ -187,7 +187,7 @@ class Datacenter(object):
         :param subnet_ids: default None
         :return:
         """
-        self.id = dcid
+        self.id = locid
         self.name = name
         self.description = description
         self.address = address
@@ -217,8 +217,8 @@ class Datacenter(object):
 
     def add_routing_area(self, routing_area, sync=True):
         """
-        add a routing area to this datacenter.
-        :param routing_area: the routing area to add on this datacenter
+        add a routing area to this location.
+        :param routing_area: the routing area to add on this location
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the routing area object on list to be added on next save().
         :return:
@@ -234,25 +234,25 @@ class Datacenter(object):
                     'routingareaID': routing_area.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
-                response = DatacenterService.requester.call(args)
+                response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.routing_area_ids.append(routing_area.id)
-                    routing_area.dc_ids.append(self.id)
+                    routing_area.loc_ids.append(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                    'Problem while updating location ' + self.name + ' name. Reason: routing area ' +
                     routing_area.name + ' id is None or self.id is None.'
                 )
 
     def del_routing_area(self, routing_area, sync=True):
         """
-        delete routing area from this datacenter
-        :param routing_area: the routing area to be deleted from this datacenter
+        delete routing area from this location
+        :param routing_area: the routing area to be deleted from this location
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the routing area object on list to be removed on next save().
         :return:
@@ -268,25 +268,25 @@ class Datacenter(object):
                     'routingareaID': routing_area.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete', 'parameters': params}
-                response = DatacenterService.requester.call(args)
+                response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.routing_area_ids.remove(routing_area.id)
-                    routing_area.dc_ids.remove(self.id)
+                    routing_area.loc_ids.remove(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                    'Problem while updating location ' + self.name + ' name. Reason: routing area ' +
                     routing_area.name + ' id is None'
                 )
 
     def add_subnet(self, subnet, sync=True):
         """
-        add subnet to this datacenter
-        :param subnet: the subnet to be added to this datacenter
+        add subnet to this location
+        :param subnet: the subnet to be added to this location
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the subnet object on list to be added on next save().
         :return:
@@ -302,25 +302,25 @@ class Datacenter(object):
                     'subnetID': subnet.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
-                response = DatacenterService.requester.call(args)
+                response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.subnet_ids.append(subnet.id)
-                    subnet.dc_ids.append(self.id)
+                    subnet.loc_ids.append(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                    'Problem while updating location ' + self.name + ' name. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
     def del_subnet(self, subnet, sync=True):
         """
-        delete subnet from this datacenter
-        :param subnet: the subnet to be deleted from this datacenter
+        delete subnet from this location
+        :param subnet: the subnet to be deleted from this location
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
         add the subnet object on list to be removed on next save().
         :return:
@@ -336,24 +336,24 @@ class Datacenter(object):
                     'subnetID': subnet.id
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
-                response = DatacenterService.requester.call(args)
+                response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                 else:
                     self.subnet_ids.remove(subnet.id)
-                    subnet.dc_ids.remove(self.id)
+                    subnet.loc_ids.remove(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                    'Problem while updating location ' + self.name + ' name. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
     def save(self):
         """
-        :return: save this datacenter on Ariane server (create or update)
+        :return: save this location on Ariane server (create or update)
         """
         ok = True
         if self.id is None:
@@ -363,22 +363,22 @@ class Datacenter(object):
                 'description': self.description
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = DatacenterService.requester.call(args)
+            response = LocationService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug('Problem while saving datacenter' + self.name + '. Reason: ' + str(response.error_message))
+                LOGGER.debug('Problem while saving location' + self.name + '. Reason: ' + str(response.error_message))
                 ok = False
             else:
-                self.id = response.response_content['datacenterID']
+                self.id = response.response_content['locationID']
         else:
             params = {
                 'id': self.id,
                 'name': self.name
             }
             args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = DatacenterService.requester.call(args)
+            response = LocationService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
-                    'Problem while updating datacenter' + self.name + ' name. Reason: ' + str(response.error_message)
+                    'Problem while updating location' + self.name + ' name. Reason: ' + str(response.error_message)
                 )
                 ok = False
 
@@ -391,10 +391,10 @@ class Datacenter(object):
                     'country': self.country
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/fullAddress', 'parameters': params}
-                response = DatacenterService.requester.call(args)
+                response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' full address. Reason: ' +
+                        'Problem while updating location ' + self.name + ' full address. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -406,10 +406,10 @@ class Datacenter(object):
                     'gpsLongitude': self.gpsLongitude
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/gpsCoord', 'parameters': params}
-                response = DatacenterService.requester.call(args)
+                response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' gps coord. Reason: ' +
+                        'Problem while updating location ' + self.name + ' gps coord. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -420,10 +420,10 @@ class Datacenter(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = DatacenterService.requester.call(args)
+                response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
                     ok = False
@@ -438,10 +438,10 @@ class Datacenter(object):
                         'routingareaID': routing_area.id
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
-                    response = DatacenterService.requester.call(args)
+                    response = LocationService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.debug(
-                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                            'Problem while updating location ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -451,7 +451,7 @@ class Datacenter(object):
                         routing_area.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: routing area ' +
                         routing_area.name + ' id is None'
                     )
                     ok = False
@@ -468,10 +468,10 @@ class Datacenter(object):
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete',
                             'parameters': params}
-                    response = DatacenterService.requester.call(args)
+                    response = LocationService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.debug(
-                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                            'Problem while updating location ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -481,7 +481,7 @@ class Datacenter(object):
                         routing_area.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: routing area ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: routing area ' +
                         routing_area.name + ' id is None'
                     )
                     ok = False
@@ -497,10 +497,10 @@ class Datacenter(object):
                         'subnetID': subnet.id
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
-                    response = DatacenterService.requester.call(args)
+                    response = LocationService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.debug(
-                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                            'Problem while updating location ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         ok = False
@@ -510,7 +510,7 @@ class Datacenter(object):
                         subnet.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
                     ok = False
@@ -526,10 +526,10 @@ class Datacenter(object):
                         'subnetID': subnet.id
                     }
                     args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
-                    response = DatacenterService.requester.call(args)
+                    response = LocationService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.debug(
-                            'Problem while updating datacenter ' + self.name + ' name. Reason: ' +
+                            'Problem while updating location ' + self.name + ' name. Reason: ' +
                             str(response.error_message)
                         )
                         # ok = False
@@ -539,7 +539,7 @@ class Datacenter(object):
                         subnet.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating datacenter ' + self.name + ' name. Reason: subnet ' +
+                        'Problem while updating location ' + self.name + ' name. Reason: subnet ' +
                         subnet.name + ' id is None'
                     )
                     # ok = False
@@ -561,10 +561,10 @@ class Datacenter(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = DatacenterService.requester.call(args)
+            response = LocationService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
-                    'Problem while deleting datacenter ' + self.name + '. Reason: ' + str(response.error_message)
+                    'Problem while deleting location ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
             else:
@@ -655,7 +655,7 @@ class RoutingArea(object):
                            description=json_obj['routingAreaDescription'],
                            ra_type=json_obj['routingAreaType'],
                            multicast=json_obj['routingAreaMulticast'],
-                           routing_area_dc_ids=json_obj['routingAreaDatacentersID'],
+                           routing_area_loc_ids=json_obj['routingAreaLocationsID'],
                            routing_area_subnet_ids=json_obj['routingAreaSubnetsID'])
 
     def routing_area_2_json(self):
@@ -669,7 +669,7 @@ class RoutingArea(object):
             'routingAreaDescription': self.description,
             'routingAreaType': self.type,
             'routingAreaMulticast': self.multicast,
-            'routingAreaDatacentersID': self.dc_ids,
+            'routingAreaLocationsID': self.loc_ids,
             'routingAreaSubnetsID': self.subnet_ids
         }
         return json.dumps(json_obj)
@@ -695,11 +695,11 @@ class RoutingArea(object):
                 self.description = json_obj['routingAreaDescription']
                 self.type = json_obj['routingAreaType']
                 self.multicast = json_obj['routingAreaMulticast']
-                self.dc_ids = json_obj['routingAreaDatacentersID']
+                self.loc_ids = json_obj['routingAreaLocationsID']
                 self.subnet_ids = json_obj['routingAreaSubnetsID']
 
     def __init__(self, raid=None, name=None, description=None, ra_type=None, multicast=None,
-                 routing_area_dc_ids=None, routing_area_subnet_ids=None):
+                 routing_area_loc_ids=None, routing_area_subnet_ids=None):
         """
         build ariane_clip3 routing area object
         :param raid: default None. it will be erased by any interaction with Ariane server
@@ -707,7 +707,7 @@ class RoutingArea(object):
         :param description: default None
         :param ra_type: default None
         :param multicast: default None
-        :param routing_area_dc_ids: default None
+        :param routing_area_loc_ids: default None
         :param routing_area_subnet_ids: default None
         :return:
         """
@@ -716,9 +716,9 @@ class RoutingArea(object):
         self.description = description
         self.type = ra_type
         self.multicast = multicast
-        self.dc_ids = routing_area_dc_ids
-        self.dc_2_add = []
-        self.dc_2_rm = []
+        self.loc_ids = routing_area_loc_ids
+        self.loc_2_add = []
+        self.loc_2_rm = []
         self.subnet_ids = routing_area_subnet_ids
 
     def __eq__(self, other):
@@ -733,25 +733,25 @@ class RoutingArea(object):
         """
         return str(self.__dict__)
 
-    def add_datacenter(self, datacenter, sync=True):
+    def add_location(self, location, sync=True):
         """
-        add a datacenter to this routing area.
-        :param datacenter: the datacenter to add on this routing area
+        add a location to this routing area.
+        :param location: the location to add on this routing area
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the datacenter object on list to be added on next save().
+        add the location object on list to be added on next save().
         :return:
         """
         if not sync:
-            self.dc_2_add.append(datacenter)
+            self.loc_2_add.append(location)
         else:
-            if datacenter.id is None:
-                datacenter.save()
-            if self.id is not None and datacenter.id is not None:
+            if location.id is None:
+                location.save()
+            if self.id is not None and location.id is not None:
                 params = {
                     'id': self.id,
-                    'datacenterID': datacenter.id
+                    'locationID': location.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -759,33 +759,33 @@ class RoutingArea(object):
                         str(response.error_message)
                     )
                 else:
-                    self.dc_ids.append(datacenter.id)
-                    datacenter.routing_area_ids.append(self.id)
+                    self.loc_ids.append(location.id)
+                    location.routing_area_ids.append(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
-                    datacenter.name + ' id is None or self.id is None'
+                    'Problem while updating routing area ' + self.name + ' name. Reason: location ' +
+                    location.name + ' id is None or self.id is None'
                 )
 
-    def del_datacenter(self, datacenter, sync=True):
+    def del_location(self, location, sync=True):
         """
-        delete datacenter from this routing area
-        :param datacenter: the datacenter to be deleted from this routing area
+        delete location from this routing area
+        :param location: the location to be deleted from this routing area
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the datacenter object on list to be removed on next save().
+        add the location object on list to be removed on next save().
         :return:
         """
         if not sync:
-            self.dc_2_rm.append(datacenter)
+            self.loc_2_rm.append(location)
         else:
-            if datacenter.id is None:
-                datacenter.sync()
-            if self.id is not None and datacenter.id is not None:
+            if location.id is None:
+                location.sync()
+            if self.id is not None and location.id is not None:
                 params = {
                     'id': self.id,
-                    'datacenterID': datacenter.id
+                    'locationID': location.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -793,12 +793,12 @@ class RoutingArea(object):
                         str(response.error_message)
                     )
                 else:
-                    self.dc_ids.remove(datacenter.id)
-                    datacenter.routing_area_ids.remove(self.id)
+                    self.loc_ids.remove(location.id)
+                    location.routing_area_ids.remove(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
-                    datacenter.name + ' id is None or self.id is None'
+                    'Problem while updating routing area ' + self.name + ' name. Reason: location ' +
+                    location.name + ' id is None or self.id is None'
                 )
 
     def save(self):
@@ -877,16 +877,16 @@ class RoutingArea(object):
                     )
                     ok = False
 
-        if ok and self.dc_2_add.__len__() > 0:
-            for datacenter in self.dc_2_add:
-                if datacenter.id is None:
-                    datacenter.save()
-                if datacenter.id is not None:
+        if ok and self.loc_2_add.__len__() > 0:
+            for location in self.loc_2_add:
+                if location.id is None:
+                    location.save()
+                if location.id is not None:
                     params = {
                         'id': self.id,
-                        'datacenterID': datacenter.id
+                        'locationID': location.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
+                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
                     response = RoutingAreaService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.debug(
@@ -896,26 +896,26 @@ class RoutingArea(object):
                         ok = False
                         break
                     else:
-                        self.dc_2_add.remove(datacenter)
-                        datacenter.sync()
+                        self.loc_2_add.remove(location)
+                        location.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
-                        datacenter.name + ' id is None'
+                        'Problem while updating routing area ' + self.name + ' name. Reason: location ' +
+                        location.name + ' id is None'
                     )
                     ok = False
                     break
 
-        if ok and self.dc_2_rm.__len__() > 0:
-            for datacenter in self.dc_2_rm:
-                if datacenter.id is None:
-                    datacenter.sync()
-                if datacenter.id is not None:
+        if ok and self.loc_2_rm.__len__() > 0:
+            for location in self.loc_2_rm:
+                if location.id is None:
+                    location.sync()
+                if location.id is not None:
                     params = {
                         'id': self.id,
-                        'datacenterID': datacenter.id
+                        'locationID': location.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete',
+                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete',
                             'parameters': params}
                     response = RoutingAreaService.requester.call(args)
                     if response.rc is not 0:
@@ -926,12 +926,12 @@ class RoutingArea(object):
                         # ok = False
                         break
                     else:
-                        self.dc_2_rm.remove(datacenter)
-                        datacenter.sync()
+                        self.loc_2_rm.remove(location)
+                        location.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating routing area ' + self.name + ' name. Reason: datacenter ' +
-                        datacenter.name + ' id is None'
+                        'Problem while updating routing area ' + self.name + ' name. Reason: location ' +
+                        location.name + ' id is None'
                     )
                     # ok = False
                     break
@@ -1036,7 +1036,7 @@ class Subnet(object):
                       mask=json_obj['subnetMask'],
                       routing_area_id=json_obj['subnetRoutingAreaID'],
                       ip_address_ids=json_obj['subnetIPAddressesID'],
-                      subnet_dc_ids=json_obj['subnetDatacentersID'],
+                      subnet_loc_ids=json_obj['subnetLocationsID'],
                       subnet_osi_ids=json_obj['subnetOSInstancesID'])
 
     def subnet_2_json(self):
@@ -1052,7 +1052,7 @@ class Subnet(object):
             'subnetMask': self.mask,
             'subnetRoutingAreaID': self.routing_area_id,
             'subnetIPAddressesID': self.ipAddress_ids,
-            'subnetDatacentersID': self.dc_ids,
+            'subnetLocationsID': self.loc_ids,
             'subnetOSInstancesID': self.osi_ids
         }
         return json.dumps(json_obj)
@@ -1078,12 +1078,12 @@ class Subnet(object):
             self.ip = json_obj['subnetIP']
             self.mask = json_obj['subnetMask']
             self.routing_area_id = json_obj['subnetRoutingAreaID']
-            self.dc_ids = json_obj['subnetDatacentersID']
+            self.loc_ids = json_obj['subnetLocationsID']
             self.ipAddress_ids = json_obj['subnetIPAddressesID']
             self.osi_ids = json_obj['subnetOSInstancesID']
 
     def __init__(self, subnetid=None, name=None, description=None, ip=None, mask=None,
-                 routing_area_id=None, subnet_dc_ids=None, ip_address_ids=None, subnet_osi_ids=None):
+                 routing_area_id=None, subnet_loc_ids=None, ip_address_ids=None, subnet_osi_ids=None):
         """
         build ariane_clip3 subnet object
         :param subnetid: default None. it will be erased by any interaction with Ariane server
@@ -1092,7 +1092,7 @@ class Subnet(object):
         :param ip: default None
         :param mask: default None
         :param routing_area_id: default None
-        :param subnet_dc_ids: default None
+        :param subnet_loc_ids: default None
         :param ip_address_ids: default None
         :param subnet_osi_ids: default None
         :return:
@@ -1104,9 +1104,9 @@ class Subnet(object):
         self.mask = mask
         self.routing_area_id = routing_area_id
         self.ipAddress_ids = ip_address_ids
-        self.dc_ids = subnet_dc_ids
-        self.dc_2_add = []
-        self.dc_2_rm = []
+        self.loc_ids = subnet_loc_ids
+        self.loc_2_add = []
+        self.loc_2_rm = []
         self.osi_ids = subnet_osi_ids
         self.osi_2_add = []
         self.osi_2_rm = []
@@ -1125,25 +1125,25 @@ class Subnet(object):
         """
         return str(self.__dict__)
 
-    def add_datacenter(self, datacenter, sync=True):
+    def add_location(self, location, sync=True):
         """
-        add a datacenter to this subnet.
-        :param datacenter: the datacenter to add on this subnet
+        add a location to this subnet.
+        :param location: the location to add on this subnet
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the datacenter object on list to be added on next save().
+        add the location object on list to be added on next save().
         :return:
         """
         if not sync:
-            self.dc_2_add.append(datacenter)
+            self.loc_2_add.append(location)
         else:
-            if datacenter.id is None:
-                datacenter.save()
-            if self.id is not None and datacenter.id is not None:
+            if location.id is None:
+                location.save()
+            if self.id is not None and location.id is not None:
                 params = {
                     'id': self.id,
-                    'datacenterID': datacenter.id
+                    'locationID': location.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -1151,33 +1151,33 @@ class Subnet(object):
                         str(response.error_message)
                     )
                 else:
-                    self.dc_ids.append(datacenter.id)
-                    datacenter.subnet_ids.append(self.id)
+                    self.loc_ids.append(location.id)
+                    location.subnet_ids.append(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
-                    datacenter.name + ' id is None or self.id is None'
+                    'Problem while updating subnet ' + self.name + ' name. Reason: location ' +
+                    location.name + ' id is None or self.id is None'
                 )
 
-    def del_datacenter(self, datacenter, sync=True):
+    def del_location(self, location, sync=True):
         """
-        delete datacenter from this subnet
-        :param datacenter: the datacenter to be deleted from this subnet
+        delete location from this subnet
+        :param location: the location to be deleted from this subnet
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the datacenter object on list to be removed on next save().
+        add the location object on list to be removed on next save().
         :return:
         """
         if not sync:
-            self.dc_2_rm.append(datacenter)
+            self.loc_2_rm.append(location)
         else:
-            if datacenter.id is None:
-                datacenter.sync()
-            if self.id is not None and datacenter.id is not None:
+            if location.id is None:
+                location.sync()
+            if self.id is not None and location.id is not None:
                 params = {
                     'id': self.id,
-                    'datacenterID': datacenter.id
+                    'locationID': location.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -1185,12 +1185,12 @@ class Subnet(object):
                         str(response.error_message)
                     )
                 else:
-                    self.dc_ids.remove(datacenter.id)
-                    datacenter.subnet_ids.remove(self.id)
+                    self.loc_ids.remove(location.id)
+                    location.subnet_ids.remove(self.id)
             else:
                 LOGGER.debug(
-                    'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
-                    datacenter.name + ' id is None or self.id is None'
+                    'Problem while updating subnet ' + self.name + ' name. Reason: location ' +
+                    location.name + ' id is None or self.id is None'
                 )
 
     def add_os_instance(self, os_instance, sync=True):
@@ -1352,16 +1352,16 @@ class Subnet(object):
                     )
                     ok = False
 
-        if ok and self.dc_2_add.__len__() > 0:
-            for datacenter in self.dc_2_add:
-                if datacenter.id is None:
-                    datacenter.save()
-                if datacenter.id is not None:
+        if ok and self.loc_2_add.__len__() > 0:
+            for location in self.loc_2_add:
+                if location.id is None:
+                    location.save()
+                if location.id is not None:
                     params = {
                         'id': self.id,
-                        'datacenterID': datacenter.id
+                        'locationID': location.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/add', 'parameters': params}
+                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
                         LOGGER.debug(
@@ -1371,26 +1371,26 @@ class Subnet(object):
                         ok = False
                         break
                     else:
-                        self.dc_2_add.remove(datacenter)
-                        datacenter.sync()
+                        self.loc_2_add.remove(location)
+                        location.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
-                        datacenter.name + ' id is None'
+                        'Problem while updating subnet ' + self.name + ' name. Reason: location ' +
+                        location.name + ' id is None'
                     )
                     ok = False
                     break
 
-        if ok and self.dc_2_rm.__len__() > 0:
-            for datacenter in self.dc_2_rm:
-                if datacenter.id is None:
-                    datacenter.sync()
-                if datacenter.id is not None:
+        if ok and self.loc_2_rm.__len__() > 0:
+            for location in self.loc_2_rm:
+                if location.id is None:
+                    location.sync()
+                if location.id is not None:
                     params = {
                         'id': self.id,
-                        'datacenterID': datacenter.id
+                        'locationID': location.id
                     }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/datacenters/delete',
+                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete',
                             'parameters': params}
                     response = SubnetService.requester.call(args)
                     if response.rc is not 0:
@@ -1401,12 +1401,12 @@ class Subnet(object):
                         ok = False
                         break
                     else:
-                        self.dc_2_rm.remove(datacenter)
-                        datacenter.sync()
+                        self.loc_2_rm.remove(location)
+                        location.sync()
                 else:
                     LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: datacenter ' +
-                        datacenter.name + ' id is None'
+                        'Problem while updating subnet ' + self.name + ' name. Reason: location ' +
+                        location.name + ' id is None'
                     )
                     ok = False
                     break
