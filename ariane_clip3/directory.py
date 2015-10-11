@@ -3347,7 +3347,7 @@ class OSType(object):
             self.osi_ids = json_obj['osTypeOSInstancesID']
 
     def __init__(self, ostid=None, name=None, architecture=None,
-                 os_type_company_id=None, os_type_os_instance_ids=None):
+                 os_type_company_id=None, os_type_company=None, os_type_os_instance_ids=None):
         """
         build ariane_clip3 OS type object
         :param ostid: default None. it will be erased by any interaction with Ariane server
@@ -3361,6 +3361,7 @@ class OSType(object):
         self.name = name
         self.architecture = architecture
         self.company_id = os_type_company_id
+        self.company = os_type_company
         self.osi_ids = os_type_os_instance_ids
         self.osi_2_add = []
         self.osi_2_rm = []
@@ -3448,121 +3449,63 @@ class OSType(object):
     def save(self):
         """
         :return: save this OS type on Ariane server (create or update)
+            'osTypeID': self.id,
+            'osTypeName': self.name,
+            'osTypeArchitecture': self.architecture,
+            'osTypeCompanyID': self.company_id,
+            'osTypeOSInstancesID': self.osi_ids
+
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'architecture': self.architecture
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = OSTypeService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['osTypeID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving os type' + self.name + '. Reason: ' + str(response.error_message)
-                )
-                ok = False
+        if self.company is not None:
+            if self.company.id is None:
+                self.company.save()
+            self.company_id = self.company.id
+
+        post_payload = {}
+        consolidated_osi_id = []
+
+        if self.id is not None:
+            post_payload['osTypeID'] = self.id
+
+        if self.name is not None:
+            post_payload['osTypeName'] = self.name
+
+        if self.architecture is not None:
+            post_payload['osTypeArchitecture'] = self.architecture
+
+        if self.company_id is not None:
+            post_payload['osTypeCompanyID'] = self.company_id
+
+        if self.osi_ids is not None:
+            consolidated_osi_id = copy.deepcopy(self.osi_ids)
+        if self.osi_2_rm is not None:
+            for osi_2_rm in self.osi_2_rm:
+                if osi_2_rm.id is None:
+                    osi_2_rm.sync()
+                consolidated_osi_id.remove(osi_2_rm.id)
+        if self.osi_2_add is not None:
+            for osi_id_2_add in self.osi_2_add:
+                if osi_id_2_add.id is None:
+                    osi_id_2_add.save()
+                consolidated_osi_id.append(osi_id_2_add.id)
+        post_payload['osTypeOSInstancesID'] = consolidated_osi_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = OSTypeService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving os type' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = OSTypeService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'architecture': self.architecture
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/architecture', 'parameters': params}
-                response = OSTypeService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating os type ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-        if ok and self.company_id is not None:
-            params = {
-                'id': self.id,
-                'companyID': self.company_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/company', 'parameters': params}
-            response = OSTypeService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating os type ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-        if ok and self.osi_2_add.__len__() > 0:
-            for osi in self.osi_2_add:
-                if osi.id is None:
-                    osi.save()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
-                    response = OSTypeService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS type ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.osi_2_add.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS type ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.osi_2_rm.__len__() > 0:
-            for osi in self.osi_2_rm:
-                if osi.id is None:
-                    osi.sync()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete',
-                            'parameters': params}
-                    response = OSTypeService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS type ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        # ok = False
-                        break
-                    else:
-                        self.osi_2_rm.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS type ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    # ok = False
-                    break
-
+            self.id = response.response_content['osTypeID']
+            if self.osi_2_add is not None:
+                for osi_2_add in self.osi_2_add:
+                    osi_2_add.sync()
+            if self.osi_2_rm is not None:
+                for osi_2_rm in self.osi_2_rm:
+                    osi_2_rm.sync()
+        self.osi_2_add.clear()
+        self.osi_2_rm.clear()
         self.sync()
         return self
 
