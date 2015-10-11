@@ -2128,7 +2128,7 @@ class OSInstance(object):
             'osInstanceNICardsID' : self.niCard_ids,
             'osInstanceApplicationsID': self.application_ids,
             'osInstanceEnvironmentsID': self.environment_ids,
-            'osInstanceSubnetID': self.subnet_ids,
+            'osInstanceSubnetsID': self.subnet_ids,
             'osInstanceTeamsID': self.team_ids
         }
         return json.dumps(json_obj)
@@ -2169,9 +2169,9 @@ class OSInstance(object):
             self.team_ids = json_obj['osInstanceTeamsID']
 
     def __init__(self, osiid=None, name=None, description=None, admin_gate_uri=None,
-                 osi_embedding_osi_id=None, osi_ost_id=None, osi_embedded_osi_ids=None, osi_application_ids=None,
-                 osi_environment_ids=None, osi_subnet_ids=None, osi_ip_address_ids=None, osi_nicard_ids=None,
-                 osi_team_ids=None):
+                 osi_embedding_osi_id=None, osi_ost_id=None,
+                 osi_embedded_osi_ids=None, osi_application_ids=None, osi_environment_ids=None, osi_subnet_ids=None,
+                 osi_ip_address_ids=None, osi_nicard_ids=None, osi_team_ids=None):
         """
         build ariane_clip3 OS instance object
         :param osiid: default None. it will be erased by any interaction with Ariane server
@@ -2710,503 +2710,196 @@ class OSInstance(object):
         """
         :return: save this OS instance on Ariane server (create or update)
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'description': self.description,
-                'adminGateURI': self.admin_gate_uri
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = OSInstanceService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['osInstanceID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving OS instance' + self.name + '. Reason: ' + str(response.error_message)
-                )
-                ok = False
+        post_payload = {}
+        consolidated_osi_id = []
+        consolidated_ipa_id = []
+        consolidated_nic_id = []
+        consolidated_app_id = []
+        consolidated_env_id = []
+        consolidated_snet_id = []
+        consolidated_team_id = []
+
+        if self.id is not None:
+            post_payload['osInstanceID'] = self.id
+
+        if self.name is not None:
+            post_payload['osInstanceName'] = self.name
+
+        if self.description is not None:
+            post_payload['osInstanceDescription'] = self.description
+
+        if self.admin_gate_uri is not None:
+            post_payload['osInstanceAdminGateURI'] = self.admin_gate_uri
+
+        if self.embedding_osi_id is not None:
+            post_payload['osInstanceEmbeddingOSInstanceID'] = self.embedding_osi_id
+
+        if self.ost_id is not None:
+            post_payload['osInstanceOSTypeID'] = self.ost_id
+
+        if self.embedded_osi_ids is not None:
+            consolidated_osi_id = copy.deepcopy(self.embedded_osi_ids)
+        if self.embedded_osi_2_rm is not None:
+            for osi_2_rm in self.embedded_osi_2_rm:
+                if osi_2_rm.id is None:
+                    osi_2_rm.sync()
+                consolidated_osi_id.remove(osi_2_rm.id)
+        if self.embedded_osi_2_add is not None:
+            for osi_id_2_add in self.embedded_osi_2_add:
+                if osi_id_2_add.id is None:
+                    osi_id_2_add.save()
+                consolidated_osi_id.append(osi_id_2_add.id)
+        post_payload['osInstanceEmbeddedOSInstancesID'] = consolidated_osi_id
+
+        if self.ip_address_ids is not None:
+            consolidated_ipa_id = copy.deepcopy(self.ip_address_ids)
+        if self.ip_address_2_rm is not None:
+            for ipa_2_rm in self.ip_address_2_rm:
+                if ipa_2_rm.id is None:
+                    ipa_2_rm.sync()
+                consolidated_ipa_id.remove(ipa_2_rm.id)
+        if self.ip_address_2_add is not None:
+            for ipa_2_add in self.ip_address_2_add:
+                if ipa_2_add.id is None:
+                    ipa_2_add.save()
+                consolidated_ipa_id.append(ipa_2_add.id)
+        post_payload['osInstanceIPAddressesID'] = consolidated_ipa_id
+
+        if self.niCard_ids is not None:
+            consolidated_nic_id = copy.deepcopy(self.niCard_ids)
+        if self.niCard_2_rm is not None:
+            for nic_2_rm in self.niCard_2_rm:
+                if nic_2_rm.id is None:
+                    nic_2_rm.sync()
+                consolidated_nic_id.remove(nic_2_rm.id)
+        if self.niCard_2_add is not None:
+            for nic_2_add in self.niCard_2_add:
+                if nic_2_add.id is None:
+                    nic_2_add.save()
+                consolidated_nic_id.append(nic_2_add.id)
+        post_payload['osInstanceNICardsID'] = consolidated_nic_id
+
+        if self.subnet_ids is not None:
+            consolidated_snet_id = copy.deepcopy(self.subnet_ids)
+        if self.subnets_2_rm is not None:
+            for snet_2_rm in self.subnets_2_rm:
+                if snet_2_rm.id is None:
+                    snet_2_rm.sync()
+                consolidated_snet_id.remove(snet_2_rm.id)
+        if self.subnets_2_add is not None:
+            for snet_2_add in self.subnets_2_add:
+                if snet_2_add.id is None:
+                    snet_2_add.save()
+                consolidated_snet_id.append(snet_2_add.id)
+        post_payload['osInstanceSubnetsID'] = consolidated_snet_id
+
+        if self.application_ids is not None:
+            consolidated_app_id = copy.deepcopy(self.application_ids)
+        if self.application_2_rm is not None:
+            for app_2_rm in self.application_2_rm:
+                if app_2_rm.id is None:
+                    app_2_rm.sync()
+                consolidated_app_id.remove(app_2_rm.id)
+        if self.application_2_add is not None:
+            for app_2_add in self.application_2_add:
+                if app_2_add.id is None:
+                    app_2_add.save()
+                consolidated_app_id.append(app_2_add.id)
+        post_payload['osInstanceApplicationsID'] = consolidated_app_id
+
+        if self.environment_ids is not None:
+            consolidated_env_id = copy.deepcopy(self.environment_ids)
+        if self.environment_2_rm is not None:
+            for env_2_rm in self.environment_2_rm:
+                if env_2_rm.id is None:
+                    env_2_rm.sync()
+                consolidated_env_id.remove(env_2_rm.id)
+        if self.environment_2_add is not None:
+            for env_2_add in self.environment_2_add:
+                if env_2_add.id is None:
+                    env_2_add.save()
+                consolidated_env_id.append(env_2_add.id)
+        post_payload['osInstanceEnvironmentsID'] = consolidated_env_id
+
+        if self.team_ids is not None:
+            consolidated_team_id = copy.deepcopy(self.team_ids)
+        if self.team_2_rm is not None:
+            for team_2_rm in self.team_2_rm:
+                if team_2_rm.id is None:
+                    team_2_rm.sync()
+                consolidated_team_id.remove(team_2_rm.id)
+        if self.team_2_add is not None:
+            for team_2_add in self.team_2_add:
+                if team_2_add.id is None:
+                    team_2_add.save()
+                consolidated_team_id.append(team_2_add.id)
+        post_payload['osInstanceTeamsID'] = consolidated_team_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = OSInstanceService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving OS instance' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = OSInstanceService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating OS instance ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
+            self.id = response.response_content['osInstanceID']
+            if self.embedded_osi_2_add is not None:
+                for osi_2_add in self.embedded_osi_2_add:
+                    osi_2_add.sync()
+            if self.embedded_osi_2_rm is not None:
+                for osi_2_rm in self.embedded_osi_2_rm:
+                    osi_2_rm.sync()
+            if self.ip_address_2_add is not None:
+                for ipa_2_add in self.ip_address_2_add:
+                    ipa_2_add.sync()
+            if self.ip_address_2_rm is not None:
+                for ipa_2_rm in self.ip_address_2_rm:
+                    ipa_2_rm.sync()
+            if self.niCard_2_add is not None:
+                for nic_2_add in self.niCard_2_add:
+                    nic_2_add.sync()
+            if self.niCard_2_rm is not None:
+                for nic_2_rm in self.niCard_2_rm:
+                    nic_2_rm.sync()
+            if self.subnets_2_add is not None:
+                for snet_2_add in self.subnets_2_add:
+                    snet_2_add.sync()
+            if self.subnets_2_rm is not None:
+                for snet_2_rm in self.subnets_2_rm:
+                    snet_2_rm.sync()
+            if self.application_2_add is not None:
+                for app_2_add in self.application_2_add:
+                    app_2_add.sync()
+            if self.application_2_rm is not None:
+                for app_2_rm in self.application_2_rm:
+                    app_2_rm.sync()
+            if self.environment_2_add is not None:
+                for env_2_add in self.environment_2_add:
+                    env_2_add.sync()
+            if self.environment_2_rm is not None:
+                for env_2_rm in self.environment_2_rm:
+                    env_2_rm.sync()
+            if self.team_2_add is not None:
+                for team_2_add in self.team_2_add:
+                    team_2_add.sync()
+            if self.team_2_rm is not None:
+                for team_2_rm in self.team_2_rm:
+                    team_2_rm.sync()
 
-            if ok:
-                params = {
-                    'id': self.id,
-                    'description': self.description
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = OSInstanceService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'adminGateURI': self.admin_gate_uri
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/admingateuri', 'parameters': params}
-                response = OSInstanceService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-
-        if ok and self.ost_id is not None:
-            params = {
-                'id': self.id,
-                'ostID': self.ost_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/ostype', 'parameters': params}
-            response = OSInstanceService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-
-        if ok and self.embedding_osi_id is not None:
-            params = {
-                'id': self.id,
-                'osiID': self.embedding_osi_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/embeddingOSInstance', 'parameters': params}
-            response = OSInstanceService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-
-        if ok and self.subnets_2_add.__len__() > 0:
-            for subnet in self.subnets_2_add:
-                if subnet.id is None:
-                    subnet.save()
-                if subnet.id is not None:
-                    params = {
-                        'id': self.id,
-                        'subnetID': subnet.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.subnets_2_add.remove(subnet)
-                        subnet.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: subnet ' +
-                        subnet.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.subnets_2_rm.__len__() > 0:
-            for subnet in self.subnets_2_rm:
-                if subnet.id is None:
-                    subnet.sync()
-                if subnet.id is not None:
-                    params = {
-                        'id': self.id,
-                        'subnetID': subnet.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.subnets_2_rm.remove(subnet)
-                        subnet.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: subnet ' +
-                        subnet.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.embedded_osi_2_add.__len__() > 0:
-            for embedded_osi in self.embedded_osi_2_add:
-                if embedded_osi.id is None:
-                    embedded_osi.save()
-                if embedded_osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': embedded_osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/add',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.embedded_osi_2_add.remove(embedded_osi)
-                        embedded_osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
-                        embedded_osi.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.embedded_osi_2_rm.__len__() > 0:
-            for embedded_osi in self.embedded_osi_2_rm:
-                if embedded_osi.id is None:
-                    embedded_osi.sync()
-                if embedded_osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': embedded_osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/embeddedOSInstances/delete',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.embedded_osi_2_rm.remove(embedded_osi)
-                        embedded_osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: embedded OS instance ' +
-                        embedded_osi.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.niCard_2_add.__len__() > 0:
-            for nic in self.niCard_2_add:
-                if nic.id is None:
-                    nic.save()
-                if nic.id is not None:
-                    params = {
-                        'id': self.id,
-                        'niCardID': nic.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/niCards/add', 'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.niCard_2_add.remove(nic)
-                        nic.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
-                        nic.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.niCard_2_rm.__len__() > 0:
-            for nic in self.niCard_2_rm:
-                if nic.id is None:
-                    nic.sync()
-                if nic.id is not None:
-                    params = {
-                        'id': self.id,
-                        'niCardID': nic.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/niCards/delete', 'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.niCard_2_rm.remove(nic)
-                        nic.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
-                        nic.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.ip_address_2_add.__len__() > 0:
-            for ipAddress_osi in self.ip_address_2_add:
-                if ipAddress_osi.id is None:
-                    ipAddress_osi.save()
-                if ipAddress_osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'ipAddressID': ipAddress_osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/add',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.ip_address_2_add.remove(ipAddress_osi)
-                        ipAddress_osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
-                        ipAddress_osi.ipAddress + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.ip_address_2_rm.__len__() > 0:
-            for ipAddress_osi in self.ip_address_2_rm:
-                if ipAddress_osi.id is None:
-                    ipAddress_osi.save()
-                if ipAddress_osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'ipAddressID': ipAddress_osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/delete',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.ip_address_2_rm.remove(ipAddress_osi)
-                        ipAddress_osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: IP Address ' +
-                        ipAddress_osi.ipAddress + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.application_2_add.__len__() > 0:
-            for application in self.application_2_add:
-                if application.id is None:
-                    application.save()
-                if application.id is not None:
-                    params = {
-                        'id': self.id,
-                        'applicationID': application.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/add',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.application_2_add.remove(application)
-                        application.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
-                        application.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.application_2_rm.__len__() > 0:
-            for application in self.application_2_rm:
-                if application.id is None:
-                    application.sync()
-                if application.id is not None:
-                    params = {
-                        'id': self.id,
-                        'applicationID': application.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.application_2_rm.remove(application)
-                        application.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: application ' +
-                        application.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.environment_2_add.__len__() > 0:
-            for environment in self.environment_2_add:
-                if environment.id is None:
-                    environment.save()
-                if environment.id is not None:
-                    params = {
-                        'id': self.id,
-                        'environmentID': environment.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/environments/add',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.environment_2_add.remove(environment)
-                        environment.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: environment ' +
-                        environment.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.environment_2_rm.__len__() > 0:
-            for environment in self.environment_2_rm:
-                if environment.id is None:
-                    environment.sync()
-                if environment.id is not None:
-                    params = {
-                        'id': self.id,
-                        'environmentID': environment.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/environments/delete',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.environment_2_rm.remove(environment)
-                        environment.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: environment ' +
-                        environment.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.team_2_add.__len__() > 0:
-            for team in self.team_2_add:
-                if team.id is None:
-                    team.save()
-                if team.id is not None:
-                    params = {
-                        'id': self.id,
-                        'teamID': team.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/teams/add',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.team_2_add.remove(team)
-                        team.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: team ' +
-                        team.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.team_2_rm.__len__() > 0:
-            for team in self.team_2_rm:
-                if team.id is None:
-                    team.sync()
-                if team.id is not None:
-                    params = {
-                        'id': self.id,
-                        'teamID': team.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/teams/delete',
-                            'parameters': params}
-                    response = OSInstanceService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        break
-                    else:
-                        self.team_2_rm.remove(team)
-                        team.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating OS instance ' + self.name + ' name. Reason: team ' +
-                        team.name + ' id is None'
-                    )
-                    break
-
+        self.embedded_osi_2_add.clear()
+        self.embedded_osi_2_rm.clear()
+        self.ip_address_2_add.clear()
+        self.ip_address_2_rm.clear()
+        self.niCard_2_add.clear()
+        self.niCard_2_rm.clear()
+        self.subnets_2_add.clear()
+        self.subnets_2_rm.clear()
+        self.application_2_add.clear()
+        self.application_2_rm.clear()
+        self.environment_2_add.clear()
+        self.environment_2_rm.clear()
+        self.team_2_add.clear()
+        self.team_2_rm.clear()
         self.sync()
         return self
 
@@ -3449,12 +3142,6 @@ class OSType(object):
     def save(self):
         """
         :return: save this OS type on Ariane server (create or update)
-            'osTypeID': self.id,
-            'osTypeName': self.name,
-            'osTypeArchitecture': self.architecture,
-            'osTypeCompanyID': self.company_id,
-            'osTypeOSInstancesID': self.osi_ids
-
         """
         if self.company is not None:
             if self.company.id is None:
