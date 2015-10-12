@@ -103,6 +103,9 @@ class LocationService(object):
 
 
 class Location(object):
+    LOC_TYPE_DATACENTER = "DATACENTER"
+    LOC_TYPE_OFFICE = "OFFICE"
+
     @staticmethod
     def json_2_location(json_obj):
         """
