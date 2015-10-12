@@ -361,212 +361,106 @@ class Location(object):
     def save(self):
         """
         :return: save this location on Ariane server (create or update)
+            'locationID': self.id,
+            'locationName': self.name,
+            'locationDescription': self.description,
+            'locationAddress': self.address,
+            'locationZipCode': self.zip_code,
+            'locationTown': self.town,
+            'locationType': self.type,
+            'locationCountry': self.country,
+            'locationGPSLat': self.gpsLatitude,
+            'locationGPSLng': self.gpsLongitude,
+            'locationRoutingAreasID': self.routing_area_ids,
+            'locationSubnetsID': self.subnet_ids
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name, 'address': self.address, 'zipCode': self.zip_code, 'town': self.town,
-                'type': self.type, 'country': self.country, 'gpsLatitude': self.gpsLatitude,
-                'gpsLongitude': self.gpsLongitude, 'description': self.description
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = LocationService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug('Problem while saving location' + self.name + '. Reason: ' + str(response.error_message))
-                ok = False
-            else:
-                self.id = response.response_content['locationID']
+        post_payload = {}
+        consolidated_ra_id = []
+        consolidated_sn_id = []
+
+        if self.id is not None:
+            post_payload['locationID'] = self.id
+
+        if self.name is not None:
+            post_payload['locationName'] = self.name
+
+        if self.description is not None:
+            post_payload['locationDescription'] = self.description
+
+        if self.type is not None:
+            post_payload['locationType'] = self.type
+
+        if self.address is not None:
+            post_payload['locationAddress'] = self.address
+
+        if self.zip_code is not None:
+            post_payload['locationZipCode'] = self.zip_code
+
+        if self.town is not None:
+            post_payload['locationTown'] = self.town
+
+        if self.country is not None:
+            post_payload['locationCountry'] = self.country
+
+        if self.gpsLatitude is not None:
+            post_payload['locationLatitude'] = self.gpsLatitude
+
+        if self.gpsLongitude is not None:
+            post_payload['locationLongitude'] = self.gpsLongitude
+
+        if self.routing_area_ids is not None:
+            consolidated_ra_id = copy.deepcopy(self.routing_area_ids)
+        if self.routing_areas_2_rm is not None:
+            for ra_2_rm in self.routing_areas_2_rm:
+                if ra_2_rm.id is None:
+                    ra_2_rm.sync()
+                consolidated_ra_id.remove(ra_2_rm.id)
+        if self.routing_areas_2_add is not None:
+            for ra_2_add in self.routing_areas_2_add:
+                if ra_2_add.id is None:
+                    ra_2_add.save()
+                consolidated_ra_id.append(ra_2_add.id)
+        post_payload['locationRoutingAreasID'] = consolidated_ra_id
+
+        if self.subnet_ids is not None:
+            consolidated_sn_id = copy.deepcopy(self.subnet_ids)
+        if self.subnets_2_rm is not None:
+            for sn_2_rm in self.subnets_2_rm:
+                if sn_2_rm.id is None:
+                    sn_2_rm.sync()
+                consolidated_sn_id.remove(sn_2_rm.id)
+        if self.subnets_2_add is not None:
+            for sn_2_add in self.subnets_2_add:
+                if sn_2_add.id is None:
+                    sn_2_add.save()
+                consolidated_sn_id.append(sn_2_add.id)
+        post_payload['locationSubnetsID'] = consolidated_sn_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = LocationService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                LOGGER.debug('Problem while saving location ' + self.name + '. Reason: ' + str(response.error_message))
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = LocationService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating location' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'address': self.address,
-                    'zipCode': self.zip_code,
-                    'town': self.town,
-                    'country': self.country
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/fullAddress', 'parameters': params}
-                response = LocationService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' full address. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'gpsLatitude': self.gpsLatitude,
-                    'gpsLongitude': self.gpsLongitude
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/gpsCoord', 'parameters': params}
-                response = LocationService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' gps coord. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'description': self.description
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = LocationService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-            if ok:
-                params = {
-                    'id': self.id,
-                    'type': self.type
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
-                response = LocationService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-        if ok and self.routing_areas_2_add.__len__() > 0:
-            for routing_area in self.routing_areas_2_add:
-                if routing_area.id is None:
-                    routing_area.save()
-                if routing_area.id is not None:
-                    params = {
-                        'id': self.id,
-                        'routingareaID': routing_area.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
-                    response = LocationService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating location ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.routing_areas_2_add.remove(routing_area)
-                        routing_area.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' name. Reason: routing area ' +
-                        routing_area.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.routing_areas_2_rm.__len__() > 0:
-            for routing_area in self.routing_areas_2_rm:
-                if routing_area.id is None:
-                    routing_area.sync()
-                if routing_area.id is not None:
-                    params = {
-                        'id': self.id,
-                        'routingareaID': routing_area.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete',
-                            'parameters': params}
-                    response = LocationService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating location ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.routing_areas_2_rm.remove(routing_area)
-                        routing_area.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' name. Reason: routing area ' +
-                        routing_area.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.subnets_2_add.__len__() > 0:
-            for subnet in self.subnets_2_add:
-                if subnet.id is None:
-                    subnet.save()
-                if subnet.id is not None:
-                    params = {
-                        'id': self.id,
-                        'subnetID': subnet.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
-                    response = LocationService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating location ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.subnets_2_add.remove(subnet)
-                        subnet.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' name. Reason: subnet ' +
-                        subnet.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.subnets_2_rm.__len__() > 0:
-            for subnet in self.subnets_2_rm:
-                if subnet.id is None:
-                    subnet.sync()
-                if subnet.id is not None:
-                    params = {
-                        'id': self.id,
-                        'subnetID': subnet.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
-                    response = LocationService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating location ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        # ok = False
-                        break
-                    else:
-                        self.subnets_2_rm.remove(subnet)
-                        subnet.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating location ' + self.name + ' name. Reason: subnet ' +
-                        subnet.name + ' id is None'
-                    )
-                    # ok = False
-                    break
-
+            self.id = response.response_content['locationID']
+            if self.routing_areas_2_add is not None:
+                for ra_2_add in self.routing_areas_2_add:
+                    ra_2_add.sync()
+            if self.routing_areas_2_rm is not None:
+                for ra_2_rm in self.routing_areas_2_rm:
+                    ra_2_rm.sync()
+            if self.subnets_2_add is not None:
+                for sn_2_add in self.subnets_2_add:
+                    sn_2_add.sync()
+            if self.subnets_2_rm is not None:
+                for sn_2_rm in self.subnets_2_rm:
+                    sn_2_rm.sync()
+        self.routing_areas_2_rm.clear()
+        self.routing_areas_2_add.clear()
+        self.subnets_2_add.clear()
+        self.subnets_2_rm.clear()
         self.sync()
-
         return self
 
     def remove(self):
