@@ -114,17 +114,17 @@ class Location(object):
         :return: ariane_clip3 Location object
         """
         return Location(locid=json_obj['locationID'],
-                          name=json_obj['locationName'],
-                          description=json_obj['locationDescription'],
-                          address=json_obj['locationAddress'],
-                          zip_code=json_obj['locationZipCode'],
-                          town=json_obj['locationTown'],
-                          type=json_obj['locationType'],
-                          country=json_obj['locationCountry'],
-                          gps_latitude=json_obj['locationGPSLat'],
-                          gps_longitude=json_obj['locationGPSLng'],
-                          routing_area_ids=json_obj['locationRoutingAreasID'],
-                          subnet_ids=json_obj['locationSubnetsID'])
+                        name=json_obj['locationName'],
+                        description=json_obj['locationDescription'],
+                        address=json_obj['locationAddress'],
+                        zip_code=json_obj['locationZipCode'],
+                        town=json_obj['locationTown'],
+                        type=json_obj['locationType'],
+                        country=json_obj['locationCountry'],
+                        gps_latitude=json_obj['locationGPSLat'],
+                        gps_longitude=json_obj['locationGPSLng'],
+                        routing_area_ids=json_obj['locationRoutingAreasID'],
+                        subnet_ids=json_obj['locationSubnetsID'])
 
     def location_2_json(self):
         """
