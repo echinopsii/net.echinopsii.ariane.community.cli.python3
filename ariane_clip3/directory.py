@@ -1264,212 +1264,93 @@ class Subnet(object):
     def save(self):
         """
         :return: save this subnet on Ariane server (create or update)
+            'subnetID': self.id,
+            'subnetName': self.name,
+            'subnetDescription': self.description,
+            'subnetIP': self.ip,
+            'subnetMask': self.mask,
+            'subnetRoutingAreaID': self.routing_area_id,
+            'subnetIPAddressesID': self.ipAddress_ids,
+            'subnetLocationsID': self.loc_ids,
+            'subnetOSInstancesID': self.osi_ids
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'description': self.description,
-                'routingArea': self.routing_area_id,
-                'subnetIP': self.ip,
-                'subnetMask': self.mask
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = SubnetService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['subnetID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving subnet' + self.name + '. Reason: ' + str(response.error_message)
-                )
-                ok = False
+        post_payload = {}
+        consolidated_osi_id = []
+        consolidated_loc_id = []
+
+        if self.id is not None:
+            post_payload['subnetID'] = self.id
+
+        if self.name is not None:
+            post_payload['subnetName'] = self.name
+
+        if self.description is not None:
+            post_payload['subnetDescription'] = self.description
+
+        if self.ip is not None:
+            post_payload['subnetIP'] = self.ip
+
+        if self.mask is not None:
+            post_payload['subnetMask'] = self.mask
+
+        if self.routing_area_id is not None:
+            post_payload['subnetRoutingAreaID'] = self.routing_area_id
+
+        if self.ipAddress_ids is not None:
+            post_payload['subnetIPAddressesID'] = self.ipAddress_ids
+
+        if self.loc_ids is not None:
+            consolidated_loc_id = copy.deepcopy(self.loc_ids)
+        if self.loc_2_rm is not None:
+            for loc_2_rm in self.loc_2_rm:
+                if loc_2_rm.id is None:
+                    loc_2_rm.sync()
+                consolidated_loc_id.remove(loc_2_rm.id)
+        if self.loc_2_add is not None:
+            for loc_2_add in self.loc_2_add:
+                if loc_2_add.id is None:
+                    loc_2_add.save()
+                consolidated_loc_id.append(loc_2_add.id)
+        post_payload['subnetLocationsID'] = consolidated_loc_id
+
+        if self.osi_ids is not None:
+            consolidated_osi_id = copy.deepcopy(self.osi_ids)
+        if self.osi_2_rm is not None:
+            for osi_2_rm in self.osi_2_rm:
+                if osi_2_rm.id is None:
+                    osi_2_rm.sync()
+                consolidated_osi_id.remove(osi_2_rm.id)
+        if self.osi_2_add is not None:
+            for osi_id_2_add in self.osi_2_add:
+                if osi_id_2_add.id is None:
+                    osi_id_2_add.save()
+                consolidated_osi_id.append(osi_id_2_add.id)
+        post_payload['subnetOSInstancesID'] = consolidated_osi_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = SubnetService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving subnet ' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = SubnetService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating subnet ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'description': self.description
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = SubnetService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'subnetIP': self.ip
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/subnetip', 'parameters': params}
-                response = SubnetService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'subnetMask': self.mask
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/subnetmask', 'parameters': params}
-                response = SubnetService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'routingareaID': self.routing_area_id
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/routingarea', 'parameters': params}
-                response = SubnetService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-        if ok and self.loc_2_add.__len__() > 0:
-            for location in self.loc_2_add:
-                if location.id is None:
-                    location.save()
-                if location.id is not None:
-                    params = {
-                        'id': self.id,
-                        'locationID': location.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
-                    response = SubnetService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.loc_2_add.remove(location)
-                        location.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: location ' +
-                        location.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.loc_2_rm.__len__() > 0:
-            for location in self.loc_2_rm:
-                if location.id is None:
-                    location.sync()
-                if location.id is not None:
-                    params = {
-                        'id': self.id,
-                        'locationID': location.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete',
-                            'parameters': params}
-                    response = SubnetService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.loc_2_rm.remove(location)
-                        location.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: location ' +
-                        location.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.osi_2_add.__len__() > 0:
-            for osi in self.osi_2_add:
-                if osi.id is None:
-                    osi.save()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
-                    response = SubnetService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.osi_2_add.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.osi_2_rm.__len__() > 0:
-            for osi in self.osi_2_rm:
-                if osi.id is None:
-                    osi.sync()
-                if osi.id is not None:
-                    params = {
-                        'id': self.id,
-                        'osiID': osi.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete',
-                            'parameters': params}
-                    response = SubnetService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating subnet ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        # ok = False
-                        break
-                    else:
-                        self.osi_2_rm.remove(osi)
-                        osi.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating subnet ' + self.name + ' name. Reason: OS instance ' +
-                        osi.name + ' id is None'
-                    )
-                    # ok = False
-                    break
-
+            self.id = response.response_content['subnetID']
+            if self.osi_2_add is not None:
+                for osi_2_add in self.osi_2_add:
+                    osi_2_add.sync()
+            if self.osi_2_rm is not None:
+                for osi_2_rm in self.osi_2_rm:
+                    osi_2_rm.sync()
+            if self.loc_2_add is not None:
+                for loc_2_add in self.loc_2_add:
+                    loc_2_add.sync()
+            if self.loc_2_rm is not None:
+                for loc_2_rm in self.loc_2_rm:
+                    loc_2_rm.sync()
+        self.osi_2_add.clear()
+        self.osi_2_rm.clear()
+        self.loc_2_add.clear()
+        self.loc_2_rm.clear()
         self.sync()
         return self
 
