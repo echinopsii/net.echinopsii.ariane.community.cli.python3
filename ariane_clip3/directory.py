@@ -1662,76 +1662,31 @@ class IPAddress(object):
         """
         :return: save this IP Address on Ariane server (create or update)
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'ipAddress': self.ip_address,
-                'fqdn': self.fqdn,
-                'osInstance': self.ipa_os_instance_id,
-                'networkSubnet': self.ipa_subnet_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = IPAddressService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['ipAddressID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving IP Address' + self.ip_address + '. Reason: ' + str(response.error_message)
-                )
+        post_payload = {}
+
+        if self.id is not None:
+            post_payload['ipAddressID'] = self.id
+
+        if self.ip_address is not None:
+            post_payload['ipAddressIPA'] = self.ip_address
+
+        if self.fqdn is not None:
+            post_payload['ipAddressFQDN'] = self.fqdn
+
+        if self.ipa_os_instance_id is not None:
+            post_payload['ipAddressOSInstanceID'] = self.ipa_os_instance_id
+
+        if self.ipa_subnet_id is not None:
+            post_payload['ipAddressSubnetID'] = self.ipa_subnet_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = IPAddressService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving IP Address ' + self.ip_address + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'ipAddress': self.ip_address
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/ipAddress', 'parameters': params}
-            response = IPAddressService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'fqdn': self.fqdn
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/fqdn', 'parameters': params}
-                response = IPAddressService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'subnetID': self.ipa_subnet_id
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/subnet', 'parameters': params}
-                response = IPAddressService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'osInstanceID': self.ipa_os_instance_id
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/osInstance', 'parameters': params}
-                response = IPAddressService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating IP Address ' + self.ip_address + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
+            self.id = response.response_content['ipAddressID']
 
         self.sync()
         return self
