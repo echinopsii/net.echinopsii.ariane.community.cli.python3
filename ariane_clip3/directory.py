@@ -805,136 +805,57 @@ class RoutingArea(object):
         """
         :return: save this routing area on Ariane server (create or update)
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'description': self.description,
-                'type': self.type,
-                'multicast': self.multicast
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = RoutingAreaService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while saving routing area' + self.name + '. Reason: ' + str(response.error_message)
-                )
-                ok = False
-            else:
-                self.id = response.response_content['routingAreaID']
+        post_payload = {}
+        consolidated_loc_id = []
+
+        if self.id is not None:
+            post_payload['routingAreaID'] = self.id
+
+        if self.name is not None:
+            post_payload['routingAreaName'] = self.name
+
+        if self.description is not None:
+            post_payload['routingAreaDescription'] = self.description
+
+        if self.type is not None:
+            post_payload['routingAreaType'] = self.type
+
+        if self.multicast is not None:
+            post_payload['routingAreaMulticast'] = self.multicast
+
+        if self.loc_ids is not None:
+            consolidated_loc_id = copy.deepcopy(self.loc_ids)
+        if self.loc_2_rm is not None:
+            for loc_2_rm in self.loc_2_rm:
+                if loc_2_rm.id is None:
+                    loc_2_rm.sync()
+                consolidated_loc_id.remove(loc_2_rm.id)
+        if self.loc_2_add is not None:
+            for loc_2_add in self.loc_2_add:
+                if loc_2_add.id is None:
+                    loc_2_add.save()
+                consolidated_loc_id.append(loc_2_add.id)
+        post_payload['routingAreaLocationsID'] = consolidated_loc_id
+
+        if self.subnet_ids is not None:
+            post_payload['routingAreaSubnetsID'] = self.subnet_ids
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = RoutingAreaService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving routing area' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = RoutingAreaService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating routing area ' + self.name + ' name. Reason: ' + str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'description': self.description
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
-                response = RoutingAreaService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'type': self.type
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
-                response = RoutingAreaService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'multicast': self.multicast
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/multicast', 'parameters': params}
-                response = RoutingAreaService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating routing area ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-        if ok and self.loc_2_add.__len__() > 0:
-            for location in self.loc_2_add:
-                if location.id is None:
-                    location.save()
-                if location.id is not None:
-                    params = {
-                        'id': self.id,
-                        'locationID': location.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
-                    response = RoutingAreaService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating routing area ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        ok = False
-                        break
-                    else:
-                        self.loc_2_add.remove(location)
-                        location.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating routing area ' + self.name + ' name. Reason: location ' +
-                        location.name + ' id is None'
-                    )
-                    ok = False
-                    break
-
-        if ok and self.loc_2_rm.__len__() > 0:
-            for location in self.loc_2_rm:
-                if location.id is None:
-                    location.sync()
-                if location.id is not None:
-                    params = {
-                        'id': self.id,
-                        'locationID': location.id
-                    }
-                    args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete',
-                            'parameters': params}
-                    response = RoutingAreaService.requester.call(args)
-                    if response.rc is not 0:
-                        LOGGER.debug(
-                            'Problem while updating routing area ' + self.name + ' name. Reason: ' +
-                            str(response.error_message)
-                        )
-                        # ok = False
-                        break
-                    else:
-                        self.loc_2_rm.remove(location)
-                        location.sync()
-                else:
-                    LOGGER.debug(
-                        'Problem while updating routing area ' + self.name + ' name. Reason: location ' +
-                        location.name + ' id is None'
-                    )
-                    # ok = False
-                    break
+            self.id = response.response_content['routingAreaID']
+            if self.loc_2_add is not None:
+                for loc_2_add in self.loc_2_add:
+                    loc_2_add.sync()
+            if self.loc_2_rm is not None:
+                for loc_2_rm in self.loc_2_rm:
+                    loc_2_rm.sync()
+        self.loc_2_add.clear()
+        self.loc_2_rm.clear()
         self.sync()
         return self
 
