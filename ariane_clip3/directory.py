@@ -103,6 +103,9 @@ class LocationService(object):
 
 
 class Location(object):
+    LOC_TYPE_DATACENTER = "DATACENTER"
+    LOC_TYPE_OFFICE = "OFFICE"
+
     @staticmethod
     def json_2_location(json_obj):
         """
@@ -116,6 +119,7 @@ class Location(object):
                           address=json_obj['locationAddress'],
                           zip_code=json_obj['locationZipCode'],
                           town=json_obj['locationTown'],
+                          type=json_obj['locationType'],
                           country=json_obj['locationCountry'],
                           gps_latitude=json_obj['locationGPSLat'],
                           gps_longitude=json_obj['locationGPSLng'],
@@ -134,6 +138,7 @@ class Location(object):
             'locationAddress': self.address,
             'locationZipCode': self.zip_code,
             'locationTown': self.town,
+            'locationType': self.type,
             'locationCountry': self.country,
             'locationGPSLat': self.gpsLatitude,
             'locationGPSLng': self.gpsLongitude,
@@ -164,13 +169,14 @@ class Location(object):
                 self.address = json_obj['locationAddress']
                 self.zip_code = json_obj['locationZipCode']
                 self.town = json_obj['locationTown']
+                self.type= json_obj['locationType']
                 self.country = json_obj['locationCountry']
                 self.gpsLatitude = json_obj['locationGPSLat']
                 self.gpsLongitude = json_obj['locationGPSLng']
                 self.routing_area_ids = json_obj['locationRoutingAreasID']
                 self.subnet_ids = json_obj['locationSubnetsID']
 
-    def __init__(self, locid=None, name=None, description=None, address=None, zip_code=None, town=None,
+    def __init__(self, locid=None, name=None, description=None, address=None, zip_code=None, town=None, type=None,
                  country=None, gps_latitude=None, gps_longitude=None, routing_area_ids=None, subnet_ids=None):
         """
         build ariane_clip3 Location object
@@ -193,6 +199,7 @@ class Location(object):
         self.address = address
         self.zip_code = zip_code
         self.town = town
+        self.type = type
         self.country = country
         self.gpsLatitude = gps_latitude
         self.gpsLongitude = gps_longitude
@@ -359,8 +366,8 @@ class Location(object):
         if self.id is None:
             params = {
                 'name': self.name, 'address': self.address, 'zipCode': self.zip_code, 'town': self.town,
-                'country': self.country, 'gpsLatitude': self.gpsLatitude, 'gpsLongitude': self.gpsLongitude,
-                'description': self.description
+                'type': self.type, 'country': self.country, 'gpsLatitude': self.gpsLatitude,
+                'gpsLongitude': self.gpsLongitude, 'description': self.description
             }
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = LocationService.requester.call(args)
@@ -420,6 +427,19 @@ class Location(object):
                     'description': self.description
                 }
                 args = {'http_operation': 'GET', 'operation_path': 'update/description', 'parameters': params}
+                response = LocationService.requester.call(args)
+                if response.rc is not 0:
+                    LOGGER.debug(
+                        'Problem while updating location ' + self.name + ' name. Reason: ' +
+                        str(response.error_message)
+                    )
+                    ok = False
+            if ok:
+                params = {
+                    'id': self.id,
+                    'type': self.type
+                }
+                args = {'http_operation': 'GET', 'operation_path': 'update/type', 'parameters': params}
                 response = LocationService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(

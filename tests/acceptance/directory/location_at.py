@@ -31,6 +31,7 @@ class LocationTest(unittest.TestCase):
                                     address='somewhere',
                                     zip_code='082487',
                                     town='paris',
+                                    type=Location.LOC_TYPE_DATACENTER,
                                     country='france',
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
@@ -46,6 +47,7 @@ class LocationTest(unittest.TestCase):
                                    address='somewhere',
                                    zip_code='082487',
                                    town='paris',
+                                   type=Location.LOC_TYPE_DATACENTER,
                                    country='france',
                                    gps_latitude='4.2423521',
                                    gps_longitude='32.234235')
@@ -60,6 +62,7 @@ class LocationTest(unittest.TestCase):
                                     address='somewhere',
                                     zip_code='082487',
                                     town='paris',
+                                    type=Location.LOC_TYPE_DATACENTER,
                                     country='france',
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
@@ -76,6 +79,7 @@ class LocationTest(unittest.TestCase):
                                     address='somewhere',
                                     zip_code='082487',
                                     town='paris',
+                                    type=Location.LOC_TYPE_DATACENTER,
                                     country='france',
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
@@ -92,6 +96,7 @@ class LocationTest(unittest.TestCase):
                                     address='somewhere',
                                     zip_code='082487',
                                     town='paris',
+                                    type=Location.LOC_TYPE_DATACENTER,
                                     country='france',
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
@@ -142,6 +147,7 @@ class LocationTest(unittest.TestCase):
                                     address='somewhere',
                                     zip_code='082487',
                                     town='paris',
+                                    type=Location.LOC_TYPE_DATACENTER,
                                     country='france',
                                     gps_latitude='4.2423521',
                                     gps_longitude='32.234235')
