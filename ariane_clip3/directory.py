@@ -1929,79 +1929,40 @@ class NICard(object):
         """
         :return: save this NIC on Ariane server (create or update)
         """
-        ok = True
-        if self.id is None:
-            params = {
-                'name': self.name,
-                'macAddress': self.macAddress,
-                'duplex': self.duplex,
-                'speed': self.speed,
-                'mtu': self.mtu,
-                'osInstance': self.nic_osi_id,
-                'ipAddress': self.nic_ipa_id
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
-            response = NICardService.requester.call(args)
-            if response.rc is 0:
-                self.id = response.response_content['niCardID']
-            else:
-                LOGGER.debug(
-                    'Problem while saving NIC ' + self.name + '. Reason: ' + str(response.error_message)
-                )
+        post_payload = {}
+
+        if self.id is not None:
+            post_payload['niCardID'] = self.id
+
+        if self.name is not None:
+            post_payload['niCardName'] = self.name
+
+        if self.macAddress is not None:
+            post_payload['niCardMacAddress'] = self.macAddress
+
+        if self.duplex is not None:
+            post_payload['niCardDuplex'] = self.duplex
+
+        if self.speed is not None:
+            post_payload['niCardSpeed'] = self.speed
+
+        if self.mtu is not None:
+            post_payload['niCardMtu'] = self.mtu
+
+        if self.nic_osi_id is not None:
+            post_payload['niCardOSInstanceID'] = self.nic_osi_id
+
+        if self.nic_ipa_id is not None:
+            post_payload['niCardIPAddressID'] = self.nic_ipa_id
+
+        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        response = NICardService.requester.call(args)
+        if response.rc is not 0:
+            LOGGER.debug(
+                'Problem while saving NIC ' + self.name + '. Reason: ' + str(response.error_message)
+            )
         else:
-            params = {
-                'id': self.id,
-                'name': self.name
-            }
-            args = {'http_operation': 'GET', 'operation_path': 'update/name', 'parameters': params}
-            response = NICardService.requester.call(args)
-            if response.rc is not 0:
-                LOGGER.debug(
-                    'Problem while updating NIC ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
-                )
-                ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'macAddress': self.macAddress
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/macAddress', 'parameters': params}
-                response = NICardService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating NIC ' + self.macAddress + ' macAddress. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'duplex': self.duplex
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/duplex', 'parameters': params}
-                response = NICardService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating NIC ' + self.duplex + ' duplex. Reason: ' +
-                        str(response.error_message)
-                    )
-                    ok = False
-
-            if ok:
-                params = {
-                    'id': self.id,
-                    'speed': self.speed
-                }
-                args = {'http_operation': 'GET', 'operation_path': 'update/speed', 'parameters': params}
-                response = NICardService.requester.call(args)
-                if response.rc is not 0:
-                    LOGGER.debug(
-                        'Problem while updating NIC ' + self.speed + ' speed. Reason: ' +
-                        str(response.error_message)
-                    )
+            self.id = response.response_content['niCardID']
 
         self.sync()
         return self
