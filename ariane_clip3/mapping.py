@@ -1779,23 +1779,40 @@ class LinkService(object):
         LinkService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
-    def find_link(lid=None):
+    def find_link(lid=None, sep_id=None, tep_id=None):
         """
         find link according to link ID.
         :param lid: link id
         :return: the link if found or None if not found
         """
         ret = None
-        if lid is None or not lid:
-            raise exceptions.ArianeCallParametersError('id')
+        if (lid is None or not lid) and (sep_id is None or not sep_id) and (tep_id is None or not tep_id):
+            raise exceptions.ArianeCallParametersError('id, source endpoint ID, target endpoint ID')
 
-        params = {
-            'ID': lid
-        }
+        if (lid is not None and lid) and ((sep_id is not None and sep_id) or (tep_id is not None and tep_id)):
+            LOGGER.warn('Both lid and sep_id and tep_id are defined. Will give you search on id.')
+            sep_id = None
+            tep_id = None
+
+        params = None
+        if lid is not None and lid:
+            params = {'ID': lid}
+        elif sep_id is not None and sep_id and tep_id is not None and tep_id:
+            params = {'SEPID': sep_id, 'TEPID': tep_id}
+        elif sep_id is not None and sep_id and (tep_id is None or not tep_id):
+            params = {'SEPID': sep_id}
+        else:
+            params = {'TEPID': tep_id}
+
         args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = LinkService.requester.call(args)
         if response.rc == 0:
-            ret = Link.json_2_link(response.response_content)
+            if (lid is not None and lid) or (sep_id is not None and sep_id and tep_id is not None and tep_id):
+                ret = Link.json_2_link(response.response_content)
+            else:
+                ret = []
+                for link in response.response_content['links']:
+                    ret.append(Link.json_2_link(link))
         else:
             err_msg = 'Problem while searching link (id:' + str(lid) + '). ' + \
                       'Reason: ' + str(response.error_message)

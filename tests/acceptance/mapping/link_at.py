@@ -69,6 +69,30 @@ class LinkTest(unittest.TestCase):
         link.remove()
         self.assertIsNone(LinkService.find_link(lid=link.id))
 
+    def test_find_link_by_sourceEP(self):
+        link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
+                    transport_id=self.transport.id)
+        link.save()
+        self.assertIsNotNone(LinkService.find_link(sep_id=self.endpoint2.id))
+        link.remove()
+        self.assertIsNone(LinkService.find_link(lid=link.id))
+
+    def test_find_link_by_targetEP(self):
+        link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
+                    transport_id=self.transport.id)
+        link.save()
+        self.assertIsNotNone(LinkService.find_link(tep_id=self.endpoint2.id))
+        link.remove()
+        self.assertIsNone(LinkService.find_link(lid=link.id))
+
+    def test_find_link_by_sourceEP_targetEP(self):
+        link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
+                    transport_id=self.transport.id)
+        link.save()
+        self.assertIsNotNone(LinkService.find_link(sep_id=self.endpoint1.id, tep_id=self.endpoint2.id))
+        link.remove()
+        self.assertIsNone(LinkService.find_link(lid=link.id))
+
     def test_get_links(self):
         init_link_count = LinkService.get_links().__len__()
         link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
