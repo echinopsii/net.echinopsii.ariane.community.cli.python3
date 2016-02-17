@@ -1757,7 +1757,7 @@ class OSInstance(object):
             'osInstanceOSTypeID': self.ost_id,
             'osInstanceEmbeddedOSInstancesID': self.embedded_osi_ids,
             'osInstanceIPAddressesID': self.ip_address_ids,
-            'osInstanceNICardsID' : self.niCard_ids,
+            'osInstanceNICardsID': self.niCard_ids,
             'osInstanceApplicationsID': self.application_ids,
             'osInstanceEnvironmentsID': self.environment_ids,
             'osInstanceSubnetsID': self.subnet_ids,

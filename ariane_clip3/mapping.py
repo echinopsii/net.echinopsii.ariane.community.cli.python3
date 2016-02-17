@@ -337,6 +337,12 @@ class Cluster(object):
         self.containers_2_add = []
         self.containers_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def save(self):
         """
         save or update this cluster in Ariane Server
@@ -728,6 +734,12 @@ class Container(object):
         self.properties_2_add = []
         self.properties_2_rm = []
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def save(self):
         """
         save or update this container in Ariane Server
@@ -781,6 +793,9 @@ class Container(object):
 
         if self.cluster_id is not None:
             post_payload['containerClusterID'] = self.cluster_id
+
+        if self.parent_container_id is not None:
+            post_payload['containerParentContainerID'] = self.parent_container_id
 
         if self.child_containers_id is not None:
             consolidated_child_containers_id = copy.deepcopy(self.child_containers_id)
@@ -1058,6 +1073,12 @@ class Node(object):
         self.properties = properties
         self.properties_2_add = []
         self.properties_2_rm = []
+
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
 
     def add_property(self, n_property_tuple, sync=True):
         """
@@ -1388,6 +1409,12 @@ class Gate(Node):
             self.container = container
             self.is_primary_admin = is_primary_admin
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def save(self):
         ok = True
 
@@ -1557,6 +1584,12 @@ class Endpoint(object):
         self.properties = properties
         self.properties_2_add = []
         self.properties_2_rm = []
+
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
 
     def add_property(self, e_property_tuple, sync=True):
         """
@@ -1887,6 +1920,12 @@ class Link(object):
         self.transport = transport
         self.trp_id = transport_id
 
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
+
     def save(self):
         if self.sep is not None:
             if self.sep.id is None:
@@ -2112,6 +2151,12 @@ class Transport(object):
         self.properties = properties
         self.properties_2_add = []
         self.properties_2_rm = []
+
+    def __str__(self):
+        """
+        :return: this object dict to string
+        """
+        return str(self.__dict__)
 
     def save(self):
         consolidated_properties = {}
