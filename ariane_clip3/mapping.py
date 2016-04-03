@@ -926,32 +926,47 @@ class NodeService(object):
         NodeService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
-    def find_node(endpoint_url=None, nid=None):
+    def find_node(endpoint_url=None, nid=None, selector=None):
         """
         find node according to endpoint url or node ID. if both are defined then search will focus on ID only
         :param endpoint_url: endpoint's url owned by node to found
         :param nid: node id
+        :param selector: selector string like <node fiel> <operation (= { =, !=, >=, >, <, <= , like, =~})> <value (= { number, String, regex })>
         :return: the found node or None if not found
         """
         ret = None
-        if (nid is None or not nid) and (endpoint_url is None or not endpoint_url):
+        if (nid is None or not nid) and (endpoint_url is None or not endpoint_url) and (selector is None or not selector):
             raise exceptions.ArianeCallParametersError('id and endpoint_url')
 
-        if (nid is not None and nid) and (endpoint_url is not None and endpoint_url):
-            LOGGER.warn('Both id and endpoint url are defined. Will give you search on id.')
+        if (nid is not None and nid) and ((endpoint_url is not None and endpoint_url) or (selector is not None and selector)):
+            LOGGER.warn('Both id, selector and endpoint url are defined. Will give you search on id.')
             endpoint_url = None
+            selector = None
+
+        if (endpoint_url is not None and endpoint_url) and (selector is not None and selector):
+            LOGGER.warn('Both endpoint url and selector are defined. Will give you search based on endpoint url')
+            selector = None
 
         params = None
+        return_set_of_nodes = False
         if nid is not None and nid:
             params = {'ID': nid}
         elif endpoint_url is not None and endpoint_url:
             params = {'endpointURL': endpoint_url}
+        elif selector is not None and selector:
+            params = {'selector': selector}
+            return_set_of_nodes = True
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc == 0:
-                ret = Node.json_2_node(response.response_content)
+                if return_set_of_nodes:
+                    ret = []
+                    for node in response.response_content['nodes']:
+                        ret.append(Node.json_2_node(node))
+                else:
+                    ret = Node.json_2_node(response.response_content)
             else:
                 err_msg = 'Problem while searching node (id:' + str(nid) + ', primary admin gate url ' \
                           + str(endpoint_url) + ' ). ' + \

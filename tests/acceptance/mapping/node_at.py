@@ -157,6 +157,13 @@ class NodeTest(unittest.TestCase):
     def test_find_node_by_endpoint(self):
         pass
 
+    def test_find_node_by_selector(self):
+        node = Node(name="[pid] cmd", container_id=self.container1.id)
+        node.save()
+        self.assertTrue(node, NodeService.find_node(selector="nodeName =~ '.*pid.*cmd'").__len__() == 1)
+        node.remove()
+        self.assertIsNone(NodeService.find_node(selector="nodeName =~ '.*pid.*cmd'"))
+
     def test_get_nodes(self):
         init_node_count = NodeService.get_nodes().__len__()
         node = Node(name="mysqld", container_id=self.container1.id)
