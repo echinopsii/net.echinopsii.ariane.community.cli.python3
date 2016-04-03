@@ -14,7 +14,7 @@ long_description = ('Ariane CLIP3 (client python 3) is the python implementation
                     '   + IRC on freenode #ariane.echinopsii')
 
 setup(name='ariane_clip3',
-      version='0.1.2',
+      version='0.1.3-b01',
       description='Ariane Python API Library',
       long_description=long_description,
       author='Mathilde Ffrench',
@@ -22,7 +22,7 @@ setup(name='ariane_clip3',
       maintainer='Mathilde Ffrench',
       maintainer_email='mathilde.ffrench@echinopsii.net',
       url='https://github.com/echinopsii/net.echinopsii.ariane.community.cli.python3.git',
-      download_url='https://github.com/echinopsii/net.echinopsii.ariane.community.cli.python3.git/tarball/0.1.2',
+      download_url='https://github.com/echinopsii/net.echinopsii.ariane.community.cli.python3.git/tarball/0.1.3-b01',
       packages=['ariane_clip3', 'ariane_clip3.rabbitmq', 'ariane_clip3.rest'],
       license='AGPLv3',
       install_requires=['requests', 'epika-python3', 'pykka'],
