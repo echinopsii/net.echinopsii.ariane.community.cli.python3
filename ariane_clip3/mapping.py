@@ -1475,32 +1475,47 @@ class EndpointService(object):
         EndpointService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
-    def find_endpoint(url=None, eid=None):
+    def find_endpoint(url=None, eid=None, selector=None):
         """
         find endpoint according to endpoint url or endpoint ID. if both are defined then search will focus on ID only
         :param url: endpoint's url
         :param eid: endpoint id
+        :param selector: endpoint selector like endpointURL =~ '.*tcp.*'
         :return: the endpoint if found or None if not found
         """
         ret = None
-        if (eid is None or not eid) and (url is None or not url):
-            raise exceptions.ArianeCallParametersError('id and endpoint_url')
+        if (eid is None or not eid) and (url is None or not url) and (selector is None or not selector):
+            raise exceptions.ArianeCallParametersError('id, endpoint_url and selector')
 
-        if (eid is not None and eid) and (url is not None and url):
-            LOGGER.warn('Both id and endpoint url are defined. Will give you search on id.')
+        if (eid is not None and eid) and ((url is not None and url) or (selector is not None and selector)):
+            LOGGER.warn('Both id and (endpoint url or selector) are defined. Will give you search on id.')
             url = None
+            selector = None
+
+        if (url is not None and url) and (selector is not None and selector):
+            LOGGER.warn('Both endpoint url and selector are defined. Will give you search on url.')
+            selector = None
 
         params = None
+        return_set_of_endpoints = False
         if eid is not None and eid:
             params = {'ID': eid}
         elif url is not None and url:
             params = {'URL': url}
+        elif selector is not None and selector:
+            params = {'selector': selector}
+            return_set_of_endpoints = True
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc == 0:
-                ret = Endpoint.json_2_endpoint(response.response_content)
+                if return_set_of_endpoints:
+                    ret = []
+                    for endpoint in response.response_content['endpoints']:
+                        ret.append(Endpoint.json_2_endpoint(endpoint))
+                else:
+                    ret = Endpoint.json_2_endpoint(response.response_content)
             else:
                 err_msg = 'Problem while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
                           + str(url) + ' ). ' + \

@@ -76,6 +76,13 @@ class EndpointTest(unittest.TestCase):
         endpoint.remove()
         self.assertIsNone(EndpointService.find_endpoint(url=endpoint.url))
 
+    def test_find_endpoint_by_selector(self):
+        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint.save()
+        self.assertIsNotNone(EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'"))
+        endpoint.remove()
+        self.assertIsNone(EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'"))
+
     def test_get_endpoints(self):
         init_endpoint_count = EndpointService.get_endpoints().__len__()
         endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
