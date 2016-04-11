@@ -56,7 +56,7 @@ class OSTypeTest(unittest.TestCase):
         new_ostype = OSType(name='my_new_ost',
                             architecture='x864')
         new_ostype.save()
-        self.assertIsNotNone(service.os_type_service.find_ostype(ost_name="my_new_ost"))
+        self.assertIsNotNone(service.os_type_service.find_ostype(ost_name="my_new_ost", ost_arch='x864'))
         new_ostype.remove()
 
     def test_ostype_link_to_osinstance(self):

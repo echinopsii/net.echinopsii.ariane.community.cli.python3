@@ -2565,25 +2565,31 @@ class OSTypeService(object):
         OSTypeService.requester = directory_driver.make_requester(args)
 
     @staticmethod
-    def find_ostype(ost_id=None, ost_name=None):
+    def find_ostype(ost_id=None, ost_name=None, ost_arch=None):
         """
         find the OS type (ost) according ost id (prioritary) or ost name
         :param ost_id: the OS type id
         :param ost_name: the OS type name
+        :param ost_arch: the OS type architecture
         :return: found OS type or None if not found
         """
-        if (ost_id is None or not ost_id) and (ost_name is None or not ost_name):
-            raise exceptions.ArianeCallParametersError('id and name')
+        if (ost_id is None or not ost_id) and (ost_name is None or not ost_name) and (ost_arch is None or not ost_arch):
+            raise exceptions.ArianeCallParametersError('id and (name, architecture)')
 
-        if (ost_id is not None and ost_id) and (ost_name is not None and ost_name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+        if (ost_id is not None and ost_id) and ((ost_name is not None and ost_name) or (ost_arch is not None and ost_arch)):
+            LOGGER.warn('Both id and (name, arc) are defined. Will give you search on id.')
             ost_name = None
+            ost_arch = None
+
+        if ((ost_name is not None and ost_name) and (ost_arch is None or not ost_arch)) or\
+           ((ost_arch is not None and ost_arch) and (ost_name is None or not ost_name)):
+            raise exceptions.ArianeCallParametersError('(name, architecture)')
 
         params = None
         if ost_id is not None and ost_id:
             params = {'id': ost_id}
-        elif ost_name is not None and ost_name:
-            params = {'name': ost_name}
+        elif ost_name is not None and ost_name and ost_arch is not None and ost_arch:
+            params = {'name': ost_name, 'arc': ost_arch}
 
         ret = None
         if params is not None:
