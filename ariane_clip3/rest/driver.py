@@ -159,3 +159,17 @@ class Driver(object):
         my_args['base_url'] = self.base_url
 
         return Requester(my_args)
+
+    def make_publisher(self):
+        """
+        not implemented
+        :return:
+        """
+        raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_publisher")
+
+    def make_subscriber(self):
+        """
+        not implemented
+        :return:
+        """
+        raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_subscriber")

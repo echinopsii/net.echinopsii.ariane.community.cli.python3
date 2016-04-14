@@ -385,3 +385,17 @@ class Driver(object):
         requester = Requester.start(my_args, self.connection_args).proxy()
         self.requester_registry.append(requester)
         return requester
+
+    def make_publisher(self):
+        """
+        not implemented
+        :return:
+        """
+        raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_publisher")
+
+    def make_subscriber(self):
+        """
+        not implemented
+        :return:
+        """
+        raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_subscriber")
