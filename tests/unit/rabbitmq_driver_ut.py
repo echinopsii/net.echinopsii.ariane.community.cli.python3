@@ -214,7 +214,7 @@ class DriverConfTest(unittest.TestCase):
             'client_properties': 'client_properties'
         }
         driverTest = driver.Driver(my_args)
-        self.assertEqual(driverTest.parameters.port, 5672)
+        self.assertEqual(driverTest.connection_args['port'], 5672)
 
     def test__init__no_vhost(self):
         my_args = {
@@ -225,7 +225,7 @@ class DriverConfTest(unittest.TestCase):
             'client_properties': 'client_properties'
         }
         driverTest = driver.Driver(my_args)
-        self.assertEqual(driverTest.parameters.virtual_host, '/')
+        self.assertEqual(driverTest.connection_args['vhost'], '/')
 
     def test__init__no_clip(self):
         my_args = {
@@ -236,7 +236,7 @@ class DriverConfTest(unittest.TestCase):
             'vhost': 'vhost'
         }
         driverTest = driver.Driver(my_args)
-        self.assertEqual(driverTest.parameters.client_props, {
+        self.assertEqual(driverTest.connection_args['client_properties'], {
             'product': 'Ariane',
             'information': 'Ariane - Injector',
             'ariane.pgurl': 'ssh://' + socket.gethostname(),
