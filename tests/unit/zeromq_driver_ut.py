@@ -39,6 +39,9 @@ class DriverPubSubTest(unittest.TestCase):
         pub.call({'msg': "test message"}).get()
         time.sleep(1)
         self.assertEqual(self.msg_count, 1)
+        pub.call({'msg': "test message"}).get()
+        time.sleep(1)
+        self.assertEqual(self.msg_count, 2)
         driver_test.stop()
 
 
