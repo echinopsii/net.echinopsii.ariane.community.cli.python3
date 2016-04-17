@@ -517,7 +517,6 @@ class InjectorCachedComponentService(object):
             LOGGER.debug(err_msg)
         return ret
 
-
     @staticmethod
     def make_refresh_on_demand_service(injector_component):
         """

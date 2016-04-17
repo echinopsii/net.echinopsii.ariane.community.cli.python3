@@ -26,14 +26,6 @@ from ariane_clip3.rabbitmq import driver
 __author__ = 'mffrench'
 
 
-class DriverServiceConfTest(unittest.TestCase):
-    pass
-
-
-class DriverRequesterConfTest(unittest.TestCase):
-    pass
-
-
 class DriverConfTest(unittest.TestCase):
 
     def test__init__no_conf(self):

@@ -18,6 +18,7 @@
 from ariane_clip3 import exceptions
 from ariane_clip3.rabbitmq import driver as rabbitmq
 from ariane_clip3.rest import driver as rest
+from ariane_clip3.zeromq import driver as zeromq
 
 __author__ = 'mffrench'
 
@@ -28,6 +29,7 @@ class DriverFactory(object):
     def make(my_args):
         DRIVER_RBMQ = "RBMQ"
         DRIVER_REST = "REST"
+        DRIVER_Z0MQ = "Z0MQ"
 
         if my_args is None:
             raise exceptions.ArianeConfError('driver factory  make arguments')
@@ -38,5 +40,7 @@ class DriverFactory(object):
             return rabbitmq.Driver(my_args)
         elif my_args['type'] is DRIVER_REST:
             return rest.Driver(my_args)
+        elif my_args['type'] is DRIVER_Z0MQ:
+            return zeromq.Driver(my_args)
         else:
             raise exceptions.ArianeNotImplemented('type ' + my_args['type'])
