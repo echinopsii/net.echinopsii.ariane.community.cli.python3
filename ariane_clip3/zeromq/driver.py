@@ -115,13 +115,15 @@ class Subscriber(pykka.ThreadingActor):
         self.zmqsocket = self.zmqcontext.socket(zmq.SUB)
         self.zmqbind_url = "tcp://" + str(connection_args['host']) + ':' + str(connection_args['port'])
         self.is_started = False
+        self.running = False
 
     def run(self):
         """
         consume message from channel on the consuming thread.
         """
+        self.running = True
         self.is_started = True
-        while self.is_started:
+        while self.running:
             msg = None
             try:
                 msg = self.zmqsocket.recv_string(zmq.NOBLOCK)
@@ -134,6 +136,7 @@ class Subscriber(pykka.ThreadingActor):
                     self.cb(msg)
                 except:
                     LOGGER.warn("Exception raised while treating msg {" + str(msg) + "}")
+        self.is_started = False
 
     def on_start(self):
         """
@@ -152,7 +155,9 @@ class Subscriber(pykka.ThreadingActor):
         """
         stop subscriber
         """
-        self.is_started = False
+        self.running = False
+        while self.is_started:
+            time.sleep(0.1)
         self.zmqsocket.close()
         self.zmqcontext.destroy()
 
