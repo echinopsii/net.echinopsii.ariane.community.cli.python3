@@ -29,17 +29,16 @@ class DriverPubSubTest(unittest.TestCase):
         self.msg_count += 1
 
     def test_pub_sub(self):
-        pub_conf = {'topic': "test"}
         sub_conf = {'topic': "test", 'treatment_callback': self.on_message, 'subscriber_name': "test subscriber"}
         driver_test = driver.Driver()
-        pub = driver_test.make_publisher(my_args=pub_conf)
+        pub = driver_test.make_publisher()
         time.sleep(1)
         driver_test.make_subscriber(my_args=sub_conf)
         time.sleep(1)
-        pub.call({'msg': "test message"}).get()
+        pub.call({'topic': "test", 'msg': "test message"}).get()
         time.sleep(1)
         self.assertEqual(self.msg_count, 1)
-        pub.call({'msg': "test message"}).get()
+        pub.call({'topic': "test", 'msg': "test message"}).get()
         time.sleep(1)
         self.assertEqual(self.msg_count, 2)
         driver_test.stop()

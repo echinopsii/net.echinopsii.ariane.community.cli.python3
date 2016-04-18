@@ -35,20 +35,13 @@ class Publisher(pykka.ThreadingActor):
     :param my_args: dict like {connection, service_q, treatment_callback[, service_name]}
     :param connection_args: dict like {user, password, host[, port, vhost, client_properties]}
     """
-    def __init__(self, my_args=None, connection_args=None):
+    def __init__(self, connection_args=None):
         """
         ZeroMQ service constructor
-        :param my_args: dict like {connection, service_q, treatment_callback[, service_name]}
         :param connection_args: dict like {[host, port]}
         :return: self
         """
-        if my_args is None:
-            raise exceptions.ArianeConfError("publisher arguments")
-        if 'topic' not in my_args or my_args['topic'] is None or not my_args['topic']:
-            raise exceptions.ArianeConfError("publisher topic")
-
         super(Publisher, self).__init__()
-        self.zmqtopic = my_args['topic']
         self.zmqcontext = zmq.Context.instance()
         self.zmqsocket = self.zmqcontext.socket(zmq.PUB)
         self.zmqbind_url = "tcp://" + str(connection_args['host']) + ':' + str(connection_args['port'])
@@ -61,9 +54,11 @@ class Publisher(pykka.ThreadingActor):
         """
         if my_args is None:
             raise exceptions.ArianeConfError("publisher call arguments")
+        if 'topic' not in my_args or my_args['topic'] is None or not my_args['topic']:
+            raise exceptions.ArianeConfError("publisher topic")
         if 'msg' not in my_args or my_args['msg'] is None or not my_args['msg']:
             raise exceptions.ArianeConfError("publisher call msg")
-        self.zmqsocket.send_string("%s %s" % (self.zmqtopic, my_args['msg']))
+        self.zmqsocket.send_string("%s %s" % (my_args['topic'], my_args['msg']))
 
     def on_start(self):
         """
@@ -238,16 +233,14 @@ class Driver(object):
         """
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_requester")
 
-    def make_publisher(self, my_args=None):
+    def make_publisher(self):
         """
         not implemented
         :return:
         """
-        if my_args is None:
-            raise exceptions.ArianeConfError('publisher arguments')
         if not self.configuration_OK or self.connection_args is None:
             raise exceptions.ArianeConfError('zeromq connection arguments')
-        publisher = Publisher.start(my_args, self.connection_args).proxy()
+        publisher = Publisher.start(self.connection_args).proxy()
         self.publishers_registry.append(publisher)
         return publisher
 
