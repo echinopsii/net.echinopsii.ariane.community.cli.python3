@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.mapping import MappingService, Container, ContainerService
+from ariane_clip3.mapping import MappingService, Container, ContainerService, SessionService
 
 __author__ = 'mffrench'
 
@@ -143,3 +143,98 @@ class ContainerTest(unittest.TestCase):
         child_container.remove()
         container.remove()
 
+    def test_transac_get_containers(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        MappingService(args)
+        SessionService.open_session("test")
+
+        init_container_count = ContainerService.get_containers().__len__()
+        new_container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+                                  primary_admin_gate_name="container name space (pid)", company="Docker",
+                                  product="Docker", c_type="container")
+        new_container.save()
+        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count)
+        SessionService.commit()
+        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count + 1)
+        new_container.remove()
+        #self.assertEqual(ContainerService.get_containers().__len__(), init_container_count + 1)
+        SessionService.commit()
+        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count)
+        SessionService.close_session()
+
+    def test_transac_container_properties(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        MappingService(args)
+        SessionService.open_session("test")
+        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+                              primary_admin_gate_name="container name space (pid)", company="Docker",
+                              product="Docker", c_type="container")
+        container.save()
+        SessionService.commit()
+        container2 = ContainerService.find_container(cid=container.id)
+        self.assertIsNone(container2.properties)
+
+        container.add_property(('int_prop', 10), sync=False)
+        container.add_property(('long_prop', 10000000), sync=False)
+        container.add_property(('double_prop', 3.1414), sync=False)
+        container.add_property(('boolean_prop', True), sync=False)
+        container.add_property(('string_prop', "value"), sync=False)
+        datacenter = {"dc": "Sagittarius", "gpsLng": 2.251088, "address": "2 rue Baudin", "gpsLat": 48.895345,
+                      "town": "Courbevoie", "country": "France"}
+        container.add_property(('map_prop_datacenter', datacenter), sync=False)
+        container.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
+        self.assertIsNone(container.properties)
+        container.save()
+        SessionService.commit()
+        container2 = ContainerService.find_container(cid=container.id)
+        self.assertTrue('boolean_prop' in container2.properties)
+        self.assertTrue('double_prop' in container2.properties)
+        self.assertTrue('int_prop' in container2.properties)
+        self.assertTrue('long_prop' in container2.properties)
+        self.assertTrue('map_prop_datacenter' in container2.properties)
+        self.assertTrue('string_prop' in container2.properties)
+        self.assertTrue('array_prop' in container2.properties)
+
+        container.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_child_containers(self):
+        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
+        MappingService(args)
+        SessionService.open_session("test")
+
+        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+                              primary_admin_gate_name="container name space (pid)", company="Docker",
+                              product="Docker", c_type="container")
+        container.save()
+        SessionService.commit()
+        container2 = ContainerService.find_container(cid=container.id)
+        self.assertTrue(container2.child_containers_id.__len__() == 0)
+        child_container = Container(name="containerized_mysql", gate_uri="mysql://container_ip:mysql_port",
+                                    primary_admin_gate_name="mysql cli sock", company="Oracle",
+                                    product="MySQL", c_type="MySQL server")
+        container.add_child_container(child_container, sync=False)
+        self.assertTrue(child_container in container.child_containers_2_add)
+        self.assertTrue(container.child_containers_id.__len__() == 0)
+        self.assertIsNone(child_container.parent_container_id)
+        container.save()
+        container2 = ContainerService.find_container(cid=container.id)
+        self.assertIsNotNone(container2.child_containers_id)
+        SessionService.commit()
+        self.assertFalse(child_container in container.child_containers_2_add)
+        self.assertTrue(child_container.id in container.child_containers_id)
+        self.assertTrue(child_container.parent_container_id == container.id)
+        container.del_child_container(child_container, sync=False)
+        self.assertTrue(child_container in container.child_containers_2_rm)
+        self.assertTrue(child_container.id in container.child_containers_id)
+        self.assertTrue(child_container.parent_container_id == container.id)
+        container.save()
+        SessionService.commit()
+        self.assertFalse(child_container in container.child_containers_2_rm)
+        self.assertFalse(child_container.id in container.child_containers_id)
+        self.assertIsNone(child_container.parent_container_id)
+        child_container.remove()
+        container.remove()
+        SessionService.commit()
+        SessionService.close_session()

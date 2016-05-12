@@ -18,6 +18,7 @@
 import copy
 import json
 import logging
+import threading
 from ariane_clip3 import driver_factory
 from ariane_clip3 import exceptions
 
@@ -28,13 +29,15 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MappingService(object):
+
     """
     Mapping Service give you convenient way to setup and access mapping object service access by providing
     Ariane Server Mapping REST access configuration
     """
     def __init__(self, my_args):
         """
-        setup and start REST driver with provided configuration. setup mapping object subservices :
+        setup and start REST driver with provided configuration. setup mapping object subservices singleton :
+            => session_service
             => cluster_service
             => container_service
             => node_service
@@ -47,6 +50,7 @@ class MappingService(object):
         """
         self.driver = driver_factory.DriverFactory.make(my_args)
         self.driver.start()
+        self.session_service = SessionService(self.driver)
         self.cluster_service = ClusterService(self.driver)
         self.container_service = ContainerService(self.driver)
         self.node_service = NodeService(self.driver)
@@ -157,6 +161,99 @@ class MappingService(object):
         return params
 
 
+class SessionService(object):
+    requester = None
+    session_registry = {}
+
+    def __init__(self, mapping_driver):
+        """
+        initialize SessionService (setup the requester)
+        :param mapping_driver: the driver coming from MappingService
+        :return:
+        """
+        args = {'repository_path': 'rest/mapping/service/session/'}
+        SessionService.requester = mapping_driver.make_requester(args)
+
+    @staticmethod
+    def open_session(client_id):
+        if client_id is None or not client_id:
+            raise exceptions.ArianeCallParametersError('client_id')
+        thread_id = threading.current_thread().ident
+        session_id = None
+
+        params = {'clientID': client_id}
+        args = {'http_operation': 'GET', 'operation_path': 'open', 'parameters': params}
+        response = SessionService.requester.call(args)
+        if response.rc == 0:
+            session_id = response.response_content['SessionID']
+            SessionService.session_registry[thread_id] = session_id
+        else:
+            err_msg = 'Problem while opening session (client_id:' + str(client_id) + '). ' + \
+                      'Reason: ' + str(response.error_message)
+            LOGGER.debug(err_msg)
+        return session_id
+
+    @staticmethod
+    def commit():
+        thread_id = threading.current_thread().ident
+        if thread_id in SessionService.session_registry:
+            session_id = SessionService.session_registry[thread_id]
+            params = {'sessionID': session_id}
+            args = {'http_operation': 'GET', 'operation_path': 'commit', 'parameters': params}
+            response = SessionService.requester.call(args)
+            if response.rc != 0:
+                err_msg = 'Problem while committing on session (session_id:' + str(session_id) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.debug(err_msg)
+        else:
+            err_msg = 'Problem while commiting on session' + \
+                      'Reason: no session found for thread_id:' + str(thread_id) + '.'
+            LOGGER.debug(err_msg)
+
+    @staticmethod
+    def rollback():
+        thread_id = threading.current_thread().ident
+        if thread_id in SessionService.session_registry:
+            session_id = SessionService.session_registry[thread_id]
+            params = {'sessionID': session_id}
+            args = {'http_operation': 'GET', 'operation_path': 'rollback', 'parameters': params}
+            response = SessionService.requester.call(args)
+            if response.rc != 0:
+                err_msg = 'Problem while rollbacking on session (session_id:' + str(session_id) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.debug(err_msg)
+        else:
+            err_msg = 'Problem while rollbacking on session' + \
+                      'Reason: no session found for thread_id:' + str(thread_id) + '.'
+            LOGGER.debug(err_msg)
+
+    @staticmethod
+    def close_session():
+        thread_id = threading.current_thread().ident
+        if thread_id in SessionService.session_registry:
+            session_id = SessionService.session_registry[thread_id]
+            params = {'sessionID': session_id}
+            args = {'http_operation': 'GET', 'operation_path': 'close', 'parameters': params}
+            response = SessionService.requester.call(args)
+            if response.rc != 0:
+                err_msg = 'Problem while closing session (session_id:' + str(session_id) + '). ' + \
+                          'Reason: ' + str(response.error_message)
+                LOGGER.debug(err_msg)
+            else:
+                SessionService.session_registry.pop(thread_id)
+        else:
+            err_msg = 'Problem while closing session' + \
+                      'Reason: no session found for thread_id:' + str(thread_id) + '.'
+            LOGGER.debug(err_msg)
+
+    @staticmethod
+    def complete_transactional_req(args):
+        thread_id = threading.current_thread().ident
+        if thread_id in SessionService.session_registry:
+            args['sessionID'] = SessionService.session_registry[thread_id]
+        return args
+
+
 class ClusterService(object):
     requester = None
 
@@ -180,7 +277,7 @@ class ClusterService(object):
         if cid is None or not cid:
             raise exceptions.ArianeCallParametersError('id')
 
-        params = {'ID': cid}
+        params = SessionService.complete_transactional_req({'ID': cid})
         args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = ClusterService.requester.call(args)
         if response.rc == 0:
@@ -244,7 +341,7 @@ class Cluster(object):
         """
         params = None
         if self.id is not None:
-            params = {'ID': self.id}
+            params = SessionService.complete_transactional_req({'ID': self.id})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -269,10 +366,10 @@ class Cluster(object):
             if container.id is None:
                 container.save()
             if container.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'containerID': container.id
-                }
+                })
                 args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
                 response = ClusterService.requester.call(args)
                 if response.rc is not 0:
@@ -303,10 +400,10 @@ class Cluster(object):
             if container.id is None:
                 container.sync()
             if container.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'containerID': container.id
-                }
+                })
                 args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
                 response = ClusterService.requester.call(args)
                 if response.rc is not 0:
@@ -371,7 +468,11 @@ class Cluster(object):
                 consolidated_containers_id.append(container_2_add.id)
         post_payload['clusterContainersID'] = consolidated_containers_id
 
-        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        args = {
+            'http_operation': 'POST',
+            'operation_path': '',
+            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        }
         response = ClusterService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
@@ -395,9 +496,9 @@ class Cluster(object):
         if self.id is None:
             return None
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'name': self.name
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = ClusterService.requester.call(args)
             if response.rc is not 0:
@@ -440,9 +541,9 @@ class ContainerService(object):
 
         params = None
         if cid is not None and cid:
-            params = {'ID': cid}
+            params = SessionService.complete_transactional_req({'ID': cid})
         elif primary_admin_gate_url is not None and primary_admin_gate_url:
-            params = {'primaryAdminURL': primary_admin_gate_url}
+            params = SessionService.complete_transactional_req({'primaryAdminURL': primary_admin_gate_url})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -556,7 +657,7 @@ class Container(object):
         """
         params = None
         if self.id is not None:
-            params = {'ID': self.id}
+            params = SessionService.complete_transactional_req({'ID': self.id})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -591,7 +692,7 @@ class Container(object):
         if not sync or self.id is None:
             self.properties_2_add.append(c_property_tuple)
         else:
-            params = MappingService.property_params(c_property_tuple[0], c_property_tuple[1])
+            params = SessionService.complete_transactional_req(MappingService.property_params(c_property_tuple[0], c_property_tuple[1]))
             params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = ContainerService.requester.call(args)
@@ -614,10 +715,10 @@ class Container(object):
         if not sync or self.id is None:
             self.properties_2_rm.append(c_property_name)
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id,
                 'propertyName': c_property_name
-            }
+            })
 
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = ContainerService.requester.call(args)
@@ -642,10 +743,10 @@ class Container(object):
             if child_container.id is None:
                 child_container.save()
             if child_container.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'childContainerID': child_container.id
-                }
+                })
                 args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add', 'parameters': params}
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
@@ -670,10 +771,10 @@ class Container(object):
             if child_container.id is None:
                 child_container.sync()
             if child_container.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'childContainerID': child_container.id
-                }
+                })
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/childContainers/delete',
                         'parameters': params}
@@ -851,7 +952,11 @@ class Container(object):
             consolidated_container_properties.append(MappingService.property_params(key, value))
         post_payload['containerProperties'] = consolidated_container_properties
 
-        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        args = {
+            'http_operation': 'POST',
+            'operation_path': '',
+            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        }
         response = ContainerService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving container' + self.name + '. Reason: ' + str(response.error_message))
@@ -899,9 +1004,9 @@ class Container(object):
         if self.gate_uri is None:
             return None
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'primaryAdminURL': self.gate_uri
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
@@ -950,11 +1055,11 @@ class NodeService(object):
         params = None
         return_set_of_nodes = False
         if nid is not None and nid:
-            params = {'ID': nid}
+            params = SessionService.complete_transactional_req({'ID': nid})
         elif endpoint_url is not None and endpoint_url:
-            params = {'endpointURL': endpoint_url}
+            params = SessionService.complete_transactional_req({'endpointURL': endpoint_url})
         elif selector is not None and selector:
-            params = {'selector': selector}
+            params = SessionService.complete_transactional_req({'selector': selector})
             return_set_of_nodes = True
 
         if params is not None:
@@ -1038,7 +1143,7 @@ class Node(object):
         """
         params = None
         if self.id is not None:
-            params = {'ID': self.id}
+            params = SessionService.complete_transactional_req({'ID': self.id})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -1108,7 +1213,7 @@ class Node(object):
         if not sync or self.id is None:
             self.properties_2_add.append(n_property_tuple)
         else:
-            params = MappingService.property_params(n_property_tuple[0], n_property_tuple[1])
+            params = SessionService.complete_transactional_req(MappingService.property_params(n_property_tuple[0], n_property_tuple[1]))
             params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = NodeService.requester.call(args)
@@ -1131,10 +1236,10 @@ class Node(object):
         if not sync or self.id is None:
             self.properties_2_rm.append(n_property_name)
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id,
                 'propertyName': n_property_name
-            }
+            })
 
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = NodeService.requester.call(args)
@@ -1160,10 +1265,10 @@ class Node(object):
             if twin_node.id is None:
                 twin_node.save()
             if twin_node.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'twinNodeID': twin_node.id
-                }
+                })
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/twinNodes/add',
                         'parameters': params}
@@ -1191,10 +1296,10 @@ class Node(object):
             if twin_node.id is None:
                 twin_node.sync()
             if twin_node.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'twinNodeID': twin_node.id
-                }
+                })
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/twinNodes/delete',
                         'parameters': params}
@@ -1272,7 +1377,11 @@ class Node(object):
                 consolidated_node_properties.append(MappingService.property_params(key, value))
         post_payload['nodeProperties'] = consolidated_node_properties
 
-        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        args = {
+            'http_operation': 'POST',
+            'operation_path': '',
+            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        }
         response = NodeService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
@@ -1303,9 +1412,9 @@ class Node(object):
         if self.id is None:
             return None
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = NodeService.requester.call(args)
             if response.rc is not 0:
@@ -1343,7 +1452,7 @@ class GateService(object):
         ret = None
         if nid is None or not nid:
             raise exceptions.ArianeCallParametersError('id')
-        params = {'ID': nid}
+        params = SessionService.complete_transactional_req({'ID': nid})
         args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = GateService.requester.call(args)
         if response.rc == 0:
@@ -1390,7 +1499,7 @@ class Gate(Node):
     def sync(self):
         params = None
         if self.id is not None:
-            params = {'ID': self.id}
+            params = SessionService.complete_transactional_req({'ID': self.id})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -1439,12 +1548,12 @@ class Gate(Node):
             self.container_id = self.container.id
 
         if self.id is None:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'URL': self.url,
                 'name': self.name,
                 'containerID': self.container_id,
                 'isPrimaryAdmin': self.is_primary_admin
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
             response = GateService.requester.call(args)
             if response.rc is not 0:
@@ -1499,11 +1608,11 @@ class EndpointService(object):
         params = None
         return_set_of_endpoints = False
         if eid is not None and eid:
-            params = {'ID': eid}
+            params = SessionService.complete_transactional_req({'ID': eid})
         elif url is not None and url:
-            params = {'URL': url}
+            params = SessionService.complete_transactional_req({'URL': url})
         elif selector is not None and selector:
-            params = {'selector': selector}
+            params = SessionService.complete_transactional_req({'selector': selector})
             return_set_of_endpoints = True
 
         if params is not None:
@@ -1579,7 +1688,7 @@ class Endpoint(object):
         """
         params = None
         if self.id is not None:
-            params = {'ID': self.id}
+            params = SessionService.complete_transactional_req({'ID': self.id})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -1634,7 +1743,7 @@ class Endpoint(object):
         if not sync or self.id is None:
             self.properties_2_add.append(e_property_tuple)
         else:
-            params = MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
+            params = SessionService.complete_transactional_req(MappingService.property_params(e_property_tuple[0], e_property_tuple[1]))
             params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = EndpointService.requester.call(args)
@@ -1657,10 +1766,10 @@ class Endpoint(object):
         if not sync or self.id is None:
             self.properties_2_rm.append(e_property_name)
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id,
                 'propertyName': e_property_name
-            }
+            })
 
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = EndpointService.requester.call(args)
@@ -1686,10 +1795,10 @@ class Endpoint(object):
             if twin_endpoint.id is None:
                 twin_endpoint.save()
             if twin_endpoint.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'twinEndpointID': twin_endpoint.id
-                }
+                })
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/twinEndpoints/add',
                         'parameters': params}
@@ -1717,10 +1826,10 @@ class Endpoint(object):
             if twin_endpoint.id is None:
                 twin_endpoint.sync()
             if twin_endpoint.id is not None:
-                params = {
+                params = SessionService.complete_transactional_req({
                     'ID': self.id,
                     'twinEndpointID': twin_endpoint.id
-                }
+                })
                 args = {'http_operation': 'GET',
                         'operation_path': 'update/twinEndpoints/delete',
                         'parameters': params}
@@ -1785,7 +1894,11 @@ class Endpoint(object):
             consolidated_endpoint_properties.append(MappingService.property_params(key, value))
         post_payload['endpointProperties'] = consolidated_endpoint_properties
 
-        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        args = {
+            'http_operation': 'POST',
+            'operation_path': '',
+            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        }
         response = EndpointService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving endpoint ' + self.url + '. Reason: ' + str(response.error_message))
@@ -1813,9 +1926,9 @@ class Endpoint(object):
         if self.id is None:
             return None
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
@@ -1859,13 +1972,13 @@ class LinkService(object):
 
         params = None
         if lid is not None and lid:
-            params = {'ID': lid}
+            params = SessionService.complete_transactional_req({'ID': lid})
         elif sep_id is not None and sep_id and tep_id is not None and tep_id:
-            params = {'SEPID': sep_id, 'TEPID': tep_id}
+            params = SessionService.complete_transactional_req({'SEPID': sep_id, 'TEPID': tep_id})
         elif sep_id is not None and sep_id and (tep_id is None or not tep_id):
-            params = {'SEPID': sep_id}
+            params = SessionService.complete_transactional_req({'SEPID': sep_id})
         else:
-            params = {'TEPID': tep_id}
+            params = SessionService.complete_transactional_req({'TEPID': tep_id})
 
         args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = LinkService.requester.call(args)
@@ -1928,7 +2041,7 @@ class Link(object):
         """
         params = None
         if self.id is not None:
-            params = {'ID': self.id}
+            params = SessionService.complete_transactional_req({'ID': self.id})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -1982,7 +2095,11 @@ class Link(object):
         if self.trp_id is not None:
             post_payload['linkTRPID'] = self.trp_id
 
-        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        args = {
+            'http_operation': 'POST',
+            'operation_path': '',
+            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        }
         response = LinkService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
@@ -2005,9 +2122,9 @@ class Link(object):
         if self.id is None:
             return None
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = LinkService.requester.call(args)
             if response.rc is not 0:
@@ -2042,9 +2159,9 @@ class TransportService(object):
         if tid is None or not tid:
             raise exceptions.ArianeCallParametersError('id')
 
-        params = {
+        params = SessionService.complete_transactional_req({
             'ID': tid
-        }
+        })
         args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = TransportService.requester.call(args)
         if response.rc == 0:
@@ -2107,7 +2224,7 @@ class Transport(object):
         """
         params = None
         if self.id is not None:
-            params = {'ID': self.id}
+            params = SessionService.complete_transactional_req({'ID': self.id})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -2131,7 +2248,7 @@ class Transport(object):
         if not sync or self.id is None:
             self.properties_2_add.append(t_property_tuple)
         else:
-            params = MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
+            params = SessionService.complete_transactional_req(MappingService.property_params(t_property_tuple[0], t_property_tuple[1]))
             params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = TransportService.requester.call(args)
@@ -2154,10 +2271,10 @@ class Transport(object):
         if not sync or self.id is None:
             self.properties_2_rm.append(t_property_name)
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id,
                 'propertyName': t_property_name
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
@@ -2210,7 +2327,11 @@ class Transport(object):
             consolidated_transport_properties.append(MappingService.property_params(key, value))
         post_payload['transportProperties'] = consolidated_transport_properties
 
-        args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
+        args = {
+            'http_operation': 'POST',
+            'operation_path': '',
+            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        }
         response = TransportService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving transport {' + self.name + '}. Reason: ' + str(response.error_message))
@@ -2228,9 +2349,9 @@ class Transport(object):
         if self.id is None:
             return None
         else:
-            params = {
+            params = SessionService.complete_transactional_req({
                 'ID': self.id
-            }
+            })
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:

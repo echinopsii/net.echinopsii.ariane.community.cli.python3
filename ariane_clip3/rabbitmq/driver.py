@@ -207,7 +207,7 @@ class Service(pykka.ThreadingActor):
         super(Service, self).__init__()
         self.connection_args = copy.deepcopy(connection_args)
         self.connection_args['client_properties']['information'] = \
-            self.connection_args['client_properties']['information'] + " - " +  my_args['service_name']
+            self.connection_args['client_properties']['information'] + " - " + my_args['service_name']
 
         self.credentials = pika.PlainCredentials(connection_args['user'], connection_args['password'])
         self.parameters = pika.ConnectionParameters(connection_args['host'], connection_args['port'],

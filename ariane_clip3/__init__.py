@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 __author__ = 'mffrench'
-__version__ = '0.1.0'
 
 import logging
 from logging import NullHandler
