@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
 from ariane_clip3.mapping import MappingService, Node, Container, Endpoint, EndpointService, Transport, Link, \
-    LinkService
+    LinkService, SessionService
 
 __author__ = 'mffrench'
 
@@ -101,3 +101,28 @@ class LinkTest(unittest.TestCase):
         self.assertEqual(LinkService.get_links().__len__(), init_link_count + 1)
         link.remove()
         self.assertEqual(LinkService.get_links().__len__(), init_link_count)
+
+    def test_transac_create_remove_link_basic(self):
+        SessionService.open_session("test")
+        link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
+                    transport_id=self.transport.id)
+        link.save()
+        SessionService.commit()
+        self.assertIsNotNone(link.id)
+        self.assertIsNone(link.remove())
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_get_links(self):
+        SessionService.open_session("test")
+        init_link_count = LinkService.get_links().__len__()
+        link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
+                    transport_id=self.transport.id)
+        link.save()
+        SessionService.commit()
+        self.assertEqual(LinkService.get_links().__len__(), init_link_count + 1)
+        link.remove()
+        SessionService.commit()
+        self.assertEqual(LinkService.get_links().__len__(), init_link_count)
+        SessionService.commit()
+        SessionService.close_session()

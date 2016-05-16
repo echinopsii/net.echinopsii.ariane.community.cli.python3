@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.mapping import MappingService, Node, Container, NodeService, Gate, GateService
+from ariane_clip3.mapping import MappingService, Node, Container, NodeService, Gate, GateService, SessionService
 
 __author__ = 'mffrench'
 
@@ -95,8 +95,6 @@ class GateTest(unittest.TestCase):
         container2.remove()
 
     def test_node_properties(self):
-        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        MappingService(args)
         gate = Gate(name="sshd", url="ssh://ugly_docker_admin_endpoint", is_primary_admin=True,
                     container=self.container1)
         gate.add_property(('int_prop', 10), sync=False)
@@ -157,3 +155,149 @@ class GateTest(unittest.TestCase):
         self.assertEqual(GateService.get_gates().__len__(), init_gate_count + 1)
         gate.remove()
         self.assertEqual(GateService.get_gates().__len__(), init_gate_count)
+
+    def test_transac_create_remove_gate_basic(self):
+        SessionService.open_session("test")
+        gate = Gate(name="sshd", url="ssh://ugly_docker_admin_endpoint", is_primary_admin=True,
+                    container_id=self.container1.id)
+        gate.save()
+        SessionService.commit()
+        self.assertIsNotNone(gate.id)
+        self.container1.sync()
+        self.assertTrue(gate.id in self.container1.nodes_id)
+        self.assertTrue(gate.id in self.container1.gates_id)
+        self.assertIsNone(gate.remove())
+        self.container1.sync()
+        self.assertFalse(gate.id in self.container1.nodes_id)
+        self.assertFalse(gate.id in self.container1.gates_id)
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_create_remove_node_parent_container_1(self):
+        SessionService.open_session("test")
+        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        gate = Gate(name="sshd", url="ssh://ugly_docker_admin_endpoint2", is_primary_admin=True,
+                    container=container2)
+        gate.save()
+        SessionService.commit()
+        self.assertIsNotNone(gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        self.assertIsNone(gate.remove())
+        self.assertFalse(gate.id in container2.nodes_id)
+        self.assertFalse(gate.id in container2.gates_id)
+        container2.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_create_remove_node_parent_container_2(self):
+        SessionService.open_session("test")
+        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        container2.save()
+        SessionService.commit()
+        gate = Gate(name="sshd", url="ssh://ugly_docker_admin_endpoint2", is_primary_admin=True,
+                    container=container2)
+        gate.save()
+        SessionService.commit()
+        self.assertIsNotNone(gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        self.assertIsNone(gate.remove())
+        self.assertFalse(gate.id in container2.nodes_id)
+        self.assertFalse(gate.id in container2.gates_id)
+        container2.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_twin_nodes_link(self):
+        SessionService.open_session("test")
+        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        gate1 = Gate(name="sshd", url="ssh://ugly_docker_admin_endpoint", is_primary_admin=True,
+                     container=self.container1)
+        gate2 = Gate(name="sshd", url="ssh://ugly_docker_admin_endpoint2", is_primary_admin=True,
+                     container=container2)
+        gate1.add_twin_node(gate2, sync=False)
+        self.assertTrue(gate2 in gate1.twin_nodes_2_add)
+        gate1.save()
+        SessionService.commit()
+        self.assertFalse(gate2 in gate1.twin_nodes_2_add)
+        self.assertTrue(gate2.id in gate1.twin_nodes_id)
+        self.assertTrue(gate1.id in gate2.twin_nodes_id)
+        gate2.del_twin_node(gate1, sync=False)
+        self.assertTrue(gate1 in gate2.twin_nodes_2_rm)
+        self.assertTrue(gate2.id in gate1.twin_nodes_id)
+        self.assertTrue(gate1.id in gate2.twin_nodes_id)
+        gate2.save()
+        SessionService.commit()
+        self.assertFalse(gate1 in gate2.twin_nodes_2_rm)
+        self.assertFalse(gate2.id in gate1.twin_nodes_id)
+        self.assertFalse(gate1.id in gate2.twin_nodes_id)
+        gate1.add_twin_node(gate2)
+        SessionService.commit()
+        self.assertTrue(gate2.id in gate1.twin_nodes_id)
+        self.assertTrue(gate1.id in gate2.twin_nodes_id)
+        gate2.del_twin_node(gate1)
+        SessionService.commit()
+        self.assertFalse(gate2.id in gate1.twin_nodes_id)
+        self.assertFalse(gate1.id in gate2.twin_nodes_id)
+        gate1.remove()
+        gate2.remove()
+        container2.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_node_properties(self):
+        SessionService.open_session("test")
+        gate = Gate(name="sshd", url="ssh://ugly_docker_admin_endpoint", is_primary_admin=True,
+                    container=self.container1)
+        gate.add_property(('int_prop', 10), sync=False)
+        gate.add_property(('long_prop', 10000000), sync=False)
+        gate.add_property(('double_prop', 3.1414), sync=False)
+        gate.add_property(('boolean_prop', True), sync=False)
+        gate.add_property(('string_prop', "value"), sync=False)
+        datacenter = {"dc": "Sagittarius", "gpsLng": 2.251088, "address": "2 rue Baudin", "gpsLat": 48.895345,
+                      "town": "Courbevoie", "country": "France"}
+        gate.add_property(('map_prop_datacenter', datacenter), sync=False)
+        gate.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
+        self.assertIsNone(gate.properties)
+        gate.save()
+        SessionService.commit()
+        self.assertTrue('boolean_prop' in gate.properties)
+        self.assertTrue('double_prop' in gate.properties)
+        self.assertTrue('int_prop' in gate.properties)
+        self.assertTrue('long_prop' in gate.properties)
+        self.assertTrue('map_prop_datacenter' in gate.properties)
+        self.assertTrue('string_prop' in gate.properties)
+        self.assertTrue('array_prop' in gate.properties)
+        gate.del_property('int_prop', sync=False)
+        gate.del_property('long_prop', sync=False)
+        gate.del_property('double_prop', sync=False)
+        gate.del_property('boolean_prop', sync=False)
+        gate.del_property('string_prop', sync=False)
+        gate.del_property('map_prop_datacenter', sync=False)
+        gate.del_property('array_prop', sync=False)
+        self.assertTrue('boolean_prop' in gate.properties)
+        self.assertTrue('double_prop' in gate.properties)
+        self.assertTrue('int_prop' in gate.properties)
+        self.assertTrue('long_prop' in gate.properties)
+        self.assertTrue('map_prop_datacenter' in gate.properties)
+        self.assertTrue('string_prop' in gate.properties)
+        self.assertTrue('array_prop' in gate.properties)
+        gate.save()
+        SessionService.commit()
+        self.assertFalse(gate.properties is not None and 'boolean_prop' in gate.properties)
+        self.assertFalse(gate.properties is not None and 'double_prop' in gate.properties)
+        self.assertFalse(gate.properties is not None and 'int_prop' in gate.properties)
+        self.assertFalse(gate.properties is not None and 'long_prop' in gate.properties)
+        self.assertFalse(gate.properties is not None and 'map_prop_datacenter' in gate.properties)
+        self.assertFalse(gate.properties is not None and 'string_prop' in gate.properties)
+        self.assertFalse(gate.properties is not None and 'array_prop' in gate.properties)
+        gate.remove()
+        SessionService.commit()
+        SessionService.close_session()

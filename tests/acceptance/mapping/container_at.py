@@ -220,7 +220,7 @@ class ContainerTest(unittest.TestCase):
         self.assertIsNone(child_container.parent_container_id)
         container.save()
         container2 = ContainerService.find_container(cid=container.id)
-        self.assertIsNotNone(container2.child_containers_id)
+        self.assertTrue(container2.child_containers_id.__len__() == 0)
         SessionService.commit()
         self.assertFalse(child_container in container.child_containers_2_add)
         self.assertTrue(child_container.id in container.child_containers_id)

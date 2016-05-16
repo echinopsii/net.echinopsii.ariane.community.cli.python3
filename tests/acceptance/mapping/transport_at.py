@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
-from ariane_clip3.mapping import MappingService, Transport, TransportService
+from ariane_clip3.mapping import MappingService, Transport, TransportService, SessionService
 
 __author__ = 'mffrench'
 
@@ -52,8 +52,6 @@ class TransportTest(unittest.TestCase):
         self.assertEqual(TransportService.get_transports().__len__(), init_transport_count)
 
     def test_transport_properties(self):
-        args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
-        MappingService(args)
         transport = Transport(name="transport_test")
         transport.add_property(('int_prop', 10), sync=False)
         transport.add_property(('long_prop', 10000000), sync=False)
@@ -96,3 +94,75 @@ class TransportTest(unittest.TestCase):
         self.assertFalse(transport.properties is not None and 'string_prop' in transport.properties)
         self.assertFalse(transport.properties is not None and 'array_prop' in transport.properties)
         transport.remove()
+
+    def test_transac_create_remove_transport(self):
+        SessionService.open_session("test")
+        transport = Transport(name="transport_test")
+        transport.save()
+        SessionService.commit()
+        self.assertIsNotNone(transport.id)
+        self.assertIsNone(transport.remove())
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_get_transports(self):
+        SessionService.open_session("test")
+        init_transport_count = TransportService.get_transports().__len__()
+        transport = Transport(name="transport_test")
+        transport.save()
+        SessionService.commit()
+        self.assertEqual(TransportService.get_transports().__len__(), init_transport_count + 1)
+        transport.remove()
+        SessionService.commit()
+        self.assertEqual(TransportService.get_transports().__len__(), init_transport_count)
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_transport_properties(self):
+        SessionService.open_session("test")
+        transport = Transport(name="transport_test")
+        transport.add_property(('int_prop', 10), sync=False)
+        transport.add_property(('long_prop', 10000000), sync=False)
+        transport.add_property(('double_prop', 3.1414), sync=False)
+        transport.add_property(('boolean_prop', True), sync=False)
+        transport.add_property(('string_prop', "value"), sync=False)
+        datacenter = {"dc": "Sagittarius", "gpsLng": 2.251088, "address": "2 rue Baudin", "gpsLat": 48.895345,
+                      "town": "Courbevoie", "country": "France"}
+        transport.add_property(('map_prop_datacenter', datacenter), sync=False)
+        transport.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
+        self.assertIsNone(transport.properties)
+        transport.save()
+        SessionService.commit()
+        self.assertTrue('boolean_prop' in transport.properties)
+        self.assertTrue('double_prop' in transport.properties)
+        self.assertTrue('int_prop' in transport.properties)
+        self.assertTrue('long_prop' in transport.properties)
+        self.assertTrue('map_prop_datacenter' in transport.properties)
+        self.assertTrue('string_prop' in transport.properties)
+        self.assertTrue('array_prop' in transport.properties)
+        transport.del_property('int_prop', sync=False)
+        transport.del_property('long_prop', sync=False)
+        transport.del_property('double_prop', sync=False)
+        transport.del_property('boolean_prop', sync=False)
+        transport.del_property('string_prop', sync=False)
+        transport.del_property('map_prop_datacenter', sync=False)
+        transport.del_property('array_prop', sync=False)
+        self.assertTrue('boolean_prop' in transport.properties)
+        self.assertTrue('double_prop' in transport.properties)
+        self.assertTrue('int_prop' in transport.properties)
+        self.assertTrue('long_prop' in transport.properties)
+        self.assertTrue('map_prop_datacenter' in transport.properties)
+        self.assertTrue('string_prop' in transport.properties)
+        self.assertTrue('array_prop' in transport.properties)
+        transport.save()
+        SessionService.commit()
+        self.assertFalse(transport.properties is not None and 'boolean_prop' in transport.properties)
+        self.assertFalse(transport.properties is not None and 'double_prop' in transport.properties)
+        self.assertFalse(transport.properties is not None and 'int_prop' in transport.properties)
+        self.assertFalse(transport.properties is not None and 'long_prop' in transport.properties)
+        self.assertFalse(transport.properties is not None and 'map_prop_datacenter' in transport.properties)
+        self.assertFalse(transport.properties is not None and 'string_prop' in transport.properties)
+        self.assertFalse(transport.properties is not None and 'array_prop' in transport.properties)
+        transport.remove()
+        SessionService.commit()
+        SessionService.close_session()
