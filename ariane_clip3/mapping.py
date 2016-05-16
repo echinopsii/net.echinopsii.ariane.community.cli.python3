@@ -250,6 +250,8 @@ class SessionService(object):
     def complete_transactional_req(args):
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
+            if args is None :
+                args = {}
             args['sessionID'] = SessionService.session_registry[thread_id]
         return args
 
@@ -294,7 +296,11 @@ class ClusterService(object):
         get all available cluster from Ariane server
         :return:
         """
-        args = {'http_operation': 'GET', 'operation_path': ''}
+        params = SessionService.complete_transactional_req(None)
+        if params is None:
+            args = {'http_operation': 'GET', 'operation_path': ''}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = ClusterService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -563,7 +569,11 @@ class ContainerService(object):
         get all known containers from Ariane Server
         :return:
         """
-        args = {'http_operation': 'GET', 'operation_path': ''}
+        params = SessionService.complete_transactional_req(None)
+        if params is None:
+            args = {'http_operation': 'GET', 'operation_path': ''}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = ContainerService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -1085,7 +1095,11 @@ class NodeService(object):
         get all nodes known on the Ariane server
         :return:
         """
-        args = {'http_operation': 'GET', 'operation_path': ''}
+        params = SessionService.complete_transactional_req(None)
+        if params is None:
+            args = {'http_operation': 'GET', 'operation_path': ''}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = NodeService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -1469,7 +1483,11 @@ class GateService(object):
         get all gates known on the Ariane server
         :return:
         """
-        args = {'http_operation': 'GET', 'operation_path': ''}
+        params = SessionService.complete_transactional_req(None)
+        if params is None:
+            args = {'http_operation': 'GET', 'operation_path': ''}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = GateService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -1638,7 +1656,11 @@ class EndpointService(object):
         get all endpoints known on the Ariane server
         :return:
         """
-        args = {'http_operation': 'GET', 'operation_path': ''}
+        params = SessionService.complete_transactional_req(None)
+        if params is None:
+            args = {'http_operation': 'GET', 'operation_path': ''}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = EndpointService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -2001,7 +2023,11 @@ class LinkService(object):
         get all known links from Ariane Server
         :return:
         """
-        args = {'http_operation': 'GET', 'operation_path': ''}
+        params = SessionService.complete_transactional_req(None)
+        if params is None:
+            args = {'http_operation': 'GET', 'operation_path': ''}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = LinkService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -2178,7 +2204,11 @@ class TransportService(object):
         get all known transports from Ariane Server
         :return:
         """
-        args = {'http_operation': 'GET', 'operation_path': ''}
+        params = SessionService.complete_transactional_req(None)
+        if params is None:
+            args = {'http_operation': 'GET', 'operation_path': ''}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = TransportService.requester.call(args)
         ret = None
         if response.rc is 0:
