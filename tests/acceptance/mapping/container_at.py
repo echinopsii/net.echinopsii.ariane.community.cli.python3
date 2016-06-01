@@ -172,7 +172,7 @@ class ContainerTest(unittest.TestCase):
         container.save()
         SessionService.commit()
         container2 = ContainerService.find_container(cid=container.id)
-        self.assertIsNone(container2.properties)
+        self.assertEqual(container2.properties.__len__(), 0)
 
         container.add_property(('int_prop', 10), sync=False)
         container.add_property(('long_prop', 10000000), sync=False)
@@ -183,7 +183,7 @@ class ContainerTest(unittest.TestCase):
                       "town": "Courbevoie", "country": "France"}
         container.add_property(('map_prop_datacenter', datacenter), sync=False)
         container.add_property(('array_prop', [1, 2, 3, 4, 5]), sync=False)
-        self.assertIsNone(container.properties)
+        self.assertEqual(container.properties.__len__(), 0)
         container.save()
         SessionService.commit()
         container2 = ContainerService.find_container(cid=container.id)

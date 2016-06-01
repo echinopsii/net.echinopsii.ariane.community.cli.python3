@@ -91,7 +91,7 @@ class ClusterTest(unittest.TestCase):
         init_cluster_count = ClusterService.get_clusters().__len__()
         new_cluster = Cluster(name="test_cluster")
         new_cluster.save()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count +1)
+        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count + 1)
         SessionService.commit()
         self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count + 1)
         new_cluster.remove()
