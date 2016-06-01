@@ -185,7 +185,7 @@ class SessionService(object):
         args = {'http_operation': 'GET', 'operation_path': 'open', 'parameters': params}
         response = SessionService.requester.call(args)
         if response.rc == 0:
-            session_id = response.response_content['SessionID']
+            session_id = response.response_content['sessionID']
             SessionService.session_registry[thread_id] = session_id
         else:
             err_msg = 'Problem while opening session (client_id:' + str(client_id) + '). ' + \
