@@ -1360,7 +1360,7 @@ class Node(object):
             post_payload['nodeParentNodeID'] = self.parent_node_id
 
         if self.child_nodes_id is not None:
-            post_payload['nodeChildNodesID'] = self.child_nodes_id
+            post_payload['nodeChildNodeID'] = self.child_nodes_id
 
         if self.twin_nodes_id is not None:
             consolidated_twin_nodes_id = copy.deepcopy(self.twin_nodes_id)
@@ -1374,10 +1374,10 @@ class Node(object):
                 if twin_node_2_add.id is None:
                     twin_node_2_add.save()
                 consolidated_twin_nodes_id.append(twin_node_2_add.id)
-        post_payload['nodeTwinNodesID'] = consolidated_twin_nodes_id
+        post_payload['nodeTwinNodeID'] = consolidated_twin_nodes_id
 
         if self.endpoints_id is not None:
-            post_payload['nodeEndpointsID'] = self.endpoints_id
+            post_payload['nodeEndpointID'] = self.endpoints_id
 
         if self.properties is not None:
             consolidated_properties = copy.deepcopy(self.properties)
