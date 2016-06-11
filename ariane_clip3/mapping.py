@@ -1126,9 +1126,9 @@ class Node(object):
             ndepth=json_obj['nodeDepth'],
             container_id=json_obj['nodeContainerID'],
             parent_node_id=json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None,
-            child_nodes_id=json_obj['nodeChildNodeID'],
-            twin_nodes_id=json_obj['nodeTwinNodeID'],
-            endpoints_id=json_obj['nodeEndpointID'],
+            child_nodes_id=json_obj['nodeChildNodesID'],
+            twin_nodes_id=json_obj['nodeTwinNodesID'],
+            endpoints_id=json_obj['nodeEndpointsID'],
             properties=json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
         )
 
@@ -1143,9 +1143,9 @@ class Node(object):
             'nodeDepth': self.depth,
             'nodeContainerID': self.container_id,
             'nodeParentNodeID': self.parent_node_id,
-            'nodeChildNodeID': self.child_nodes_id,
-            'nodeTwinNodeID': self.twin_nodes_id,
-            'nodeEndpointID': self.endpoints_id,
+            'nodeChildNodesID': self.child_nodes_id,
+            'nodeTwinNodesID': self.twin_nodes_id,
+            'nodeEndpointsID': self.endpoints_id,
             'nodeProperties': self.properties
         }
         return json_obj
@@ -1169,9 +1169,9 @@ class Node(object):
                 self.depth = json_obj['nodeDepth']
                 self.container_id = json_obj['nodeContainerID']
                 self.parent_node_id = json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None
-                self.child_nodes_id = json_obj['nodeChildNodeID']
-                self.twin_nodes_id = json_obj['nodeTwinNodeID']
-                self.endpoints_id = json_obj['nodeEndpointID']
+                self.child_nodes_id = json_obj['nodeChildNodesID']
+                self.twin_nodes_id = json_obj['nodeTwinNodesID']
+                self.endpoints_id = json_obj['nodeEndpointsID']
                 self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
 
     def __init__(self, nid=None, name=None, ndepth=None, container_id=None, container=None,
@@ -1360,7 +1360,7 @@ class Node(object):
             post_payload['nodeParentNodeID'] = self.parent_node_id
 
         if self.child_nodes_id is not None:
-            post_payload['nodeChildNodeID'] = self.child_nodes_id
+            post_payload['nodeChildNodesID'] = self.child_nodes_id
 
         if self.twin_nodes_id is not None:
             consolidated_twin_nodes_id = copy.deepcopy(self.twin_nodes_id)
@@ -1374,10 +1374,10 @@ class Node(object):
                 if twin_node_2_add.id is None:
                     twin_node_2_add.save()
                 consolidated_twin_nodes_id.append(twin_node_2_add.id)
-        post_payload['nodeTwinNodeID'] = consolidated_twin_nodes_id
+        post_payload['nodeTwinNodesID'] = consolidated_twin_nodes_id
 
         if self.endpoints_id is not None:
-            post_payload['nodeEndpointID'] = self.endpoints_id
+            post_payload['nodeEndpointsID'] = self.endpoints_id
 
         if self.properties is not None:
             consolidated_properties = copy.deepcopy(self.properties)
@@ -1530,9 +1530,9 @@ class Gate(Node):
                 self.depth = node['nodeDepth']
                 self.container_id = node['nodeContainerID']
                 self.parent_node_id = node['nodeParentNodeID'] if 'nodeParentNodeID' in node else None
-                self.child_nodes_id = node['nodeChildNodeID']
-                self.twin_nodes_id = node['nodeTwinNodeID']
-                self.endpoints_id = node['nodeEndpointID']
+                self.child_nodes_id = node['nodeChildNodesID']
+                self.twin_nodes_id = node['nodeTwinNodesID']
+                self.endpoints_id = node['nodeEndpointsID']
                 self.properties = node['nodeProperties'] if 'nodeProperties' in node else None
                 self.primary_admin_endpoint_id = json_obj['containerGatePrimaryAdminEndpointID']
 
