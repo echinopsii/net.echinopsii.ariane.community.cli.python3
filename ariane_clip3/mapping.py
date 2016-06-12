@@ -1123,8 +1123,7 @@ class Node(object):
         return Node(
             nid=json_obj['nodeID'],
             name=json_obj['nodeName'],
-            ndepth=json_obj['nodeDepth'],
-            container_id=json_obj['nodeContainerID'],
+            container_id=json_obj['nodeContainerID'] if 'nodeContainerID' in json_obj else None,
             parent_node_id=json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None,
             child_nodes_id=json_obj['nodeChildNodesID'],
             twin_nodes_id=json_obj['nodeTwinNodesID'],
@@ -1140,7 +1139,6 @@ class Node(object):
         json_obj = {
             'nodeID': self.id,
             'nodeName': self.name,
-            'nodeDepth': self.depth,
             'nodeContainerID': self.container_id,
             'nodeParentNodeID': self.parent_node_id,
             'nodeChildNodesID': self.child_nodes_id,
@@ -1166,7 +1164,6 @@ class Node(object):
                 json_obj = response.response_content
                 self.id = json_obj['nodeID']
                 self.name = json_obj['nodeName']
-                self.depth = json_obj['nodeDepth']
                 self.container_id = json_obj['nodeContainerID']
                 self.parent_node_id = json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None
                 self.child_nodes_id = json_obj['nodeChildNodesID']
@@ -1174,14 +1171,13 @@ class Node(object):
                 self.endpoints_id = json_obj['nodeEndpointsID']
                 self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
 
-    def __init__(self, nid=None, name=None, ndepth=None, container_id=None, container=None,
+    def __init__(self, nid=None, name=None,container_id=None, container=None,
                  parent_node_id=None, parent_node=None, child_nodes_id=None, twin_nodes_id=None,
                  endpoints_id=None, properties=None):
         """
         initialize container object
         :param nid: node id - defined by ariane server
         :param name: node name
-        :param ndepth: node depth - defined by ariane server
         :param container_id: parent container id
         :param container: parent container
         :param parent_node_id: parent node id
@@ -1194,7 +1190,6 @@ class Node(object):
         """
         self.id = nid
         self.name = name
-        self.depth = ndepth
         self.container_id = container_id
         self.container = container
         self.parent_node_id = parent_node_id
@@ -1401,7 +1396,6 @@ class Node(object):
             LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['nodeID']
-            self.depth = response.response_content['nodeDepth']
             if self.twin_nodes_2_add is not None:
                 for twin_node_2_add in self.twin_nodes_2_add:
                     twin_node_2_add.sync()
@@ -1527,7 +1521,6 @@ class Gate(Node):
                 node = json_obj['node']
                 self.id = node['nodeID']
                 self.name = node['nodeName']
-                self.depth = node['nodeDepth']
                 self.container_id = node['nodeContainerID']
                 self.parent_node_id = node['nodeParentNodeID'] if 'nodeParentNodeID' in node else None
                 self.child_nodes_id = node['nodeChildNodesID']
@@ -1539,7 +1532,7 @@ class Gate(Node):
     def __init__(self, node=None, container_gate_primary_admin_endpoint_id=None,
                  url=None, name=None, container_id=None, container=None, is_primary_admin=None):
         if node is not None:
-            super(Gate, self).__init__(nid=node.id, name=node.name, ndepth=node.depth, container_id=node.container_id,
+            super(Gate, self).__init__(nid=node.id, name=node.name, container_id=node.container_id,
                                        child_nodes_id=node.child_nodes_id, twin_nodes_id=node.twin_nodes_id,
                                        endpoints_id=node.endpoints_id, properties=node.properties)
             self.primary_admin_endpoint_id = container_gate_primary_admin_endpoint_id
