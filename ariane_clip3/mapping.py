@@ -1677,8 +1677,8 @@ class Endpoint(object):
         return Endpoint(
             eid=json_obj['endpointID'],
             url=json_obj['endpointURL'],
-            parent_node_id=json_obj['endpointParentNodeID'],
-            twin_endpoints_id=json_obj['endpointTwinEndpointID'],
+            parent_node_id=json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None,
+            twin_endpoints_id=json_obj['endpointTwinEndpointsID'],
             properties=json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
         )
 
@@ -1691,7 +1691,7 @@ class Endpoint(object):
             "endpointID": self.id,
             "endpointURL": self.url,
             "endpointParentNodeID": self.parent_node_id,
-            "endpointTwinEndpointID": self.twin_endpoints_id,
+            "endpointTwinEndpointsID": self.twin_endpoints_id,
             "endpointProperties": self.properties
         }
         return json_obj
@@ -1713,7 +1713,7 @@ class Endpoint(object):
                 self.id = json_obj['endpointID']
                 self.url = json_obj['endpointURL']
                 self.parent_node_id = json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None
-                self.twin_endpoints_id = json_obj['endpointTwinEndpointID']
+                self.twin_endpoints_id = json_obj['endpointTwinEndpointsID']
                 self.properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
 
     def __init__(self, eid=None, url=None, parent_node_id=None, parent_node=None, twin_endpoints_id=None,
