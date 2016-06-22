@@ -26,7 +26,7 @@ class NodeTest(unittest.TestCase):
     def setUp(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        self.container1 = Container(name="test_container1", gate_uri="ssh://my_host/docker/test_container1",
+        self.container1 = Container(name="test_node_container1", gate_uri="ssh://my_host/docker/test_node_container1",
                                     primary_admin_gate_name="container name space (pid)", company="Docker",
                                     product="Docker", c_type="container")
         self.container1.save()
@@ -45,7 +45,8 @@ class NodeTest(unittest.TestCase):
         self.assertFalse(node.id in self.container1.nodes_id)
 
     def test_create_remove_node_parent_container(self):
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_create_remove_node_parent_container_container2",
+                               gate_uri="ssh://my_host/docker/test_create_remove_node_parent_container_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node = Node(name="mysqld", container=container2)
@@ -57,7 +58,8 @@ class NodeTest(unittest.TestCase):
         container2.remove()
 
     def test_create_remove_node_parent_node(self):
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_create_remove_node_parent_node_container2",
+                               gate_uri="ssh://my_host/docker/test_create_remove_node_parent_node_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node_mysql = Node(name="mysqld", container=container2)
@@ -73,7 +75,8 @@ class NodeTest(unittest.TestCase):
         container2.remove()
 
     def test_twin_nodes_link(self):
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_twin_nodes_link_container2",
+                               gate_uri="ssh://my_host/docker/test_twin_nodes_link_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node_mysql1 = Node(name="mysqld1", container=self.container1)
@@ -163,12 +166,11 @@ class NodeTest(unittest.TestCase):
         self.assertIsNone(NodeService.find_node(selector="nodeName =~ '.*pid.*cmd'"))
 
     def test_get_nodes(self):
-        init_node_count = NodeService.get_nodes().__len__()
         node = Node(name="mysqld", container_id=self.container1.id)
         node.save()
-        self.assertEqual(NodeService.get_nodes().__len__(), init_node_count + 1)
+        self.assertTrue(node in NodeService.get_nodes())
         node.remove()
-        self.assertEqual(NodeService.get_nodes().__len__(), init_node_count)
+        self.assertFalse(node in NodeService.get_nodes())
 
     def test_transac_create_remove_node_basic(self):
         SessionService.open_session("test")
@@ -187,7 +189,8 @@ class NodeTest(unittest.TestCase):
 
     def test_transac_create_remove_node_parent_container(self):
         SessionService.open_session("test")
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_transac_create_remove_node_parent_container_container2",
+                               gate_uri="ssh://my_host/docker/test_transac_create_remove_node_parent_container_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node = Node(name="mysqld", container=container2)
@@ -203,7 +206,8 @@ class NodeTest(unittest.TestCase):
 
     def test_transac_create_remove_node_parent_node(self):
         SessionService.open_session("test")
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_transac_create_remove_node_parent_node_container2",
+                               gate_uri="ssh://my_host/docker/test_transac_create_remove_node_parent_node_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node_mysql = Node(name="mysqld", container=container2)
@@ -224,7 +228,8 @@ class NodeTest(unittest.TestCase):
 
     def test_transac_twin_nodes_link(self):
         SessionService.open_session("test")
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_transac_twin_nodes_link_container2",
+                               gate_uri="ssh://my_host/docker/test_transac_twin_nodes_link_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node_mysql1 = Node(name="mysqld1", container=self.container1)

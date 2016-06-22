@@ -27,7 +27,7 @@ class ClusterTest(unittest.TestCase):
     def test_create_remove_cluster(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        new_cluster = Cluster(name="test_cluster")
+        new_cluster = Cluster(name="test_create_remove_cluster")
         new_cluster.save()
         self.assertIsNotNone(new_cluster.id)
         self.assertIsNone(new_cluster.remove())
@@ -35,7 +35,7 @@ class ClusterTest(unittest.TestCase):
     def test_find_cluster(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        new_cluster = Cluster(name="test_cluster")
+        new_cluster = Cluster(name="test_find_cluster")
         new_cluster.save()
         self.assertIsNotNone(ClusterService.find_cluster(new_cluster.id))
         new_cluster.remove()
@@ -44,18 +44,18 @@ class ClusterTest(unittest.TestCase):
     def test_get_clusters(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        init_cluster_count = ClusterService.get_clusters().__len__()
-        new_cluster = Cluster(name="test_cluster")
+        new_cluster = Cluster(name="test_get_clusters")
         new_cluster.save()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count + 1)
+        self.assertTrue(new_cluster in ClusterService.get_clusters())
         new_cluster.remove()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count)
+        self.assertFalse(new_cluster in ClusterService.get_clusters())
 
     def test_cluster_link_to_container(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        cluster = Cluster(name="test_cluster")
-        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        cluster = Cluster(name="test_cluster_link_to_container")
+        container = Container(name="test_cluster_link_to_container_container",
+                              gate_uri="ssh://my_host/docker/test_cluster_link_to_container_container",
                               primary_admin_gate_name="container name space (pid)", company="Docker",
                               product="Docker", c_type="container")
         cluster.add_container(container, False)
@@ -87,17 +87,15 @@ class ClusterTest(unittest.TestCase):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
         SessionService.open_session("test")
-
-        init_cluster_count = ClusterService.get_clusters().__len__()
-        new_cluster = Cluster(name="test_cluster")
+        new_cluster = Cluster(name="test_transac_get_clusters")
         new_cluster.save()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count + 1)
+        self.assertTrue(new_cluster in ClusterService.get_clusters())
         SessionService.commit()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count + 1)
+        self.assertTrue(new_cluster in ClusterService.get_clusters())
         new_cluster.remove()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count)
+        self.assertTrue(new_cluster not in ClusterService.get_clusters())
         SessionService.commit()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count)
+        self.assertTrue(new_cluster not in ClusterService.get_clusters())
         SessionService.close_session()
 
     def test_transac_cluster_link_to_container(self):
@@ -105,11 +103,9 @@ class ClusterTest(unittest.TestCase):
         MappingService(args)
         SessionService.open_session("test")
 
-        init_cluster_count = ClusterService.get_clusters().__len__()
-        init_container_count = ContainerService.get_containers().__len__()
-
-        cluster = Cluster(name="test_cluster")
-        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        cluster = Cluster(name="test_transac_cluster_link_to_container")
+        container = Container(name="test_transac_cluster_link_to_container_container",
+                              gate_uri="ssh://my_host/docker/test_transac_cluster_link_to_container_container",
                               primary_admin_gate_name="container name space (pid)", company="Docker",
                               product="Docker", c_type="container")
         cluster.add_container(container, False)
@@ -117,11 +113,11 @@ class ClusterTest(unittest.TestCase):
         self.assertIsNone(cluster.containers_id)
         self.assertIsNone(container.cluster_id)
         cluster.save()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count+1)
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count+1)
+        self.assertTrue(cluster in ClusterService.get_clusters())
+        self.assertTrue(container in ContainerService.get_containers())
         SessionService.commit()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count+1)
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count+1)
+        self.assertTrue(cluster in ClusterService.get_clusters())
+        self.assertTrue(container in ContainerService.get_containers())
         self.assertFalse(container in cluster.containers_2_add)
         self.assertTrue(container.id in cluster.containers_id)
         self.assertTrue(container.cluster_id == cluster.id)
@@ -144,9 +140,9 @@ class ClusterTest(unittest.TestCase):
         self.assertIsNone(container.cluster_id)
         container.remove()
         cluster.remove()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count)
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count)
+        self.assertFalse(cluster in ClusterService.get_clusters())
+        self.assertFalse(container in ContainerService.get_containers())
         SessionService.commit()
-        self.assertEqual(ClusterService.get_clusters().__len__(), init_cluster_count)
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count)
+        self.assertFalse(cluster in ClusterService.get_clusters())
+        self.assertFalse(container in ContainerService.get_containers())
         SessionService.close_session()

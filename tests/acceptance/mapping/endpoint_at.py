@@ -26,7 +26,8 @@ class EndpointTest(unittest.TestCase):
     def setUp(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        self.container1 = Container(name="test_container1", gate_uri="ssh://my_host/docker/test_container1",
+        self.container1 = Container(name="test_endpoint_container1",
+                                    gate_uri="ssh://my_host/docker/test_endpoint_container1",
                                     primary_admin_gate_name="container name space (pid)", company="Docker",
                                     product="Docker", c_type="container")
         self.container1.save()
@@ -38,7 +39,7 @@ class EndpointTest(unittest.TestCase):
         self.container1.remove()
 
     def test_create_remove_endpoint_basic(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_create_remove_endpoint_basic:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertIsNotNone(endpoint.id)
         self.node1.sync()
@@ -48,12 +49,13 @@ class EndpointTest(unittest.TestCase):
         self.assertFalse(endpoint.id in self.node1.endpoints_id)
 
     def test_create_remove_endpoint_parent_node(self):
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_create_remove_endpoint_parent_node_container2",
+                               gate_uri="ssh://my_host/docker/test_create_remove_endpoint_parent_node_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node2 = Node(name="mysqld", container=container2)
         node2.save()
-        endpoint2 = Endpoint(url="mysql://test_container1:4385", parent_node=node2)
+        endpoint2 = Endpoint(url="mysql://test_create_remove_endpoint_parent_node_container2:4385", parent_node=node2)
         endpoint2.save()
         self.assertIsNotNone(endpoint2.id)
         self.assertTrue(endpoint2.id in node2.endpoints_id)
@@ -63,36 +65,35 @@ class EndpointTest(unittest.TestCase):
         container2.remove()
 
     def test_find_endpoint_by_id(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_find_endpoint_by_id_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertIsNotNone(EndpointService.find_endpoint(eid=endpoint.id))
         endpoint.remove()
         self.assertIsNone(EndpointService.find_endpoint(eid=endpoint.id))
 
     def test_find_endpoint_by_url(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_find_endpoint_by_url_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertIsNotNone(EndpointService.find_endpoint(url=endpoint.url))
         endpoint.remove()
         self.assertIsNone(EndpointService.find_endpoint(url=endpoint.url))
 
     def test_find_endpoint_by_selector(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_find_endpoint_by_selector_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
         self.assertIsNotNone(EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'"))
         endpoint.remove()
         self.assertIsNone(EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'"))
 
     def test_get_endpoints(self):
-        init_endpoint_count = EndpointService.get_endpoints().__len__()
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_get_endpoints_container1:4385", parent_node_id=self.node1.id)
         endpoint.save()
-        self.assertEqual(EndpointService.get_endpoints().__len__(), init_endpoint_count + 1)
+        self.assertTrue(endpoint in EndpointService.get_endpoints())
         endpoint.remove()
-        self.assertEqual(EndpointService.get_endpoints().__len__(), init_endpoint_count)
+        self.assertFalse(endpoint in EndpointService.get_endpoints())
 
     def test_endpoint_properties(self):
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_endpoint_properties_container1:4385", parent_node_id=self.node1.id)
         endpoint.add_property(('int_prop', 10), sync=False)
         endpoint.add_property(('long_prop', 10000000), sync=False)
         endpoint.add_property(('double_prop', 3.1414), sync=False)
@@ -136,12 +137,13 @@ class EndpointTest(unittest.TestCase):
         endpoint.remove()
 
     def test_twin_endpoints_link(self):
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_twin_endpoints_link_container2",
+                               gate_uri="ssh://my_host/docker/test_twin_endpoints_link_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node2 = Node(name="mysqld2", container=container2)
-        endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
-        endpoint2 = Endpoint(url="mysql://test_container2:4385", parent_node=node2)
+        endpoint1 = Endpoint(url="mysql://test_twin_endpoints_link_container1:4385", parent_node_id=self.node1.id)
+        endpoint2 = Endpoint(url="mysql://test_twin_endpoints_link_container2:4385", parent_node=node2)
         endpoint1.add_twin_endpoint(endpoint2, sync=False)
         self.assertTrue(endpoint2 in endpoint1.twin_endpoints_2_add)
         endpoint1.save()
@@ -168,7 +170,8 @@ class EndpointTest(unittest.TestCase):
 
     def test_transac_create_remove_endpoint_basic(self):
         SessionService.open_session("test")
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_transac_create_remove_endpoint_basic_container1:4385",
+                            parent_node_id=self.node1.id)
         endpoint.save()
         SessionService.commit()
         self.assertIsNotNone(endpoint.id)
@@ -182,13 +185,15 @@ class EndpointTest(unittest.TestCase):
 
     def test_transac_create_remove_endpoint_parent_node(self):
         SessionService.open_session("test")
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_transac_create_remove_endpoint_parent_node_container2",
+                               gate_uri="ssh://my_host/docker/test_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node2 = Node(name="mysqld", container=container2)
         node2.save()
         SessionService.commit()
-        endpoint2 = Endpoint(url="mysql://test_container1:4385", parent_node=node2)
+        endpoint2 = Endpoint(url="mysql://test_transac_create_remove_endpoint_parent_node_container1:4385",
+                             parent_node=node2)
         endpoint2.save()
         SessionService.commit()
         self.assertIsNotNone(endpoint2.id)
@@ -202,19 +207,20 @@ class EndpointTest(unittest.TestCase):
 
     def test_transac_get_endpoints(self):
         SessionService.open_session("test")
-        init_endpoint_count = EndpointService.get_endpoints().__len__()
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_transac_get_endpoints_container1:4385",
+                            parent_node_id=self.node1.id)
         endpoint.save()
         SessionService.commit()
-        self.assertEqual(EndpointService.get_endpoints().__len__(), init_endpoint_count + 1)
+        self.assertTrue(endpoint in EndpointService.get_endpoints())
         endpoint.remove()
         SessionService.commit()
-        self.assertEqual(EndpointService.get_endpoints().__len__(), init_endpoint_count)
+        self.assertFalse(endpoint in EndpointService.get_endpoints())
         SessionService.close_session()
 
     def test_transac_endpoint_properties(self):
         SessionService.open_session("test")
-        endpoint = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        endpoint = Endpoint(url="mysql://test_transac_endpoint_properties_container1:4385",
+                            parent_node_id=self.node1.id)
         endpoint.add_property(('int_prop', 10), sync=False)
         endpoint.add_property(('long_prop', 10000000), sync=False)
         endpoint.add_property(('double_prop', 3.1414), sync=False)
@@ -263,12 +269,13 @@ class EndpointTest(unittest.TestCase):
 
     def test_transac_twin_endpoints_link(self):
         SessionService.open_session("test")
-        container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        container2 = Container(name="test_transac_twin_endpoints_link_container2",
+                               gate_uri="ssh://my_host/docker/test_transac_twin_endpoints_link_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         node2 = Node(name="mysqld2", container=container2)
-        endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
-        endpoint2 = Endpoint(url="mysql://test_container2:4385", parent_node=node2)
+        endpoint1 = Endpoint(url="mysql://test_transac_twin_endpoints_link_container1:4385", parent_node_id=self.node1.id)
+        endpoint2 = Endpoint(url="mysql://test_transac_twin_endpoints_link_container2:4385", parent_node=node2)
         endpoint1.add_twin_endpoint(endpoint2, sync=False)
         self.assertTrue(endpoint2 in endpoint1.twin_endpoints_2_add)
         endpoint1.save()

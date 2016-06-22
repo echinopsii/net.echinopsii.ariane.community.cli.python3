@@ -27,23 +27,23 @@ class LinkTest(unittest.TestCase):
     def setUp(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        self.container1 = Container(name="test_container1", gate_uri="ssh://my_host/docker/test_container1",
+        self.container1 = Container(name="test_link_container1", gate_uri="ssh://my_host/docker/test_link_container1",
                                     primary_admin_gate_name="container name space (pid)", company="Docker",
                                     product="Docker", c_type="container")
         self.container1.save()
         self.node1 = Node(name="mysqld", container_id=self.container1.id)
         self.node1.save()
-        self.endpoint1 = Endpoint(url="mysql://test_container1:4385", parent_node_id=self.node1.id)
+        self.endpoint1 = Endpoint(url="mysql://test_link_container1:4385", parent_node_id=self.node1.id)
         self.endpoint1.save()
-        self.container2 = Container(name="test_container2", gate_uri="ssh://my_host/docker/test_container2",
+        self.container2 = Container(name="test_link_container2", gate_uri="ssh://my_host/docker/test_link_container2",
                                     primary_admin_gate_name="container name space (pid)", company="Docker",
                                     product="Docker", c_type="container")
         self.container2.save()
         self.node2 = Node(name="mysql.cli", container_id=self.container2.id)
         self.node2.save()
-        self.endpoint2 = Endpoint(url="mysql://test_container2:12385", parent_node_id=self.node1.id)
+        self.endpoint2 = Endpoint(url="mysql://test_link_container2:12385", parent_node_id=self.node1.id)
         self.endpoint2.save()
-        self.transport = Transport(name="transport_test")
+        self.transport = Transport(name="transport_link_test")
         self.transport.save()
 
     def tearDown(self):
@@ -94,13 +94,12 @@ class LinkTest(unittest.TestCase):
         self.assertIsNone(LinkService.find_link(lid=link.id))
 
     def test_get_links(self):
-        init_link_count = LinkService.get_links().__len__()
         link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
                     transport_id=self.transport.id)
         link.save()
-        self.assertEqual(LinkService.get_links().__len__(), init_link_count + 1)
+        self.assertTrue(link in LinkService.get_links())
         link.remove()
-        self.assertEqual(LinkService.get_links().__len__(), init_link_count)
+        self.assertFalse(link in LinkService.get_links())
 
     def test_transac_create_remove_link_basic(self):
         SessionService.open_session("test")
@@ -115,14 +114,13 @@ class LinkTest(unittest.TestCase):
 
     def test_transac_get_links(self):
         SessionService.open_session("test")
-        init_link_count = LinkService.get_links().__len__()
         link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
                     transport_id=self.transport.id)
         link.save()
         SessionService.commit()
-        self.assertEqual(LinkService.get_links().__len__(), init_link_count + 1)
+        self.assertTrue(link in LinkService.get_links())
         link.remove()
         SessionService.commit()
-        self.assertEqual(LinkService.get_links().__len__(), init_link_count)
+        self.assertFalse(link in LinkService.get_links())
         SessionService.commit()
         SessionService.close_session()

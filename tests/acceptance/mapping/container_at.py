@@ -26,7 +26,8 @@ class ContainerTest(unittest.TestCase):
     def test_create_remove_container(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        new_container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        new_container = Container(name="test_create_remove_container",
+                                  gate_uri="ssh://my_host/docker/test_create_remove_container",
                                   primary_admin_gate_name="container name space (pid)", company="Docker",
                                   product="Docker", c_type="container")
         new_container.save()
@@ -36,7 +37,8 @@ class ContainerTest(unittest.TestCase):
     def test_find_container_by_id(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        new_container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        new_container = Container(name="test_find_container_by_id",
+                                  gate_uri="ssh://my_host/docker/test_find_container_by_id",
                                   primary_admin_gate_name="container name space (pid)", company="Docker",
                                   product="Docker", c_type="container")
         new_container.save()
@@ -47,7 +49,8 @@ class ContainerTest(unittest.TestCase):
     def test_find_container_by_primary_admin_gate_url(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        new_container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        new_container = Container(name="test_find_container_by_primary_admin_gate_url",
+                                  gate_uri="ssh://my_host/docker/test_find_container_by_primary_admin_gate_url",
                                   primary_admin_gate_name="container name space (pid)", company="Docker",
                                   product="Docker", c_type="container")
         new_container.save()
@@ -58,19 +61,20 @@ class ContainerTest(unittest.TestCase):
     def test_get_containers(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        init_container_count = ContainerService.get_containers().__len__()
-        new_container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        new_container = Container(name="test_get_containers",
+                                  gate_uri="ssh://my_host/docker/test_get_containers",
                                   primary_admin_gate_name="container name space (pid)", company="Docker",
                                   product="Docker", c_type="container")
         new_container.save()
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count + 1)
+        self.assertTrue(new_container in ContainerService.get_containers())
         new_container.remove()
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count)
+        self.assertFalse(new_container in ContainerService.get_containers())
 
     def test_container_properties(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        container = Container(name="test_container_properties",
+                              gate_uri="ssh://my_host/docker/test_container_properties",
                               primary_admin_gate_name="container name space (pid)", company="Docker",
                               product="Docker", c_type="container")
         container.add_property(('int_prop', 10), sync=False)
@@ -118,7 +122,8 @@ class ContainerTest(unittest.TestCase):
     def test_child_containers(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
-        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        container = Container(name="test_child_containers",
+                              gate_uri="ssh://my_host/docker/test_child_containers",
                               primary_admin_gate_name="container name space (pid)", company="Docker",
                               product="Docker", c_type="container")
         child_container = Container(name="containerized_mysql", gate_uri="mysql://container_ip:mysql_port",
@@ -148,25 +153,26 @@ class ContainerTest(unittest.TestCase):
         MappingService(args)
         SessionService.open_session("test")
 
-        init_container_count = ContainerService.get_containers().__len__()
-        new_container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        new_container = Container(name="test_transac_get_containers",
+                                  gate_uri="ssh://my_host/docker/test_transac_get_containers",
                                   primary_admin_gate_name="container name space (pid)", company="Docker",
                                   product="Docker", c_type="container")
         new_container.save()
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count + 1)
+        self.assertTrue(new_container in ContainerService.get_containers())
         SessionService.commit()
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count + 1)
+        self.assertTrue(new_container in ContainerService.get_containers())
         new_container.remove()
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count)
+        self.assertFalse(new_container in ContainerService.get_containers())
         SessionService.commit()
-        self.assertEqual(ContainerService.get_containers().__len__(), init_container_count)
+        self.assertFalse(new_container in ContainerService.get_containers())
         SessionService.close_session()
 
     def test_transac_container_properties(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}
         MappingService(args)
         SessionService.open_session("test")
-        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        container = Container(name="test_transac_container_properties",
+                              gate_uri="ssh://my_host/docker/test_transac_container_properties",
                               primary_admin_gate_name="container name space (pid)", company="Docker",
                               product="Docker", c_type="container")
         container.save()
@@ -204,7 +210,8 @@ class ContainerTest(unittest.TestCase):
         MappingService(args)
         SessionService.open_session("test")
 
-        container = Container(name="test_container", gate_uri="ssh://my_host/docker/test_container",
+        container = Container(name="test_transac_child_containers",
+                              gate_uri="ssh://my_host/docker/test_transac_child_containers",
                               primary_admin_gate_name="container name space (pid)", company="Docker",
                               product="Docker", c_type="container")
         container.save()

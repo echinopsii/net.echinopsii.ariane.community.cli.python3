@@ -31,28 +31,27 @@ class TransportTest(unittest.TestCase):
         pass
 
     def test_create_remove_transport(self):
-        transport = Transport(name="transport_test")
+        transport = Transport(name="test_create_remove_transport")
         transport.save()
         self.assertIsNotNone(transport.id)
         self.assertIsNone(transport.remove())
 
     def test_find_transport_by_id(self):
-        transport = Transport(name="transport_test")
+        transport = Transport(name="test_find_transport_by_id")
         transport.save()
         self.assertIsNotNone(TransportService.find_transport(tid=transport.id))
         transport.remove()
         self.assertIsNone(TransportService.find_transport(tid=transport.id))
 
     def test_get_transports(self):
-        init_transport_count = TransportService.get_transports().__len__()
-        transport = Transport(name="transport_test")
+        transport = Transport(name="test_get_transports")
         transport.save()
-        self.assertEqual(TransportService.get_transports().__len__(), init_transport_count + 1)
+        self.assertTrue(transport in TransportService.get_transports())
         transport.remove()
-        self.assertEqual(TransportService.get_transports().__len__(), init_transport_count)
+        self.assertFalse(transport in TransportService.get_transports())
 
     def test_transport_properties(self):
-        transport = Transport(name="transport_test")
+        transport = Transport(name="test_transport_properties")
         transport.add_property(('int_prop', 10), sync=False)
         transport.add_property(('long_prop', 10000000), sync=False)
         transport.add_property(('double_prop', 3.1414), sync=False)
@@ -97,7 +96,7 @@ class TransportTest(unittest.TestCase):
 
     def test_transac_create_remove_transport(self):
         SessionService.open_session("test")
-        transport = Transport(name="transport_test")
+        transport = Transport(name="test_transac_create_remove_transport")
         transport.save()
         SessionService.commit()
         self.assertIsNotNone(transport.id)
@@ -107,20 +106,19 @@ class TransportTest(unittest.TestCase):
 
     def test_transac_get_transports(self):
         SessionService.open_session("test")
-        init_transport_count = TransportService.get_transports().__len__()
-        transport = Transport(name="transport_test")
+        transport = Transport(name="test_transac_get_transports")
         transport.save()
         SessionService.commit()
-        self.assertEqual(TransportService.get_transports().__len__(), init_transport_count + 1)
+        self.assertTrue(transport in TransportService.get_transports())
         transport.remove()
         SessionService.commit()
-        self.assertEqual(TransportService.get_transports().__len__(), init_transport_count)
+        self.assertFalse(transport in TransportService.get_transports())
         SessionService.commit()
         SessionService.close_session()
 
     def test_transac_transport_properties(self):
         SessionService.open_session("test")
-        transport = Transport(name="transport_test")
+        transport = Transport(name="test_transac_transport_properties")
         transport.add_property(('int_prop', 10), sync=False)
         transport.add_property(('long_prop', 10000000), sync=False)
         transport.add_property(('double_prop', 3.1414), sync=False)

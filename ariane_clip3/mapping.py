@@ -446,6 +446,13 @@ class Cluster(object):
         """
         return str(self.__dict__)
 
+    def __eq__(self, other):
+        """
+        :param other:
+        :return: true if other equal this else false
+        """
+        return self.id.__eq__(other.id)
+
     def save(self):
         """
         save or update this cluster in Ariane Server
@@ -851,6 +858,13 @@ class Container(object):
         """
         return str(self.__dict__)
 
+    def __eq__(self, other):
+        """
+        :param other:
+        :return: true if other equal this else false
+        """
+        return self.id.__eq__(other.id)
+
     def save(self):
         """
         save or update this container in Ariane Server
@@ -1209,6 +1223,13 @@ class Node(object):
         """
         return str(self.__dict__)
 
+    def __eq__(self, other):
+        """
+        :param other:
+        :return: true if other equal this else false
+        """
+        return self.id.__eq__(other.id)
+
     def add_property(self, n_property_tuple, sync=True):
         """
         add property to this node. if this node has no id then it's like sync=False.
@@ -1550,6 +1571,13 @@ class Gate(Node):
         """
         return str(self.__dict__)
 
+    def __eq__(self, other):
+        """
+        :param other:
+        :return: true if other equal this else false
+        """
+        return self.id.__eq__(other.id)
+
     def save(self):
         ok = True
 
@@ -1744,6 +1772,13 @@ class Endpoint(object):
         :return: this object dict to string
         """
         return str(self.__dict__)
+
+    def __eq__(self, other):
+        """
+        :param other:
+        :return: true if other equal this else false
+        """
+        return self.id.__eq__(other.id)
 
     def add_property(self, e_property_tuple, sync=True):
         """
@@ -2088,6 +2123,13 @@ class Link(object):
         """
         return str(self.__dict__)
 
+    def __eq__(self, other):
+        """
+        :param other:
+        :return: true if other equal this else false
+        """
+        return self.id.__eq__(other.id)
+
     def save(self):
         if self.sep is not None:
             if self.sep.id is None:
@@ -2327,6 +2369,13 @@ class Transport(object):
         :return: this object dict to string
         """
         return str(self.__dict__)
+
+    def __eq__(self, other):
+        """
+        :param other:
+        :return: true if other equal this else false
+        """
+        return self.id.__eq__(other.id)
 
     def save(self):
         consolidated_properties = {}
