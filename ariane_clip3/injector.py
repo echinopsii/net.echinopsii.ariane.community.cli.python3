@@ -96,7 +96,7 @@ class InjectorUITreeService(object):
         :param injector_driver: the rabbitmq driver coming from InjectorService
         :return:
         """
-        args = {'request_q': 'remote.injector.tree'}
+        args = {'request_q': 'ARIANE_INJECTOR_REMOTE_TREE_Q'}
         if InjectorUITreeService.requester is None:
             InjectorUITreeService.requester = injector_driver.make_requester(args)
             InjectorUITreeService.requester.start()
@@ -354,7 +354,7 @@ class InjectorCachedRegistryFactoryService(object):
         :param injector_driver: the injector service rabbitmq driver
         :return:
         """
-        args = {'request_q': 'remote.injector.cachefactory'}
+        args = {'request_q': 'ARIANE_INJECTOR_REMOTE_CACHEFACTORY_Q'}
         if InjectorCachedRegistryFactoryService.requester is None:
             InjectorCachedRegistryFactoryService.requester = injector_driver.make_requester(args)
             InjectorCachedRegistryFactoryService.requester.start()
@@ -470,7 +470,7 @@ class InjectorCachedComponentService(object):
         :return:
         """
         InjectorCachedComponentService.driver = injector_driver
-        args = {'request_q': 'remote.injector.comp'}
+        args = {'request_q': 'ARIANE_INJECTOR_REMOTE_COMP_Q'}
         if InjectorCachedComponentService.requester is None:
             InjectorCachedComponentService.requester = injector_driver.make_requester(args)
             InjectorCachedComponentService.requester.start()
@@ -817,7 +817,7 @@ class InjectorCachedGearService(object):
         :param cache_id: the cache id of the Ariane server where to create/update gears
         :return:
         """
-        args = {'request_q': 'remote.injector.gear'}
+        args = {'request_q': 'ARIANE_INJECTOR_REMOTE_GEAR_Q'}
         if InjectorCachedGearService.requester is None:
             InjectorCachedGearService.requester = injector_driver.make_requester(args)
             InjectorCachedGearService.requester.start()
