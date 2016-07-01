@@ -443,7 +443,7 @@ class Cluster(object):
         :param cid: cluster id
         :param name: name
         :param containers_id: containers id table
-        :param ignore_sync: ignore ariane server synchornisation if false. (default true)
+        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
         is_sync = False
@@ -849,7 +849,7 @@ class Container(object):
         :param product: product launched by this container
         :param c_type: specify the type in the product spectrum type - optional
         :param properties: the container properties
-        :param ignore_sync: ignore ariane server synchornisation if false. (default true)
+        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
         is_sync = False
@@ -1223,7 +1223,8 @@ class Node(object):
             child_nodes_id=json_obj['nodeChildNodesID'],
             twin_nodes_id=json_obj['nodeTwinNodesID'],
             endpoints_id=json_obj['nodeEndpointsID'],
-            properties=json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
+            properties=json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None,
+            ignore_sync=True
         )
 
     def node_2_json(self):
@@ -1268,7 +1269,7 @@ class Node(object):
 
     def __init__(self, nid=None, name=None, container_id=None, container=None,
                  parent_node_id=None, parent_node=None, child_nodes_id=None, twin_nodes_id=None,
-                 endpoints_id=None, properties=None):
+                 endpoints_id=None, properties=None, ignore_sync=False):
         """
         initialize container object
         :param nid: node id - defined by ariane server
@@ -1281,20 +1282,38 @@ class Node(object):
         :param twin_nodes_id: twin nodes id list
         :param endpoints_id: endpoints id list
         :param properties: node properties
+        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
-        self.id = nid
-        self.name = name
-        self.container_id = container_id
+        is_sync = False
+        if (nid is not None or (name is not None and (container_id is not None or parent_node_id is not None))) \
+                and not ignore_sync:
+            node_on_ariane = NodeService.find_node(nid=nid, name=name, cid=container_id, pnid=parent_node_id)
+            if node_on_ariane is not None:
+                is_sync = True
+                self.id = node_on_ariane.id
+                self.name = node_on_ariane.name
+                self.container_id = node_on_ariane.container_id
+                self.parent_node_id = node_on_ariane.parent_node_id
+                self.child_nodes_id = node_on_ariane.child_nodes_id
+                self.twin_nodes_id = node_on_ariane.twin_nodes_id
+                self.endpoints_id = node_on_ariane.endpoints_id
+                self.properties = node_on_ariane.properties
+
+        if not is_sync:
+            self.id = nid
+            self.name = name
+            self.container_id = container_id
+            self.parent_node_id = parent_node_id
+            self.child_nodes_id = child_nodes_id
+            self.twin_nodes_id = twin_nodes_id
+            self.endpoints_id = endpoints_id
+            self.properties = properties
+
         self.container = container
-        self.parent_node_id = parent_node_id
         self.parent_node = parent_node
-        self.child_nodes_id = child_nodes_id
-        self.twin_nodes_id = twin_nodes_id
         self.twin_nodes_2_add = []
         self.twin_nodes_2_rm = []
-        self.endpoints_id = endpoints_id
-        self.properties = properties
         self.properties_2_add = []
         self.properties_2_rm = []
 
