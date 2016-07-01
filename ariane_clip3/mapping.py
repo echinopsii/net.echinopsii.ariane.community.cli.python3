@@ -443,6 +443,7 @@ class Cluster(object):
         :param cid: cluster id
         :param name: name
         :param containers_id: containers id table
+        :param ignore_sync: ignore ariane server synchornisation if false. (default true)
         :return:
         """
         is_sync = False
@@ -662,7 +663,8 @@ class Container(object):
             company=json_obj['containerCompany'],
             product=json_obj['containerProduct'],
             c_type=json_obj['containerType'],
-            properties=json_obj['containerProperties'] if 'containerProperties' in json_obj else None
+            properties=json_obj['containerProperties'] if 'containerProperties' in json_obj else None,
+            ignore_sync=True
         )
 
     def container_2_json(self):
@@ -729,7 +731,10 @@ class Container(object):
         if not sync or self.id is None:
             self.properties_2_add.append(c_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(MappingService.property_params(c_property_tuple[0], c_property_tuple[1]))
+            params = SessionService.complete_transactional_req(MappingService.property_params(
+                c_property_tuple[0],
+                c_property_tuple[1])
+            )
             params['ID'] = self.id
             args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = ContainerService.requester.call(args)
@@ -827,9 +832,9 @@ class Container(object):
 
     def __init__(self, cid=None, name=None,
                  primary_admin_gate=None, gate_uri=None, primary_admin_gate_id=None, primary_admin_gate_name=None,
-                 cluster=None, cluster_id=None, parent_container= None, parent_container_id=None,
+                 cluster=None, cluster_id=None, parent_container=None, parent_container_id=None,
                  child_containers_id=None, gates_id=None, nodes_id=None, company=None, product=None, c_type=None,
-                 properties=None):
+                 properties=None, ignore_sync=False):
         """
         initialize container object
         :param cid: container ID - return by Ariane server on save or sync
@@ -844,31 +849,52 @@ class Container(object):
         :param product: product launched by this container
         :param c_type: specify the type in the product spectrum type - optional
         :param properties: the container properties
+        :param ignore_sync: ignore ariane server synchornisation if false. (default true)
         :return:
         """
-        self.id = cid
-        self.name = name
-        self.gate_uri = gate_uri
-        self.primary_admin_gate_id = primary_admin_gate_id
-        self.primary_admin_gate_name = primary_admin_gate_name
+        is_sync = False
+        if (cid is not None or name is not None) and not ignore_sync:
+            container_on_ariane = ContainerService.find_container(cid=cid, primary_admin_gate_url=gate_uri)
+            if container_on_ariane is not None:
+                is_sync = True
+                self.id = container_on_ariane.id
+                self.name = container_on_ariane.name
+                self.gate_uri = container_on_ariane.gate_uri
+                self.primary_admin_gate_id = container_on_ariane.primary_admin_gate_id
+                self.cluster_id = container_on_ariane.cluster_id
+                self.parent_container_id = container_on_ariane.parent_container_id
+                self.child_containers_id = container_on_ariane.child_containers_id
+                self.gates_id = container_on_ariane.gates_id
+                self.nodes_id = container_on_ariane.nodes_id
+                self.company = container_on_ariane.company
+                self.product = container_on_ariane.product
+                self.type = container_on_ariane.type
+                self.properties = container_on_ariane.properties
+        if not is_sync:
+            self.id = cid
+            self.name = name
+            self.gate_uri = gate_uri
+            self.primary_admin_gate_id = primary_admin_gate_id
+            self.cluster_id = cluster_id
+            self.parent_container_id = parent_container_id
+            self.child_containers_id = child_containers_id
+            self.gates_id = gates_id
+            self.nodes_id = nodes_id
+            self.company = company
+            self.product = product
+            self.type = c_type
+            self.properties = properties
+
         self.primary_admin_gate = primary_admin_gate
-        self.cluster_id = cluster_id
+        self.primary_admin_gate_name = primary_admin_gate_name
         self.cluster = cluster
-        self.parent_container_id = parent_container_id
         self.parent_container = parent_container
-        self.child_containers_id = child_containers_id
         self.child_containers_2_add = []
         self.child_containers_2_rm = []
-        self.gates_id = gates_id
         self.gates_2_add = []
         self.gates_2_rm = []
-        self.nodes_id = nodes_id
         self.nodes_2_add = []
         self.nodes_2_rm = []
-        self.company = company
-        self.product = product
-        self.type = c_type
-        self.properties = properties
         self.properties_2_add = []
         self.properties_2_rm = []
 
