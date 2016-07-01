@@ -1101,26 +1101,56 @@ class NodeService(object):
         NodeService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
-    def find_node(endpoint_url=None, nid=None, selector=None):
+    def find_node(endpoint_url=None, nid=None, selector=None, name=None, cid=None, pnid=None):
         """
         find node according to endpoint url or node ID. if both are defined then search will focus on ID only
         :param endpoint_url: endpoint's url owned by node to found
         :param nid: node id
-        :param selector: selector string like <node fiel> <operation (= { =, !=, >=, >, <, <= , like, =~})> <value (= { number, String, regex })>
+        :param selector: selector string like <node fiel> <operation (= { =, !=, >=, >, <, <= , like, =~})>
+        <value (= { number, String, regex })>
+        :param name: node name to found in container with provided cid or in parent node with provided pnid
+        :param cid: container id
+        :param pnid: parent node id
         :return: the found node or None if not found
         """
         ret = None
-        if (nid is None or not nid) and (endpoint_url is None or not endpoint_url) and (selector is None or not selector):
-            raise exceptions.ArianeCallParametersError('id and endpoint_url')
+        if (nid is None or not nid) and (endpoint_url is None or not endpoint_url) and \
+                (selector is None or not selector) and (name is None or not name):
+            raise exceptions.ArianeCallParametersError('id and endpoint_url and selector and name')
 
-        if (nid is not None and nid) and ((endpoint_url is not None and endpoint_url) or (selector is not None and selector)):
-            LOGGER.warn('Both id, selector and endpoint url are defined. Will give you search on id.')
+        if (nid is not None and nid) and \
+                ((endpoint_url is not None and endpoint_url) or (selector is not None and selector) or
+                 (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid)))):
+            LOGGER.warn('Both id and other search params are defined. Will give you search on id.')
             endpoint_url = None
             selector = None
+            name = None
+            cid = None
+            pnid = None
 
-        if (endpoint_url is not None and endpoint_url) and (selector is not None and selector):
-            LOGGER.warn('Both endpoint url and selector are defined. Will give you search based on endpoint url')
+        if (endpoint_url is not None and endpoint_url) and \
+                ((selector is not None and selector) or
+                 (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid)))):
+            LOGGER.warn('Both endpoint url other search params are defined. Will give you search based on endpoint url')
             selector = None
+            name = None
+            cid = None
+            pnid = None
+
+        if (selector is not None and selector) and \
+                (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid))):
+            LOGGER.warn('Both selector other search params are defined. Will give you search based on selector')
+            name = None
+            cid = None
+            pnid = None
+
+        if (name is not None and name) and ((cid is not None and cid) and (pnid is not None and pnid)):
+            LOGGER.warn('search node by name : both container ID and parent node ID are defined. '
+                        'Will give you search based on parent node id')
+            cid = None
+
+        if (name is not None and name) and ((cid is None or not cid) and (pnid is None or not pnid)):
+            raise exceptions.ArianeCallParametersError('cid and pnid')
 
         params = None
         return_set_of_nodes = False
@@ -1131,6 +1161,11 @@ class NodeService(object):
         elif selector is not None and selector:
             params = SessionService.complete_transactional_req({'selector': selector})
             return_set_of_nodes = True
+        elif name is not None and name:
+            if cid is not None and cid:
+                params = SessionService.complete_transactional_req({'name': name, 'containerID': cid})
+            elif pnid is not None and pnid:
+                params = SessionService.complete_transactional_req({'name': name, 'parentNodeID': pnid})
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
@@ -1231,7 +1266,7 @@ class Node(object):
                 self.endpoints_id = json_obj['nodeEndpointsID']
                 self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
 
-    def __init__(self, nid=None, name=None,container_id=None, container=None,
+    def __init__(self, nid=None, name=None, container_id=None, container=None,
                  parent_node_id=None, parent_node=None, child_nodes_id=None, twin_nodes_id=None,
                  endpoints_id=None, properties=None):
         """

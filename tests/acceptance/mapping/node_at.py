@@ -165,6 +165,23 @@ class NodeTest(unittest.TestCase):
         node.remove()
         self.assertIsNone(NodeService.find_node(selector="nodeName =~ '.*pid.*cmd'"))
 
+    def test_find_node_by_name_in_container(self):
+        node = Node(name="mysqld", container_id=self.container1.id)
+        node.save()
+        self.assertIsNotNone(NodeService.find_node(name=node.name, cid=node.container_id))
+        node.remove()
+        self.assertIsNone(NodeService.find_node(name=node.name, cid=node.container_id))
+
+    def test_find_node_by_name_in_parent_node(self):
+        pnode = Node(name="mysqld", container_id=self.container1.id)
+        pnode.save()
+        node = Node(name="a_database", container_id=self.container1.id, parent_node_id=pnode.id)
+        node.save()
+        self.assertIsNotNone(NodeService.find_node(name=node.name, pnid=node.parent_node_id))
+        node.remove()
+        self.assertIsNone(NodeService.find_node(name=node.name, pnid=node.parent_node_id))
+        pnode.remove()
+
     def test_get_nodes(self):
         node = Node(name="mysqld", container_id=self.container1.id)
         node.save()
