@@ -2190,7 +2190,8 @@ class Link(object):
             lid=json_obj['linkID'],
             source_endpoint_id=json_obj['linkSEPID'],
             target_endpoint_id=json_obj['linkTEPID'] if 'linkTEPID' in json_obj else None,
-            transport_id=json_obj['linkTRPID']
+            transport_id=json_obj['linkTRPID'],
+            ignore_sync=True
         )
 
     def link_2_json(self):
@@ -2222,14 +2223,36 @@ class Link(object):
                 self.trp_id = json_obj['linkTRPID']
 
     def __init__(self, lid=None, source_endpoint=None, source_endpoint_id=None, target_endpoint=None,
-                 target_endpoint_id=None, transport=None, transport_id=None):
-        self.id = lid
+                 target_endpoint_id=None, transport=None, transport_id=None, ignore_sync=False):
+        """
+        :param lid:
+        :param source_endpoint:
+        :param source_endpoint_id:
+        :param target_endpoint:
+        :param target_endpoint_id:
+        :param transport:
+        :param transport_id:
+        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
+        :return:
+        """
+        is_sync = False
+        if (lid is not None or (source_endpoint_id is not None and target_endpoint_id is not None)) and not ignore_sync:
+            link_on_ariane = LinkService.find_link(lid=lid, sep_id=source_endpoint_id, tep_id=target_endpoint_id)
+            if link_on_ariane is not None:
+                is_sync = True
+                self.id = link_on_ariane.id
+                self.sep_id = link_on_ariane.sep_id
+                self.tep_id = link_on_ariane.tep_id
+                self.trp_id = link_on_ariane.trp_id
+        if not is_sync:
+            self.id = lid
+            self.sep_id = source_endpoint_id
+            self.tep_id = target_endpoint_id
+            self.trp_id = transport_id
+
         self.sep = source_endpoint
-        self.sep_id = source_endpoint_id
         self.tep = target_endpoint
-        self.tep_id = target_endpoint_id
         self.transport = transport
-        self.trp_id = transport_id
 
     def __str__(self):
         """
