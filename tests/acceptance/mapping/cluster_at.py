@@ -37,9 +37,11 @@ class ClusterTest(unittest.TestCase):
         MappingService(args)
         new_cluster = Cluster(name="test_find_cluster")
         new_cluster.save()
-        self.assertIsNotNone(ClusterService.find_cluster(new_cluster.id))
+        self.assertIsNotNone(ClusterService.find_cluster(cid=new_cluster.id))
+        self.assertIsNotNone(ClusterService.find_cluster(name=new_cluster.name))
         new_cluster.remove()
-        self.assertIsNone(ClusterService.find_cluster(new_cluster.id))
+        self.assertIsNone(ClusterService.find_cluster(cid=new_cluster.id))
+        self.assertIsNone(ClusterService.find_cluster(name=new_cluster.name))
 
     def test_get_clusters(self):
         args = {'type': 'REST', 'base_url': 'http://localhost:6969/ariane/', 'user': 'yoda', 'password': 'secret'}

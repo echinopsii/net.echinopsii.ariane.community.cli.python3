@@ -269,17 +269,27 @@ class ClusterService(object):
         ClusterService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
-    def find_cluster(cid):
+    def find_cluster(cid=None, name=None):
         """
-        find the cluster according to provided ID
+        find the cluster according to provided ID or name
         :param cid: id of cluster to find
+        :param name: name of cluster to find
         :return: the cluster if found else None
         """
         ret = None
-        if cid is None or not cid:
-            raise exceptions.ArianeCallParametersError('id')
+        if (cid is None or not cid) and (name is None or not name):
+            raise exceptions.ArianeCallParametersError('id or name')
 
-        params = SessionService.complete_transactional_req({'ID': cid})
+        if (cid is not None and cid) and (name is not None and name):
+            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            name = None
+
+        params = None
+        if cid is not None and cid:
+            params = SessionService.complete_transactional_req({'ID': cid})
+        elif name is not None and name:
+            params = SessionService.complete_transactional_req({'name': name})
+
         args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = ClusterService.requester.call(args)
         if response.rc == 0:
@@ -325,7 +335,8 @@ class Cluster(object):
         return Cluster(
             cid=json_obj['clusterID'],
             name=json_obj['clusterName'],
-            containers_id=json_obj['clusterContainersID']
+            containers_id=json_obj['clusterContainersID'],
+            ignore_sync=True
         )
 
     def cluster_2_json(self):
@@ -426,7 +437,7 @@ class Cluster(object):
                     container.gate_uri + ' id is None'
                 )
 
-    def __init__(self, cid=None, name=None, containers_id=None):
+    def __init__(self, cid=None, name=None, containers_id=None, ignore_sync=False):
         """
         initialize a cluster
         :param cid: cluster id
@@ -434,9 +445,18 @@ class Cluster(object):
         :param containers_id: containers id table
         :return:
         """
-        self.id = cid
-        self.name = name
-        self.containers_id = containers_id
+        is_sync = False
+        if (cid is not None or name is not None) and not ignore_sync:
+            cluster_on_ariane = ClusterService.find_cluster(cid=cid, name=name)
+            if cluster_on_ariane is not None:
+                is_sync = True
+                self.id = cluster_on_ariane.id
+                self.name = cluster_on_ariane.name
+                self.containers_id = cluster_on_ariane.containers_id
+        if not is_sync:
+            self.id = cid
+            self.name = name
+            self.containers_id = containers_id
         self.containers_2_add = []
         self.containers_2_rm = []
 
