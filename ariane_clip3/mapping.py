@@ -1807,7 +1807,8 @@ class Endpoint(object):
             url=json_obj['endpointURL'],
             parent_node_id=json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None,
             twin_endpoints_id=json_obj['endpointTwinEndpointsID'],
-            properties=json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
+            properties=json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None,
+            ignore_sync=True
         )
 
     def endpoint_2_json(self):
@@ -1845,7 +1846,7 @@ class Endpoint(object):
                 self.properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
 
     def __init__(self, eid=None, url=None, parent_node_id=None, parent_node=None, twin_endpoints_id=None,
-                 properties=None):
+                 properties=None, ignore_sync=False):
         """
         init endpoint
         :param eid: endpoint id
@@ -1854,16 +1855,29 @@ class Endpoint(object):
         :param parent_node: endpoint parent node
         :param twin_endpoints_id: twin endpoint ids
         :param properties: endpoint properties
+        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
-        self.id = eid
-        self.url = url
-        self.parent_node_id = parent_node_id
+        is_sync = False
+        if (eid is not None or url is not None) and not ignore_sync:
+            endpoint_on_ariane = EndpointService.find_endpoint(eid=eid, url=url)
+            if endpoint_on_ariane is not None:
+                is_sync = True
+                self.id = endpoint_on_ariane.id
+                self.url = endpoint_on_ariane.url
+                self.parent_node_id = endpoint_on_ariane.parent_node_id
+                self.twin_endpoints_id = endpoint_on_ariane.twin_endpoints_id
+                self.properties = endpoint_on_ariane.properties
+        if not is_sync:
+            self.id = eid
+            self.url = url
+            self.parent_node_id = parent_node_id
+            self.twin_endpoints_id = twin_endpoints_id
+            self.properties = properties
+
         self.parent_node = parent_node
-        self.twin_endpoints_id = twin_endpoints_id
         self.twin_endpoints_2_add = []
         self.twin_endpoints_2_rm = []
-        self.properties = properties
         self.properties_2_add = []
         self.properties_2_rm = []
 
