@@ -351,23 +351,26 @@ class Cluster(object):
         }
         return json_obj
 
-    def sync(self):
+    def sync(self, json_obj=None):
         """
         synchronize self from Ariane server according its id
         :return:
         """
-        params = None
-        if self.id is not None:
-            params = SessionService.complete_transactional_req({'ID': self.id})
+        if json_obj is None:
+            params = None
+            if self.id is not None:
+                params = SessionService.complete_transactional_req({'ID': self.id})
 
-        if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = ClusterService.requester.call(args)
-            if response.rc is 0:
-                json_obj = response.response_content
-                self.id = json_obj['clusterID']
-                self.name = json_obj['clusterName']
-                self.containers_id = json_obj['clusterContainersID']
+            if params is not None:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                response = ClusterService.requester.call(args)
+                if response.rc is 0:
+                    json_obj = response.response_content
+
+        if json_obj is not None:
+            self.id = json_obj['clusterID']
+            self.name = json_obj['clusterName']
+            self.containers_id = json_obj['clusterContainersID']
 
     def add_container(self, container, sync=True):
         """
@@ -520,7 +523,7 @@ class Cluster(object):
                     container_2_rm.sync()
         self.containers_2_add.clear()
         self.containers_2_rm.clear()
-        self.sync()
+        self.sync(json_obj=response.response_content)
 
     def remove(self):
         """
@@ -689,34 +692,37 @@ class Container(object):
         }
         return json_obj
 
-    def sync(self):
+    def sync(self, json_obj=None):
         """
         synchronize self from Ariane server according its id
         :return:
         """
-        params = None
-        if self.id is not None:
-            params = SessionService.complete_transactional_req({'ID': self.id})
+        if json_obj is None:
+            params = None
+            if self.id is not None:
+                params = SessionService.complete_transactional_req({'ID': self.id})
 
-        if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = ContainerService.requester.call(args)
-            if response.rc is 0:
-                json_obj = response.response_content
-                self.id = json_obj['containerID']
-                self.name = json_obj['containerName']
-                self.gate_uri = json_obj['containerGateURI']
-                self.primary_admin_gate_id = json_obj['containerPrimaryAdminGateID']
-                self.cluster_id = json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None
-                self.parent_container_id = json_obj['containerParentContainerID'] if 'containerParentContainerID' \
-                                                                                     in json_obj else None
-                self.child_containers_id = json_obj['containerChildContainersID']
-                self.gates_id = json_obj['containerGatesID']
-                self.nodes_id = json_obj['containerNodesID']
-                self.company = json_obj['containerCompany']
-                self.product = json_obj['containerProduct']
-                self.type = json_obj['containerType']
-                self.properties = json_obj['containerProperties'] if 'containerProperties' in json_obj else None
+            if params is not None:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                response = ContainerService.requester.call(args)
+                if response.rc is 0:
+                    json_obj = response.response_content
+
+        if json_obj is not None:
+            self.id = json_obj['containerID']
+            self.name = json_obj['containerName']
+            self.gate_uri = json_obj['containerGateURI']
+            self.primary_admin_gate_id = json_obj['containerPrimaryAdminGateID']
+            self.cluster_id = json_obj['containerClusterID'] if 'containerClusterID' in json_obj else None
+            self.parent_container_id = json_obj['containerParentContainerID'] if 'containerParentContainerID' \
+                                                                                 in json_obj else None
+            self.child_containers_id = json_obj['containerChildContainersID']
+            self.gates_id = json_obj['containerGatesID']
+            self.nodes_id = json_obj['containerNodesID']
+            self.company = json_obj['containerCompany']
+            self.product = json_obj['containerProduct']
+            self.type = json_obj['containerType']
+            self.properties = json_obj['containerProperties'] if 'containerProperties' in json_obj else None
 
     def add_property(self, c_property_tuple, sync=True):
         """
@@ -1064,7 +1070,7 @@ class Container(object):
         self.gates_2_rm.clear()
         self.properties_2_add.clear()
         self.properties_2_rm.clear()
-        self.sync()
+        self.sync(json_obj=response.response_content)
 
     def remove(self):
         """
@@ -1244,28 +1250,31 @@ class Node(object):
         }
         return json_obj
 
-    def sync(self):
+    def sync(self, json_obj=None):
         """
         synchronize this node with the Ariane server node
         :return:
         """
-        params = None
-        if self.id is not None:
-            params = SessionService.complete_transactional_req({'ID': self.id})
+        if json_obj is None:
+            params = None
+            if self.id is not None:
+                params = SessionService.complete_transactional_req({'ID': self.id})
 
-        if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = NodeService.requester.call(args)
-            if response.rc is 0:
-                json_obj = response.response_content
-                self.id = json_obj['nodeID']
-                self.name = json_obj['nodeName']
-                self.container_id = json_obj['nodeContainerID']
-                self.parent_node_id = json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None
-                self.child_nodes_id = json_obj['nodeChildNodesID']
-                self.twin_nodes_id = json_obj['nodeTwinNodesID']
-                self.endpoints_id = json_obj['nodeEndpointsID']
-                self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
+            if params is not None:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                response = NodeService.requester.call(args)
+                if response.rc is 0:
+                    json_obj = response.response_content
+
+        if json_obj is not None:
+            self.id = json_obj['nodeID']
+            self.name = json_obj['nodeName']
+            self.container_id = json_obj['nodeContainerID']
+            self.parent_node_id = json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None
+            self.child_nodes_id = json_obj['nodeChildNodesID']
+            self.twin_nodes_id = json_obj['nodeTwinNodesID']
+            self.endpoints_id = json_obj['nodeEndpointsID']
+            self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
 
     def __init__(self, nid=None, name=None, container_id=None, container=None,
                  parent_node_id=None, parent_node=None, child_nodes_id=None, twin_nodes_id=None,
@@ -1531,7 +1540,7 @@ class Node(object):
         self.twin_nodes_2_rm.clear()
         self.properties_2_add.clear()
         self.properties_2_rm.clear()
-        self.sync()
+        self.sync(json_obj=response.response_content)
 
     def remove(self):
         """
@@ -1629,25 +1638,32 @@ class Gate(Node):
         }
         return json_obj
 
-    def sync(self):
-        params = None
-        if self.id is not None:
-            params = SessionService.complete_transactional_req({'ID': self.id})
+    def sync(self, json_obj=None):
+        if json_obj is None:
+            params = None
+            if self.id is not None:
+                params = SessionService.complete_transactional_req({'ID': self.id})
 
-        if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = GateService.requester.call(args)
-            if response.rc is 0:
-                json_obj = response.response_content
+            if params is not None:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                response = GateService.requester.call(args)
+                if response.rc is 0:
+                    json_obj = response.response_content
+
+        if json_obj is not None:
+            if 'node' in json_obj:
                 node = json_obj['node']
-                self.id = node['nodeID']
-                self.name = node['nodeName']
-                self.container_id = node['nodeContainerID']
-                self.parent_node_id = node['nodeParentNodeID'] if 'nodeParentNodeID' in node else None
-                self.child_nodes_id = node['nodeChildNodesID']
-                self.twin_nodes_id = node['nodeTwinNodesID']
-                self.endpoints_id = node['nodeEndpointsID']
-                self.properties = node['nodeProperties'] if 'nodeProperties' in node else None
+            else:
+                node = json_obj
+            self.id = node['nodeID']
+            self.name = node['nodeName']
+            self.container_id = node['nodeContainerID']
+            self.parent_node_id = node['nodeParentNodeID'] if 'nodeParentNodeID' in node else None
+            self.child_nodes_id = node['nodeChildNodesID']
+            self.twin_nodes_id = node['nodeTwinNodesID']
+            self.endpoints_id = node['nodeEndpointsID']
+            self.properties = node['nodeProperties'] if 'nodeProperties' in node else None
+            if 'containerGatePrimaryAdminEndpointID' in json_obj:
                 self.primary_admin_endpoint_id = json_obj['containerGatePrimaryAdminEndpointID']
 
     def __init__(self, node=None, container_gate_primary_admin_endpoint_id=None,
@@ -1700,11 +1716,8 @@ class Gate(Node):
                              str(response.error_message))
                 ok = False
             else:
-                self.id = response.response_content['node']['nodeID']
-
+                self.sync(json_obj=response.response_content)
         super(Gate, self).save()
-
-        self.sync()
 
     def remove(self):
         super(Gate, self).remove()
@@ -1825,25 +1838,28 @@ class Endpoint(object):
         }
         return json_obj
 
-    def sync(self):
+    def sync(self, json_obj=None):
         """
         synchronize this endpoint with the Ariane server endpoint
         :return:
         """
-        params = None
-        if self.id is not None:
-            params = SessionService.complete_transactional_req({'ID': self.id})
+        if json_obj is None:
+            params = None
+            if self.id is not None:
+                params = SessionService.complete_transactional_req({'ID': self.id})
 
-        if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = EndpointService.requester.call(args)
-            if response.rc is 0:
-                json_obj = response.response_content
-                self.id = json_obj['endpointID']
-                self.url = json_obj['endpointURL']
-                self.parent_node_id = json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None
-                self.twin_endpoints_id = json_obj['endpointTwinEndpointsID']
-                self.properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
+            if params is not None:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                response = EndpointService.requester.call(args)
+                if response.rc is 0:
+                    json_obj = response.response_content
+
+        if json_obj is not None:
+            self.id = json_obj['endpointID']
+            self.url = json_obj['endpointURL']
+            self.parent_node_id = json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None
+            self.twin_endpoints_id = json_obj['endpointTwinEndpointsID']
+            self.properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
 
     def __init__(self, eid=None, url=None, parent_node_id=None, parent_node=None, twin_endpoints_id=None,
                  properties=None, ignore_sync=False):
@@ -2080,7 +2096,7 @@ class Endpoint(object):
         self.twin_endpoints_2_rm.clear()
         self.properties_2_add.clear()
         self.properties_2_rm.clear()
-        self.sync()
+        self.sync(json_obj=response.response_content)
 
     def remove(self):
         """
@@ -2203,24 +2219,27 @@ class Link(object):
         }
         return json_obj
 
-    def sync(self):
+    def sync(self, json_obj=None):
         """
         synchronize this link with the Ariane server link
         :return:
         """
-        params = None
-        if self.id is not None:
-            params = SessionService.complete_transactional_req({'ID': self.id})
+        if json_obj is None:
+            params = None
+            if self.id is not None:
+                params = SessionService.complete_transactional_req({'ID': self.id})
 
-        if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = LinkService.requester.call(args)
-            if response.rc is 0:
-                json_obj = response.response_content
-                self.id = json_obj['linkID']
-                self.sep_id = json_obj['linkSEPID']
-                self.tep_id = json_obj['linkTEPID'] if 'linkTEPID' in json_obj else None
-                self.trp_id = json_obj['linkTRPID']
+            if params is not None:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                response = LinkService.requester.call(args)
+                if response.rc is 0:
+                    json_obj = response.response_content
+
+        if json_obj is not None:
+            self.id = json_obj['linkID']
+            self.sep_id = json_obj['linkSEPID']
+            self.tep_id = json_obj['linkTEPID'] if 'linkTEPID' in json_obj else None
+            self.trp_id = json_obj['linkTRPID']
 
     def __init__(self, lid=None, source_endpoint=None, source_endpoint_id=None, target_endpoint=None,
                  target_endpoint_id=None, transport=None, transport_id=None, ignore_sync=False):
@@ -2310,7 +2329,7 @@ class Link(object):
                 self.tep.sync()
             if self.transport is not None:
                 self.transport.sync()
-        self.sync()
+        self.sync(json_obj=response.response_content)
 
     def remove(self):
         """
@@ -2419,23 +2438,26 @@ class Transport(object):
         }
         return json_obj
 
-    def sync(self):
+    def sync(self, json_obj=None):
         """
         synchronize this transport with the Ariane server transport
         :return:
         """
-        params = None
-        if self.id is not None:
-            params = SessionService.complete_transactional_req({'ID': self.id})
+        if json_obj is None:
+            params = None
+            if self.id is not None:
+                params = SessionService.complete_transactional_req({'ID': self.id})
 
-        if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = TransportService.requester.call(args)
-            if response.rc is 0:
-                json_obj = response.response_content
-                self.id = json_obj['transportID']
-                self.name = json_obj['transportName']
-                self.properties = json_obj['transportProperties'] if 'transportProperties' in json_obj else None
+            if params is not None:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                response = TransportService.requester.call(args)
+                if response.rc is 0:
+                    json_obj = response.response_content
+
+        if json_obj is not None:
+            self.id = json_obj['transportID']
+            self.name = json_obj['transportName']
+            self.properties = json_obj['transportProperties'] if 'transportProperties' in json_obj else None
 
     def add_property(self, t_property_tuple, sync=True):
         """
@@ -2548,7 +2570,7 @@ class Transport(object):
             self.id = response.response_content['transportID']
         self.properties_2_add.clear()
         self.properties_2_rm.clear()
-        self.sync()
+        self.sync(json_obj=response.response_content)
 
     def remove(self):
         """
