@@ -19,6 +19,7 @@ import copy
 import json
 import logging
 import threading
+from ariane_clip3.driver_factory import DriverFactory
 from ariane_clip3 import driver_factory
 from ariane_clip3 import exceptions
 
@@ -29,12 +30,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MappingService(object):
+    driver_type = None
 
     """
     Mapping Service give you convenient way to setup and access mapping object service access by providing
     Ariane Server Mapping REST access configuration
     """
-    def __init__(self, my_args):
+    def __init__(self, mapping_driver):
         """
         setup and start REST driver with provided configuration. setup mapping object subservices singleton :
             => session_service
@@ -45,10 +47,11 @@ class MappingService(object):
             => endpoint_service
             => link_service
             => transport_service
-        :param my_args: provided configuration to access Ariane Server Mapping REST endpoints
+        :param mapping_driver: provided configuration to access Ariane Server Mapping REST endpoints
         :return:
         """
-        self.driver = driver_factory.DriverFactory.make(my_args)
+        MappingService.driver_type = mapping_driver['type']
+        self.driver = driver_factory.DriverFactory.make(mapping_driver)
         self.driver.start()
         self.session_service = SessionService(self.driver)
         self.cluster_service = ClusterService(self.driver)
@@ -63,20 +66,20 @@ class MappingService(object):
     def property_array(value):
         typed_array = []
         if isinstance(value[0], str):
-            typed_array.append("string")
+            typed_array.append('string')
         elif isinstance(value[0], int):
             if isinstance(value[0], bool):
-                typed_array.append("boolean")
+                typed_array.append('boolean')
             else:
-                typed_array.append("long")
+                typed_array.append('long')
         elif isinstance(value[0], float):
-            typed_array.append("double")
+            typed_array.append('double')
         elif isinstance(value[0], bool):
-            typed_array.append("boolean")
+            typed_array.append('boolean')
         elif isinstance(value[0], list):
-            typed_array.append("array")
+            typed_array.append('array')
         elif isinstance(value[0], dict):
-            typed_array.append("map")
+            typed_array.append('map')
             for value_a in value:
                 for key, val in value_a.items():
                     value_a[key] = MappingService.property_map(val)
@@ -171,8 +174,14 @@ class SessionService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/service/session/'}
-        SessionService.requester = mapping_driver.make_requester(args)
+        MappingService.driver_type = mapping_driver.type
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_SESSION_SERVICE_Q'}
+            SessionService.requester = mapping_driver.make_requester(args)
+            SessionService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/service/session/'}
+            SessionService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def open_session(client_id):
@@ -181,8 +190,12 @@ class SessionService(object):
         thread_id = threading.current_thread().ident
         session_id = None
 
-        params = {'clientID': client_id}
-        args = {'http_operation': 'GET', 'operation_path': 'open', 'parameters': params}
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            params = {'OPERATION': 'openSession', 'clientID': client_id}
+            args = {'properties': params}
+        else:
+            params = {'clientID': client_id}
+            args = {'http_operation': 'GET', 'operation_path': 'open', 'parameters': params}
         response = SessionService.requester.call(args)
         if response.rc == 0:
             session_id = response.response_content['sessionID']
@@ -198,8 +211,13 @@ class SessionService(object):
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
             session_id = SessionService.session_registry[thread_id]
-            params = {'sessionID': session_id}
-            args = {'http_operation': 'GET', 'operation_path': 'commit', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'commit', 'sessionID': session_id}
+                args = {'properties': params}
+            else:
+                params = {'sessionID': session_id}
+                args = {'http_operation': 'GET', 'operation_path': 'commit', 'parameters': params}
             response = SessionService.requester.call(args)
             if response.rc != 0:
                 err_msg = 'Problem while committing on session (session_id:' + str(session_id) + '). ' + \
@@ -215,8 +233,13 @@ class SessionService(object):
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
             session_id = SessionService.session_registry[thread_id]
-            params = {'sessionID': session_id}
-            args = {'http_operation': 'GET', 'operation_path': 'rollback', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'rollback', 'sessionID': session_id}
+                args = {'properties': params}
+            else:
+                params = {'sessionID': session_id}
+                args = {'http_operation': 'GET', 'operation_path': 'rollback', 'parameters': params}
             response = SessionService.requester.call(args)
             if response.rc != 0:
                 err_msg = 'Problem while rollbacking on session (session_id:' + str(session_id) + '). ' + \
@@ -232,8 +255,13 @@ class SessionService(object):
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
             session_id = SessionService.session_registry[thread_id]
-            params = {'sessionID': session_id}
-            args = {'http_operation': 'GET', 'operation_path': 'close', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'closeSession', 'sessionID': session_id}
+                args = {'properties': params}
+            else:
+                params = {'sessionID': session_id}
+                args = {'http_operation': 'GET', 'operation_path': 'close', 'parameters': params}
             response = SessionService.requester.call(args)
             if response.rc != 0:
                 err_msg = 'Problem while closing session (session_id:' + str(session_id) + '). ' + \
@@ -250,7 +278,7 @@ class SessionService(object):
     def complete_transactional_req(args):
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
-            if args is None :
+            if args is None:
                 args = {}
             args['sessionID'] = SessionService.session_registry[thread_id]
         return args
@@ -265,8 +293,13 @@ class ClusterService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/domain/clusters/'}
-        ClusterService.requester = mapping_driver.make_requester(args)
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_CLUSTER_SERVICE_Q'}
+            ClusterService.requester = mapping_driver.make_requester(args)
+            ClusterService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/domain/clusters/'}
+            ClusterService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def find_cluster(cid=None, name=None):
@@ -287,10 +320,17 @@ class ClusterService(object):
         params = None
         if cid is not None and cid:
             params = SessionService.complete_transactional_req({'ID': cid})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getCluster'
         elif name is not None and name:
             params = SessionService.complete_transactional_req({'name': name})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getClusterByName'
 
-        args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'properties': params}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
         response = ClusterService.requester.call(args)
         if response.rc == 0:
             ret = Cluster.json_2_cluster(response.response_content)
@@ -307,10 +347,16 @@ class ClusterService(object):
         :return:
         """
         params = SessionService.complete_transactional_req(None)
-        if params is None:
-            args = {'http_operation': 'GET', 'operation_path': ''}
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            if params is None:
+                params = {}
+            params['OPERATION'] = 'getClusters'
+            args = {'properties': params}
         else:
-            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+            if params is None:
+                args = {'http_operation': 'GET', 'operation_path': ''}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
         response = ClusterService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -362,7 +408,11 @@ class Cluster(object):
                 params = SessionService.complete_transactional_req({'ID': self.id})
 
             if params is not None:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getCluster'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
                 response = ClusterService.requester.call(args)
                 if response.rc is 0:
                     json_obj = response.response_content
@@ -390,7 +440,12 @@ class Cluster(object):
                     'ID': self.id,
                     'containerID': container.id
                 })
-                args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'addClusterContainer'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
+
                 response = ClusterService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -424,7 +479,12 @@ class Cluster(object):
                     'ID': self.id,
                     'containerID': container.id
                 })
-                args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'removeClusterContainer'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
+
                 response = ClusterService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -505,11 +565,18 @@ class Cluster(object):
                 consolidated_containers_id.append(container_2_add.id)
         post_payload['clusterContainersID'] = consolidated_containers_id
 
-        args = {
-            'http_operation': 'POST',
-            'operation_path': '',
-            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
-        }
+        params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            # TODO - ADD PAYLOAD PARAM ON CLUSTER CREATION
+            params['OPERATION'] = 'createCluster'
+            args = {'properties': params}
+        else:
+            args = {
+                'http_operation': 'POST',
+                'operation_path': '',
+                'parameters': params
+            }
+
         response = ClusterService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
@@ -536,7 +603,13 @@ class Cluster(object):
             params = SessionService.complete_transactional_req({
                 'name': self.name
             })
-            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'deleteCluster'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
             response = ClusterService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -556,8 +629,13 @@ class ContainerService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/domain/containers/'}
-        ContainerService.requester = mapping_driver.make_requester(args)
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_CONTAINER_SERVICE_Q'}
+            ContainerService.requester = mapping_driver.make_requester(args)
+            ContainerService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/domain/containers/'}
+            ContainerService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def find_container(cid=None, primary_admin_gate_url=None):
@@ -579,11 +657,18 @@ class ContainerService(object):
         params = None
         if cid is not None and cid:
             params = SessionService.complete_transactional_req({'ID': cid})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getContainer'
         elif primary_admin_gate_url is not None and primary_admin_gate_url:
             params = SessionService.complete_transactional_req({'primaryAdminURL': primary_admin_gate_url})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getContainerByPrimaryAdminURL'
 
         if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                args = {"properties": params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc == 0:
                 ret = Container.json_2_container(response.response_content)
@@ -602,9 +687,18 @@ class ContainerService(object):
         """
         params = SessionService.complete_transactional_req(None)
         if params is None:
-            args = {'http_operation': 'GET', 'operation_path': ''}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'getContainers'}
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': ''}
         else:
-            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params["OPERATION"] = "getContainers"
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+
         response = ContainerService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -703,7 +797,12 @@ class Container(object):
                 params = SessionService.complete_transactional_req({'ID': self.id})
 
             if params is not None:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getContainer'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
                 response = ContainerService.requester.call(args)
                 if response.rc is 0:
                     json_obj = response.response_content
@@ -742,7 +841,11 @@ class Container(object):
                 c_property_tuple[1])
             )
             params['ID'] = self.id
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'addContainerProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -768,7 +871,12 @@ class Container(object):
                 'propertyName': c_property_name
             })
 
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'delContainerProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -795,7 +903,15 @@ class Container(object):
                     'ID': self.id,
                     'childContainerID': child_container.id
                 })
-                args = {'http_operation': 'GET', 'operation_path': 'update/childContainers/add', 'parameters': params}
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'addContainerChildContainer'
+                    args = {'properties': params}
+                else:
+                    args = {
+                        'http_operation': 'GET', 'operation_path': 'update/childContainers/add', 'parameters': params
+                    }
+
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -823,9 +939,15 @@ class Container(object):
                     'ID': self.id,
                     'childContainerID': child_container.id
                 })
-                args = {'http_operation': 'GET',
-                        'operation_path': 'update/childContainers/delete',
-                        'parameters': params}
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'delContainerChildContainer'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/childContainers/delete',
+                            'parameters': params}
+
                 response = ContainerService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -1028,11 +1150,19 @@ class Container(object):
             consolidated_container_properties.append(MappingService.property_params(key, value))
         post_payload['containerProperties'] = consolidated_container_properties
 
-        args = {
-            'http_operation': 'POST',
-            'operation_path': '',
-            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
-        }
+        params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            # TODO - ADD PAYLOAD PARAM ON CLUSTER CREATION
+            params['OPERATION'] = 'createContainer'
+            args = {'properties': params}
+            pass
+        else:
+            args = {
+                'http_operation': 'POST',
+                'operation_path': '',
+                'parameters': params
+            }
+
         response = ContainerService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving container' + self.name + '. Reason: ' + str(response.error_message))
@@ -1083,7 +1213,13 @@ class Container(object):
             params = SessionService.complete_transactional_req({
                 'primaryAdminURL': self.gate_uri
             })
-            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'deleteContainer'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
             response = ContainerService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -1103,8 +1239,13 @@ class NodeService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/domain/nodes/'}
-        NodeService.requester = mapping_driver.make_requester(args)
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_NODE_SERVICE_Q'}
+            NodeService.requester = mapping_driver.make_requester(args)
+            NodeService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/domain/nodes/'}
+            NodeService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def find_node(endpoint_url=None, nid=None, selector=None, name=None, cid=None, pnid=None):
@@ -1162,19 +1303,33 @@ class NodeService(object):
         return_set_of_nodes = False
         if nid is not None and nid:
             params = SessionService.complete_transactional_req({'ID': nid})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getNode'
         elif endpoint_url is not None and endpoint_url:
             params = SessionService.complete_transactional_req({'endpointURL': endpoint_url})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getNodeByEndpointURL'
         elif selector is not None and selector:
             params = SessionService.complete_transactional_req({'selector': selector})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getNodes'
             return_set_of_nodes = True
         elif name is not None and name:
             if cid is not None and cid:
                 params = SessionService.complete_transactional_req({'name': name, 'containerID': cid})
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getNodeByName'
             elif pnid is not None and pnid:
                 params = SessionService.complete_transactional_req({'name': name, 'parentNodeID': pnid})
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getNodeByName'
 
         if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
             response = NodeService.requester.call(args)
             if response.rc == 0:
                 if return_set_of_nodes:
@@ -1198,9 +1353,18 @@ class NodeService(object):
         """
         params = SessionService.complete_transactional_req(None)
         if params is None:
-            args = {'http_operation': 'GET', 'operation_path': ''}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'getNodes'}
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': ''}
         else:
-            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getNodes'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+
         response = NodeService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -1261,7 +1425,12 @@ class Node(object):
                 params = SessionService.complete_transactional_req({'ID': self.id})
 
             if params is not None:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getNode'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
                 response = NodeService.requester.call(args)
                 if response.rc is 0:
                     json_obj = response.response_content
@@ -1352,9 +1521,17 @@ class Node(object):
         if not sync or self.id is None:
             self.properties_2_add.append(n_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(MappingService.property_params(n_property_tuple[0], n_property_tuple[1]))
+            params = SessionService.complete_transactional_req(
+                MappingService.property_params(n_property_tuple[0], n_property_tuple[1])
+            )
             params['ID'] = self.id
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'addNodeProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+
             response = NodeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -1380,7 +1557,12 @@ class Node(object):
                 'propertyName': n_property_name
             })
 
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'delNodeProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+
             response = NodeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -1408,9 +1590,15 @@ class Node(object):
                     'ID': self.id,
                     'twinNodeID': twin_node.id
                 })
-                args = {'http_operation': 'GET',
-                        'operation_path': 'update/twinNodes/add',
-                        'parameters': params}
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'addTwinNode'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinNodes/add',
+                            'parameters': params}
+
                 response = NodeService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -1439,9 +1627,15 @@ class Node(object):
                     'ID': self.id,
                     'twinNodeID': twin_node.id
                 })
-                args = {'http_operation': 'GET',
-                        'operation_path': 'update/twinNodes/delete',
-                        'parameters': params}
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'delTwinNode'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinNodes/delete',
+                            'parameters': params}
+
                 response = NodeService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -1516,11 +1710,18 @@ class Node(object):
                 consolidated_node_properties.append(MappingService.property_params(key, value))
         post_payload['nodeProperties'] = consolidated_node_properties
 
-        args = {
-            'http_operation': 'POST',
-            'operation_path': '',
-            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
-        }
+        params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            # TODO
+            params['OPERATION'] = 'createNode'
+            args = {'properties': params}
+        else:
+            args = {
+                'http_operation': 'POST',
+                'operation_path': '',
+                'parameters': params
+            }
+
         response = NodeService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
@@ -1553,7 +1754,12 @@ class Node(object):
             params = SessionService.complete_transactional_req({
                 'ID': self.id
             })
-            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'removeNode'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
             response = NodeService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -1577,8 +1783,13 @@ class GateService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/domain/gates/'}
-        GateService.requester = mapping_driver.make_requester(args)
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_GATE_SERVICE_Q'}
+            GateService.requester = mapping_driver.make_requester(args)
+            GateService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/domain/gates/'}
+            GateService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def find_gate(nid=None):
@@ -1591,7 +1802,13 @@ class GateService(object):
         if nid is None or not nid:
             raise exceptions.ArianeCallParametersError('id')
         params = SessionService.complete_transactional_req({'ID': nid})
-        args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            params['OPERATION'] = 'getGate'
+            args = {'properties': params}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
         response = GateService.requester.call(args)
         if response.rc == 0:
             ret = Gate.json_2_gate(response.response_content)
@@ -1609,9 +1826,18 @@ class GateService(object):
         """
         params = SessionService.complete_transactional_req(None)
         if params is None:
-            args = {'http_operation': 'GET', 'operation_path': ''}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'getGates'}
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': ''}
         else:
-            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getGates'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+
         response = GateService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -1645,7 +1871,12 @@ class Gate(Node):
                 params = SessionService.complete_transactional_req({'ID': self.id})
 
             if params is not None:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getGate'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
                 response = GateService.requester.call(args)
                 if response.rc is 0:
                     json_obj = response.response_content
@@ -1695,8 +1926,6 @@ class Gate(Node):
         return self.id.__eq__(other.id)
 
     def save(self):
-        ok = True
-
         if self.container is not None:
             if self.container.id is None:
                 self.container.save()
@@ -1709,12 +1938,17 @@ class Gate(Node):
                 'containerID': self.container_id,
                 'isPrimaryAdmin': self.is_primary_admin
             })
-            args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'createGate'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+
             response = GateService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' +
+                LOGGER.error('Problem while saving node' + self.name + '. Reason: ' +
                              str(response.error_message))
-                ok = False
             else:
                 self.sync(json_obj=response.response_content)
         super(Gate, self).save()
@@ -1732,8 +1966,13 @@ class EndpointService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/domain/endpoints/'}
-        EndpointService.requester = mapping_driver.make_requester(args)
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_ENDPOINT_SERVICE_Q'}
+            EndpointService.requester = mapping_driver.make_requester(args)
+            EndpointService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/domain/endpoints/'}
+            EndpointService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def find_endpoint(url=None, eid=None, selector=None):
@@ -1761,14 +2000,24 @@ class EndpointService(object):
         return_set_of_endpoints = False
         if eid is not None and eid:
             params = SessionService.complete_transactional_req({'ID': eid})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getEndpoint'
         elif url is not None and url:
             params = SessionService.complete_transactional_req({'URL': url})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getEndpointByURL'
         elif selector is not None and selector:
             params = SessionService.complete_transactional_req({'selector': selector})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getEndpoints'
             return_set_of_endpoints = True
 
         if params is not None:
-            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
             response = EndpointService.requester.call(args)
             if response.rc == 0:
                 if return_set_of_endpoints:
@@ -1792,9 +2041,18 @@ class EndpointService(object):
         """
         params = SessionService.complete_transactional_req(None)
         if params is None:
-            args = {'http_operation': 'GET', 'operation_path': ''}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'getEndpoints'}
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': ''}
         else:
-            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getEndpoints'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+
         response = EndpointService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -1849,7 +2107,12 @@ class Endpoint(object):
                 params = SessionService.complete_transactional_req({'ID': self.id})
 
             if params is not None:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getEndpoint'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
                 response = EndpointService.requester.call(args)
                 if response.rc is 0:
                     json_obj = response.response_content
@@ -1923,9 +2186,17 @@ class Endpoint(object):
         if not sync or self.id is None:
             self.properties_2_add.append(e_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(MappingService.property_params(e_property_tuple[0], e_property_tuple[1]))
+            params = SessionService.complete_transactional_req(
+                MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
+            )
             params['ID'] = self.id
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'addEndpointProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -1951,7 +2222,11 @@ class Endpoint(object):
                 'propertyName': e_property_name
             })
 
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'removeEndpointProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -1979,9 +2254,15 @@ class Endpoint(object):
                     'ID': self.id,
                     'twinEndpointID': twin_endpoint.id
                 })
-                args = {'http_operation': 'GET',
-                        'operation_path': 'update/twinEndpoints/add',
-                        'parameters': params}
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'addTwinEndpoint'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinEndpoints/add',
+                            'parameters': params}
+
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -2010,9 +2291,15 @@ class Endpoint(object):
                     'ID': self.id,
                     'twinEndpointID': twin_endpoint.id
                 })
-                args = {'http_operation': 'GET',
-                        'operation_path': 'update/twinEndpoints/delete',
-                        'parameters': params}
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'removeTwinEndpoint'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET',
+                            'operation_path': 'update/twinEndpoints/delete',
+                            'parameters': params}
+
                 response = EndpointService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.debug(
@@ -2028,7 +2315,6 @@ class Endpoint(object):
         save or update endpoint to Ariane server
         :return:
         """
-        ok = True
         if self.parent_node is not None:
             if self.parent_node.id is None:
                 self.parent_node.save()
@@ -2074,11 +2360,18 @@ class Endpoint(object):
             consolidated_endpoint_properties.append(MappingService.property_params(key, value))
         post_payload['endpointProperties'] = consolidated_endpoint_properties
 
-        args = {
-            'http_operation': 'POST',
-            'operation_path': '',
-            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
-        }
+        params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            # TODO
+            params['OPERATION'] = 'createEndpoint'
+            args = {'properties': params}
+        else:
+            args = {
+                'http_operation': 'POST',
+                'operation_path': '',
+                'parameters': params
+            }
+
         response = EndpointService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving endpoint ' + self.url + '. Reason: ' + str(response.error_message))
@@ -2109,7 +2402,13 @@ class Endpoint(object):
             params = SessionService.complete_transactional_req({
                 'ID': self.id
             })
-            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'deleteEndpoint'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
             response = EndpointService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -2131,8 +2430,13 @@ class LinkService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/domain/links/'}
-        LinkService.requester = mapping_driver.make_requester(args)
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_LINK_SERVICE_Q'}
+            LinkService.requester = mapping_driver.make_requester(args)
+            LinkService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/domain/links/'}
+            LinkService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def find_link(lid=None, sep_id=None, tep_id=None):
@@ -2153,14 +2457,29 @@ class LinkService(object):
         params = None
         if lid is not None and lid:
             params = SessionService.complete_transactional_req({'ID': lid})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getLink'
         elif sep_id is not None and sep_id and tep_id is not None and tep_id:
             params = SessionService.complete_transactional_req({'SEPID': sep_id, 'TEPID': tep_id})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                # TODO
+                params['OPERATION'] = 'getLink'
         elif sep_id is not None and sep_id and (tep_id is None or not tep_id):
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                # TODO
+                params['OPERATION'] = 'getLink'
             params = SessionService.complete_transactional_req({'SEPID': sep_id})
         else:
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                # TODO
+                params['OPERATION'] = 'getLink'
             params = SessionService.complete_transactional_req({'TEPID': tep_id})
 
-        args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'properties': params}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
         response = LinkService.requester.call(args)
         if response.rc == 0:
             if (lid is not None and lid) or (sep_id is not None and sep_id and tep_id is not None and tep_id):
@@ -2183,9 +2502,18 @@ class LinkService(object):
         """
         params = SessionService.complete_transactional_req(None)
         if params is None:
-            args = {'http_operation': 'GET', 'operation_path': ''}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'getLinks'}
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': ''}
         else:
-            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getLinks'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+
         response = LinkService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -2230,7 +2558,12 @@ class Link(object):
                 params = SessionService.complete_transactional_req({'ID': self.id})
 
             if params is not None:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getLink'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
                 response = LinkService.requester.call(args)
                 if response.rc is 0:
                     json_obj = response.response_content
@@ -2312,11 +2645,18 @@ class Link(object):
         if self.trp_id is not None:
             post_payload['linkTRPID'] = self.trp_id
 
-        args = {
-            'http_operation': 'POST',
-            'operation_path': '',
-            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
-        }
+        params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            # TODO
+            params['OPERATION'] = 'createLink'
+            args = {'properties': params}
+        else:
+            args = {
+                'http_operation': 'POST',
+                'operation_path': '',
+                'parameters': params
+            }
+
         response = LinkService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
@@ -2342,7 +2682,13 @@ class Link(object):
             params = SessionService.complete_transactional_req({
                 'ID': self.id
             })
-            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'deleteLink'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
             response = LinkService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -2362,8 +2708,13 @@ class TransportService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        args = {'repository_path': 'rest/mapping/domain/transports/'}
-        TransportService.requester = mapping_driver.make_requester(args)
+        if MappingService.driver_type == DriverFactory.DRIVER_RBMQ:
+            args = {'request_q': 'ARIANE_MAPPING_TRANSPORT_SERVICE_Q'}
+            TransportService.requester = mapping_driver.make_requester(args)
+            TransportService.requester.start()
+        else:
+            args = {'repository_path': 'rest/mapping/domain/transports/'}
+            TransportService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
     def find_transport(tid=None):
@@ -2379,7 +2730,13 @@ class TransportService(object):
         params = SessionService.complete_transactional_req({
             'ID': tid
         })
-        args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            params['OPERATION'] = 'getTransport'
+            args = {'properties': params}
+        else:
+            args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
         response = TransportService.requester.call(args)
         if response.rc == 0:
             ret = Transport.json_2_transport(response.response_content)
@@ -2397,9 +2754,18 @@ class TransportService(object):
         """
         params = SessionService.complete_transactional_req(None)
         if params is None:
-            args = {'http_operation': 'GET', 'operation_path': ''}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params = {'OPERATION': 'getTransports'}
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': ''}
         else:
-            args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getTransports'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+
         response = TransportService.requester.call(args)
         ret = None
         if response.rc is 0:
@@ -2423,7 +2789,7 @@ class Transport(object):
         return Transport(
             tid=json_obj['transportID'],
             name=json_obj['transportName'],
-            properties=json_obj['transportProperties']  if 'transportProperties' in json_obj else None
+            properties=json_obj['transportProperties'] if 'transportProperties' in json_obj else None
         )
 
     def transport_2_json(self):
@@ -2449,7 +2815,11 @@ class Transport(object):
                 params = SessionService.complete_transactional_req({'ID': self.id})
 
             if params is not None:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getTransport'
+                    args = {'properties': params}
+                else:
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
                 response = TransportService.requester.call(args)
                 if response.rc is 0:
                     json_obj = response.response_content
@@ -2472,9 +2842,17 @@ class Transport(object):
         if not sync or self.id is None:
             self.properties_2_add.append(t_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(MappingService.property_params(t_property_tuple[0], t_property_tuple[1]))
+            params = SessionService.complete_transactional_req(
+                MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
+            )
             params['ID'] = self.id
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'addTransportProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+
             response = TransportService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -2499,7 +2877,13 @@ class Transport(object):
                 'ID': self.id,
                 'propertyName': t_property_name
             })
-            args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'removeTransportProperty'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+
             response = TransportService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
@@ -2558,11 +2942,17 @@ class Transport(object):
             consolidated_transport_properties.append(MappingService.property_params(key, value))
         post_payload['transportProperties'] = consolidated_transport_properties
 
-        args = {
-            'http_operation': 'POST',
-            'operation_path': '',
-            'parameters': SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
-        }
+        params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            params['OPERATION'] = 'createTransport'
+            args = {'properties': params}
+        else:
+            args = {
+                'http_operation': 'POST',
+                'operation_path': '',
+                'parameters': params
+            }
+
         response = TransportService.requester.call(args)
         if response.rc is not 0:
             LOGGER.debug('Problem while saving transport {' + self.name + '}. Reason: ' + str(response.error_message))
@@ -2583,7 +2973,12 @@ class Transport(object):
             params = SessionService.complete_transactional_req({
                 'ID': self.id
             })
-            args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'deleteTransport'
+                args = {'properties': params}
+            else:
+                args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = TransportService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.debug(
