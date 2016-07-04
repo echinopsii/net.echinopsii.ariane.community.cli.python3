@@ -120,6 +120,7 @@ class Driver(object):
         if 'password' not in my_args or my_args['password'] is None or not my_args['password']:
             raise exceptions.ArianeConfError('password')
 
+        self.type = my_args['type']
         self.user = my_args['user']
         self.password = my_args['password']
         self.base_url = my_args['base_url']

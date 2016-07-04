@@ -189,6 +189,7 @@ class Driver(object):
         :param my_args: dict like {[host, port]}. Default = None
         :return: self
         """
+        self.type = my_args['type']
         self.configuration_OK = False
         try:
             self.connection_args = Driver.validate_driver_conf(my_args)
