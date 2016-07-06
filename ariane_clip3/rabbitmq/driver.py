@@ -161,12 +161,15 @@ class Requester(pykka.ThreadingActor):
                 )
             else:
                 try:
-                    if 'PROPERTIES' in self.response['props'].headers:
-                        props = json.loads(self.response['props'].headers['PROPERTIES'])
+                    if 'MSG_PROPERTIES' in self.response['props'].headers:
+                        props = json.loads(self.response['props'].headers['MSG_PROPERTIES'])
                     else:
                         props = None
                 except ValueError:
-                    props = self.response['props'].headers['PROPERTIES']
+                    if 'MSG_PROPERTIES' in self.response['props'].headers:
+                        props = self.response['props'].headers['MSG_PROPERTIES']
+                    else:
+                        props = None
                 try:
                     content = json.loads(self.response['body'].decode("UTF-8"))
                 except ValueError:
