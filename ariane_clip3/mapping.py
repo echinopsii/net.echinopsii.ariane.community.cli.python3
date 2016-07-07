@@ -62,6 +62,18 @@ class MappingService(object):
         self.link_service = LinkService(self.driver)
         self.transport_service = TransportService(self.driver)
 
+    def stop(self):
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            self.driver.stop()
+        self.session_service = None
+        self.cluster_service = None
+        self.container_service = None
+        self.node_service = None
+        self.gate_service = None
+        self.endpoint_service = None
+        self.link_service = None
+        self.transport_service = None
+
     @staticmethod
     def property_array(value):
         typed_array = []
@@ -197,6 +209,10 @@ class SessionService(object):
             params = {'clientID': client_id}
             args = {'http_operation': 'GET', 'operation_path': 'open', 'parameters': params}
         response = SessionService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc == 0:
             session_id = response.response_content['sessionID']
             SessionService.session_registry[thread_id] = session_id
@@ -218,7 +234,12 @@ class SessionService(object):
             else:
                 params = {'sessionID': session_id}
                 args = {'http_operation': 'GET', 'operation_path': 'commit', 'parameters': params}
+
             response = SessionService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc != 0:
                 err_msg = 'Problem while committing on session (session_id:' + str(session_id) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -240,7 +261,12 @@ class SessionService(object):
             else:
                 params = {'sessionID': session_id}
                 args = {'http_operation': 'GET', 'operation_path': 'rollback', 'parameters': params}
+
             response = SessionService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc != 0:
                 err_msg = 'Problem while rollbacking on session (session_id:' + str(session_id) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -262,7 +288,12 @@ class SessionService(object):
             else:
                 params = {'sessionID': session_id}
                 args = {'http_operation': 'GET', 'operation_path': 'close', 'parameters': params}
+
             response = SessionService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc != 0:
                 err_msg = 'Problem while closing session (session_id:' + str(session_id) + '). ' + \
                           'Reason: ' + str(response.error_message)
@@ -331,7 +362,12 @@ class ClusterService(object):
             args = {'properties': params}
         else:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
         response = ClusterService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc == 0:
             ret = Cluster.json_2_cluster(response.response_content)
         else:
@@ -357,7 +393,12 @@ class ClusterService(object):
                 args = {'http_operation': 'GET', 'operation_path': ''}
             else:
                 args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
+
         response = ClusterService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         ret = None
         if response.rc is 0:
             ret = []
@@ -413,7 +454,12 @@ class Cluster(object):
                     args = {'properties': params}
                 else:
                     args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
                 response = ClusterService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is 0:
                     json_obj = response.response_content
 
@@ -447,6 +493,10 @@ class Cluster(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/containers/add', 'parameters': params}
 
                 response = ClusterService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating cluster ' + self.name + ' name. Reason: ' +
@@ -486,6 +536,10 @@ class Cluster(object):
                     args = {'http_operation': 'GET', 'operation_path': 'update/containers/delete', 'parameters': params}
 
                 response = ClusterService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating cluster ' + self.name + ' name. Reason: ' +
@@ -567,7 +621,6 @@ class Cluster(object):
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
-            # TODO - ADD PAYLOAD PARAM ON CLUSTER CREATION
             params['OPERATION'] = 'createCluster'
             args = {'properties': params}
         else:
@@ -578,6 +631,10 @@ class Cluster(object):
             }
 
         response = ClusterService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc is not 0:
             LOGGER.debug('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
         else:
@@ -611,6 +668,10 @@ class Cluster(object):
                 args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
 
             response = ClusterService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while deleting cluster ' + self.name + '. Reason: ' + str(response.error_message)
@@ -669,7 +730,12 @@ class ContainerService(object):
                 args = {"properties": params}
             else:
                 args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
             response = ContainerService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc == 0:
                 ret = Container.json_2_container(response.response_content)
             else:
@@ -700,6 +766,10 @@ class ContainerService(object):
                 args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
 
         response = ContainerService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         ret = None
         if response.rc is 0:
             ret = []
@@ -804,6 +874,10 @@ class Container(object):
                     args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
                 response = ContainerService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is 0:
                     json_obj = response.response_content
 
@@ -846,7 +920,12 @@ class Container(object):
                 args = {'properties': params}
             else:
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
+
             response = ContainerService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating container ' + self.name + ' name. Reason: ' +
@@ -878,6 +957,10 @@ class Container(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
 
             response = ContainerService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating container ' + self.name + ' name. Reason: ' +
@@ -913,6 +996,10 @@ class Container(object):
                     }
 
                 response = ContainerService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating container ' + self.name + ' name. Reason: ' +
@@ -949,6 +1036,10 @@ class Container(object):
                             'parameters': params}
 
                 response = ContainerService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating container ' + self.name + ' name. Reason: ' +
@@ -1152,7 +1243,6 @@ class Container(object):
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
-            # TODO - ADD PAYLOAD PARAM ON CLUSTER CREATION
             params['OPERATION'] = 'createContainer'
             args = {'properties': params}
             pass
@@ -1164,6 +1254,10 @@ class Container(object):
             }
 
         response = ContainerService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc is not 0:
             LOGGER.debug('Problem while saving container' + self.name + '. Reason: ' + str(response.error_message))
         else:
@@ -1221,6 +1315,10 @@ class Container(object):
                 args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
 
             response = ContainerService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while deleting container ' + self.gate_uri + '. Reason: ' + str(response.error_message)
@@ -1331,6 +1429,10 @@ class NodeService(object):
                 args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
             response = NodeService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc == 0:
                 if return_set_of_nodes:
                     ret = []
@@ -1366,6 +1468,10 @@ class NodeService(object):
                 args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
 
         response = NodeService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         ret = None
         if response.rc is 0:
             ret = []
@@ -1432,6 +1538,10 @@ class Node(object):
                     args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
                 response = NodeService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is 0:
                     json_obj = response.response_content
 
@@ -1533,6 +1643,10 @@ class Node(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
 
             response = NodeService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating node ' + self.name + ' name. Reason: ' +
@@ -1564,6 +1678,10 @@ class Node(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
 
             response = NodeService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating node ' + self.name + ' name. Reason: ' +
@@ -1600,6 +1718,10 @@ class Node(object):
                             'parameters': params}
 
                 response = NodeService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating node ' + self.name + ' name. Reason: ' +
@@ -1637,6 +1759,10 @@ class Node(object):
                             'parameters': params}
 
                 response = NodeService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating node ' + self.name + ' name. Reason: ' +
@@ -1712,7 +1838,6 @@ class Node(object):
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
-            # TODO
             params['OPERATION'] = 'createNode'
             args = {'properties': params}
         else:
@@ -1723,6 +1848,10 @@ class Node(object):
             }
 
         response = NodeService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc is not 0:
             LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
         else:
@@ -1761,6 +1890,10 @@ class Node(object):
                 args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
 
             response = NodeService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while deleting node ' + self.id + '. Reason: ' + str(response.error_message)
@@ -1810,6 +1943,10 @@ class GateService(object):
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
         response = GateService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc == 0:
             ret = Gate.json_2_gate(response.response_content)
         else:
@@ -1839,6 +1976,10 @@ class GateService(object):
                 args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
 
         response = GateService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         ret = None
         if response.rc is 0:
             ret = []
@@ -1878,6 +2019,10 @@ class Gate(Node):
                     args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
                 response = GateService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is 0:
                     json_obj = response.response_content
 
@@ -1946,6 +2091,10 @@ class Gate(Node):
                 args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
 
             response = GateService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.error('Problem while saving node' + self.name + '. Reason: ' +
                              str(response.error_message))
@@ -2019,6 +2168,10 @@ class EndpointService(object):
                 args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
             response = EndpointService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc == 0:
                 if return_set_of_endpoints:
                     ret = []
@@ -2054,6 +2207,10 @@ class EndpointService(object):
                 args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
 
         response = EndpointService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         ret = None
         if response.rc is 0:
             ret = []
@@ -2114,6 +2271,10 @@ class Endpoint(object):
                     args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
                 response = EndpointService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is 0:
                     json_obj = response.response_content
 
@@ -2198,6 +2359,10 @@ class Endpoint(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
 
             response = EndpointService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
@@ -2227,7 +2392,12 @@ class Endpoint(object):
                 args = {'properties': params}
             else:
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
+
             response = EndpointService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
@@ -2264,6 +2434,10 @@ class Endpoint(object):
                             'parameters': params}
 
                 response = EndpointService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
@@ -2301,6 +2475,10 @@ class Endpoint(object):
                             'parameters': params}
 
                 response = EndpointService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is not 0:
                     LOGGER.debug(
                         'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
@@ -2362,7 +2540,6 @@ class Endpoint(object):
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
-            # TODO
             params['OPERATION'] = 'createEndpoint'
             args = {'properties': params}
         else:
@@ -2373,6 +2550,10 @@ class Endpoint(object):
             }
 
         response = EndpointService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc is not 0:
             LOGGER.debug('Problem while saving endpoint ' + self.url + '. Reason: ' + str(response.error_message))
         else:
@@ -2410,6 +2591,10 @@ class Endpoint(object):
                 args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
 
             response = EndpointService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
@@ -2481,6 +2666,10 @@ class LinkService(object):
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
         response = LinkService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc == 0:
             if (lid is not None and lid) or (sep_id is not None and sep_id and tep_id is not None and tep_id):
                 ret = Link.json_2_link(response.response_content)
@@ -2515,6 +2704,10 @@ class LinkService(object):
                 args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
 
         response = LinkService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         ret = None
         if response.rc is 0:
             ret = []
@@ -2565,6 +2758,10 @@ class Link(object):
                     args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
                 response = LinkService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is 0:
                     json_obj = response.response_content
 
@@ -2647,7 +2844,6 @@ class Link(object):
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
-            # TODO
             params['OPERATION'] = 'createLink'
             args = {'properties': params}
         else:
@@ -2658,6 +2854,10 @@ class Link(object):
             }
 
         response = LinkService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc is not 0:
             LOGGER.debug('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
                          + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
@@ -2690,6 +2890,10 @@ class Link(object):
                 args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
 
             response = LinkService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
@@ -2738,6 +2942,10 @@ class TransportService(object):
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
         response = TransportService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc == 0:
             ret = Transport.json_2_transport(response.response_content)
         else:
@@ -2767,6 +2975,10 @@ class TransportService(object):
                 args = {'http_operation': 'GET', 'operation_path': '', 'parameters': params}
 
         response = TransportService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         ret = None
         if response.rc is 0:
             ret = []
@@ -2820,7 +3032,12 @@ class Transport(object):
                     args = {'properties': params}
                 else:
                     args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
                 response = TransportService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
                 if response.rc is 0:
                     json_obj = response.response_content
 
@@ -2854,6 +3071,10 @@ class Transport(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
 
             response = TransportService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating transport ' + self.name + ' properties. Reason: ' +
@@ -2885,6 +3106,10 @@ class Transport(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/delete', 'parameters': params}
 
             response = TransportService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while updating transport ' + self.name + ' properties. Reason: ' +
@@ -2954,6 +3179,10 @@ class Transport(object):
             }
 
         response = TransportService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
         if response.rc is not 0:
             LOGGER.debug('Problem while saving transport {' + self.name + '}. Reason: ' + str(response.error_message))
         else:
@@ -2979,7 +3208,12 @@ class Transport(object):
                 args = {'properties': params}
             else:
                 args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
+
             response = TransportService.requester.call(args)
+
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                response = response.get()
+
             if response.rc is not 0:
                 LOGGER.debug(
                     'Problem while deleting transport ' + str(self.id) + '. Reason: ' + str(response.error_message)
