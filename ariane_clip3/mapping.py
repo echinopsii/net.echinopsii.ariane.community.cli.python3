@@ -190,11 +190,17 @@ class MappingService(object):
                 elif isinstance(prop['propertyValue'], map):
                     map_property = {}
                     for prop_key, prop_value in prop['propertyValue'].items():
-                        map_property[prop_key] = prop_value[1]
+                        if prop_value.__len__() > 1:
+                            map_property[prop_key] = prop_value[1]
+                        else:
+                            LOGGER.warn(prop_key + " will be ignored as its definition is incomplete...")
                     properties[prop['propertyName']] = map_property
                 elif prop['propertyType'] == 'array':
                     j_data = json.loads(prop['propertyValue'])
-                    properties[prop['propertyName']] = j_data[1]
+                    if j_data.__len__() > 1:
+                        properties[prop['propertyName']] = j_data[1]
+                    else:
+                        LOGGER.warn(prop['propertyName'] + " will be ignored as its definition is incomplete...")
                 elif prop['propertyType'] == 'map':
                     j_data = json.loads(prop['propertyValue'])
                     map_property = {}
@@ -955,15 +961,17 @@ class Container(object):
         if not sync or self.id is None:
             self.properties_2_add.append(c_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(MappingService.property_params(
-                c_property_tuple[0],
-                c_property_tuple[1])
-            )
-            params['ID'] = self.id
+            property_param = MappingService.property_params(c_property_tuple[0], c_property_tuple[1])
+            params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addContainerProperty'
+                params['propertyField'] = json.dumps(property_param)
                 args = {'properties': params}
             else:
+                params['propertyName'] = property_param['propertyName']
+                params['propertyValue'] = property_param['propertyValue']
+                if 'propertyType' in property_param:
+                    params['propertyType'] = property_param['propertyType']
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
 
             response = ContainerService.requester.call(args)
@@ -1696,15 +1704,17 @@ class Node(object):
         if not sync or self.id is None:
             self.properties_2_add.append(n_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(
-                MappingService.property_params(n_property_tuple[0], n_property_tuple[1])
-            )
-            params['ID'] = self.id
-
+            property_param = MappingService.property_params(n_property_tuple[0], n_property_tuple[1])
+            params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addNodeProperty'
+                params['propertyField'] = json.dumps(property_param)
                 args = {'properties': params}
             else:
+                params['propertyName'] = property_param['propertyName']
+                params['propertyValue'] = property_param['propertyValue']
+                if 'propertyType' in property_param:
+                    params['propertyType'] = property_param['propertyType']
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
 
             response = NodeService.requester.call(args)
@@ -2427,15 +2437,17 @@ class Endpoint(object):
         if not sync or self.id is None:
             self.properties_2_add.append(e_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(
-                MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
-            )
-            params['ID'] = self.id
-
+            property_param = MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
+            params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addEndpointProperty'
+                params['propertyField'] = json.dumps(property_param)
                 args = {'properties': params}
             else:
+                params['propertyName'] = property_param['propertyName']
+                params['propertyValue'] = property_param['propertyValue']
+                if 'propertyType' in property_param:
+                    params['propertyType'] = property_param['propertyType']
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
 
             response = EndpointService.requester.call(args)
@@ -3155,15 +3167,17 @@ class Transport(object):
         if not sync or self.id is None:
             self.properties_2_add.append(t_property_tuple)
         else:
-            params = SessionService.complete_transactional_req(
-                MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
-            )
-            params['ID'] = self.id
-
+            property_param = MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
+            params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addTransportProperty'
+                params['propertyField'] = json.dumps(property_param)
                 args = {'properties': params}
             else:
+                params['propertyName'] = property_param['propertyName']
+                params['propertyValue'] = property_param['propertyValue']
+                if 'propertyType' in property_param:
+                    params['propertyType'] = property_param['propertyType']
                 args = {'http_operation': 'GET', 'operation_path': 'update/properties/add', 'parameters': params}
 
             response = TransportService.requester.call(args)
