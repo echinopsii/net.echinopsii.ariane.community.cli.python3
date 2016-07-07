@@ -30,6 +30,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MappingService(object):
+    requester = None
     driver_type = None
 
     """
@@ -53,6 +54,10 @@ class MappingService(object):
         MappingService.driver_type = mapping_driver['type']
         self.driver = driver_factory.DriverFactory.make(mapping_driver)
         self.driver.start()
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            args = {'request_q': 'ARIANE_MAPPING_SERVICE_Q'}
+            MappingService.requester = self.driver.make_requester(args)
+            MappingService.requester.start()
         self.session_service = SessionService(self.driver)
         self.cluster_service = ClusterService(self.driver)
         self.container_service = ContainerService(self.driver)
@@ -1468,7 +1473,13 @@ class NodeService(object):
             else:
                 args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
-            response = NodeService.requester.call(args)
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                if cid is not None:
+                    response = MappingService.requester.call(args)
+                else:
+                    response = NodeService.requester.call(args)
+            else:
+                response = NodeService.requester.call(args)
 
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
@@ -1531,6 +1542,14 @@ class Node(object):
         :param json_obj: the json payload coming from Ariane server
         :return: local node object
         """
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            if 'nodeProperties' in json_obj:
+                properties = MappingService.json2properties(json_obj['nodeProperties'])
+            else:
+                properties = None
+        else:
+            properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
+
         return Node(
             nid=json_obj['nodeID'],
             name=json_obj['nodeName'],
@@ -1539,7 +1558,7 @@ class Node(object):
             child_nodes_id=json_obj['nodeChildNodesID'],
             twin_nodes_id=json_obj['nodeTwinNodesID'],
             endpoints_id=json_obj['nodeEndpointsID'],
-            properties=json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None,
+            properties=properties,
             ignore_sync=True
         )
 
@@ -1593,7 +1612,13 @@ class Node(object):
             self.child_nodes_id = json_obj['nodeChildNodesID']
             self.twin_nodes_id = json_obj['nodeTwinNodesID']
             self.endpoints_id = json_obj['nodeEndpointsID']
-            self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                if 'nodeProperties' in json_obj:
+                    self.properties = MappingService.json2properties(json_obj['nodeProperties'])
+                else:
+                    self.properties = None
+            else:
+                self.properties = json_obj['nodeProperties'] if 'nodeProperties' in json_obj else None
 
     def __init__(self, nid=None, name=None, container_id=None, container=None,
                  parent_node_id=None, parent_node=None, child_nodes_id=None, twin_nodes_id=None,
@@ -1791,7 +1816,7 @@ class Node(object):
                 })
 
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                    params['OPERATION'] = 'delTwinNode'
+                    params['OPERATION'] = 'removeTwinNode'
                     args = {'properties': params}
                 else:
                     args = {'http_operation': 'GET',
@@ -1924,7 +1949,7 @@ class Node(object):
                 'ID': self.id
             })
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                params['OPERATION'] = 'removeNode'
+                params['OPERATION'] = 'deleteNode'
                 args = {'properties': params}
             else:
                 args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
