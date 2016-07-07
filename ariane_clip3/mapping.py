@@ -2219,6 +2219,7 @@ class EndpointService(object):
         elif url is not None and url:
             params = SessionService.complete_transactional_req({'URL': url})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['endpointURL'] = url
                 params['OPERATION'] = 'getEndpointByURL'
         elif selector is not None and selector:
             params = SessionService.complete_transactional_req({'selector': selector})
@@ -2295,12 +2296,20 @@ class Endpoint(object):
         :param json_obj: the json payload coming from Ariane server
         :return: local endpoint object
         """
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            if 'endpointProperties' in json_obj:
+                properties = MappingService.json2properties(json_obj['endpointProperties'])
+            else:
+                properties = None
+        else:
+            properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
+
         return Endpoint(
             eid=json_obj['endpointID'],
             url=json_obj['endpointURL'],
             parent_node_id=json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None,
             twin_endpoints_id=json_obj['endpointTwinEndpointsID'],
-            properties=json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None,
+            properties=properties,
             ignore_sync=True
         )
 
@@ -2348,7 +2357,13 @@ class Endpoint(object):
             self.url = json_obj['endpointURL']
             self.parent_node_id = json_obj['endpointParentNodeID'] if 'endpointParentNodeID' in json_obj else None
             self.twin_endpoints_id = json_obj['endpointTwinEndpointsID']
-            self.properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                if 'endpointProperties' in json_obj:
+                    self.properties = MappingService.json2properties(json_obj['endpointProperties'])
+                else:
+                    self.properties = None
+            else:
+                self.properties = json_obj['endpointProperties'] if 'endpointProperties' in json_obj else None
 
     def __init__(self, eid=None, url=None, parent_node_id=None, parent_node=None, twin_endpoints_id=None,
                  properties=None, ignore_sync=False):
