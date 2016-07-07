@@ -156,7 +156,8 @@ class Requester(pykka.ThreadingActor):
                     content = self.response['body'].decode("UTF-8")
                 return DriverResponse(
                     rc=rc_,
-                    error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE'],
+                    error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE']
+                    if 'SERVER_ERROR_MESSAGE' in self.response['props'].headers else '',
                     response_content=content
                 )
             else:
