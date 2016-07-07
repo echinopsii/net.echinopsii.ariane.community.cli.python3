@@ -175,6 +175,32 @@ class MappingService(object):
 
         return params
 
+    @staticmethod
+    def json2properties(json_props):
+        properties = {}
+        if isinstance(json_props, list):
+            for prop in json_props:
+                if isinstance(prop['propertyValue'], list):
+                    properties[prop['propertyName']] = prop['propertyValue'][1]
+                elif isinstance(prop['propertyValue'], map):
+                    map_property = {}
+                    for prop_key, prop_value in prop['propertyValue'].items():
+                        map_property[prop_key] = prop_value[1]
+                    properties[prop['propertyName']] = map_property
+                elif prop['propertyType'] == 'array':
+                    j_data = json.loads(prop['propertyValue'])
+                    properties[prop['propertyName']] = j_data[1]
+                elif prop['propertyType'] == 'map':
+                    j_data = json.loads(prop['propertyValue'])
+                    map_property = {}
+                    for prop_key, prop_value in j_data.items():
+                        map_property[prop_key] = prop_value[1]
+                    properties[prop['propertyName']] = map_property
+                else:
+                    properties[prop['propertyName']] = prop['propertyValue']
+        else:
+            properties = json_props
+        return properties
 
 class SessionService(object):
     requester = None
@@ -816,6 +842,14 @@ class Container(object):
         :param json_obj: json from Ariane Server
         :return: transformed container
         """
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            if 'containerProperties' in json_obj:
+                properties = MappingService.json2properties(json_obj['containerProperties'])
+            else:
+                properties = None
+        else:
+            properties = json_obj['containerProperties'] if 'containerProperties' in json_obj else None
+
         return Container(
             cid=json_obj['containerID'],
             name=json_obj['containerName'],
@@ -830,7 +864,7 @@ class Container(object):
             company=json_obj['containerCompany'],
             product=json_obj['containerProduct'],
             c_type=json_obj['containerType'],
-            properties=json_obj['containerProperties'] if 'containerProperties' in json_obj else None,
+            properties=properties,
             ignore_sync=True
         )
 
@@ -895,7 +929,13 @@ class Container(object):
             self.company = json_obj['containerCompany']
             self.product = json_obj['containerProduct']
             self.type = json_obj['containerType']
-            self.properties = json_obj['containerProperties'] if 'containerProperties' in json_obj else None
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                if 'containerProperties' in json_obj:
+                    self.properties = MappingService.json2properties(json_obj['containerProperties'])
+                else:
+                    self.properties = None
+            else:
+                self.properties = json_obj['containerProperties'] if 'containerProperties' in json_obj else None
 
     def add_property(self, c_property_tuple, sync=True):
         """
