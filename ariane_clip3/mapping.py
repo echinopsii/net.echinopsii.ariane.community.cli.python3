@@ -3081,10 +3081,17 @@ class Transport(object):
         :param json_obj:
         :return:
         """
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            if 'transportProperties' in json_obj:
+                properties = MappingService.json2properties(json_obj['transportProperties'])
+            else:
+                properties = None
+        else:
+            properties = json_obj['transportProperties'] if 'transportProperties' in json_obj else None
         return Transport(
             tid=json_obj['transportID'],
             name=json_obj['transportName'],
-            properties=json_obj['transportProperties'] if 'transportProperties' in json_obj else None
+            properties=properties
         )
 
     def transport_2_json(self):
@@ -3127,7 +3134,13 @@ class Transport(object):
         if json_obj is not None:
             self.id = json_obj['transportID']
             self.name = json_obj['transportName']
-            self.properties = json_obj['transportProperties'] if 'transportProperties' in json_obj else None
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                if 'transportProperties' in json_obj:
+                    self.properties = MappingService.json2properties(json_obj['transportProperties'])
+                else:
+                    self.properties = None
+            else:
+                self.properties = json_obj['transportProperties'] if 'transportProperties' in json_obj else None
 
     def add_property(self, t_property_tuple, sync=True):
         """
