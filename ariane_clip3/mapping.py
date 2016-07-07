@@ -2727,25 +2727,28 @@ class LinkService(object):
         elif sep_id is not None and sep_id and tep_id is not None and tep_id:
             params = SessionService.complete_transactional_req({'SEPID': sep_id, 'TEPID': tep_id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                # TODO
-                params['OPERATION'] = 'getLink'
+                params['OPERATION'] = 'getLinkBySourceEPandDestinationEP'
         elif sep_id is not None and sep_id and (tep_id is None or not tep_id):
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                # TODO
-                params['OPERATION'] = 'getLink'
             params = SessionService.complete_transactional_req({'SEPID': sep_id})
-        else:
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                # TODO
-                params['OPERATION'] = 'getLink'
+                params['OPERATION'] = 'getLinksBySourceEP'
+        else:
             params = SessionService.complete_transactional_req({'TEPID': tep_id})
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                params['OPERATION'] = 'getLinksByDestinationEP'
 
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'properties': params}
         else:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
-        response = LinkService.requester.call(args)
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            if lid is not None and lid:
+                response = LinkService.requester.call(args)
+            else:
+                response = MappingService.requester.call(args)
+        else:
+            response = LinkService.requester.call(args)
 
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             response = response.get()
