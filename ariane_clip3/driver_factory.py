@@ -16,9 +16,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from ariane_clip3 import exceptions
-from ariane_clip3.rabbitmq import driver as rabbitmq
-from ariane_clip3.rest import driver as rest
-from ariane_clip3.zeromq import driver as zeromq
+from ariane_clip3.rabbitmq import driver as rabbitmqd
+from ariane_clip3.rest import driver as restd
+from ariane_clip3.zeromq import driver as zeromqd
+from ariane_clip3.natsd import driver as natsd
 
 __author__ = 'mffrench'
 
@@ -28,6 +29,7 @@ class DriverFactory(object):
     DRIVER_RBMQ = "RBMQ"
     DRIVER_REST = "REST"
     DRIVER_Z0MQ = "Z0MQ"
+    DRIVER_NATS = "NATS"
 
     @staticmethod
     def make(my_args):
@@ -37,10 +39,12 @@ class DriverFactory(object):
             raise exceptions.ArianeConfError('type')
 
         if my_args['type'] is DriverFactory.DRIVER_RBMQ:
-            return rabbitmq.Driver(my_args)
+            return rabbitmqd.Driver(my_args)
         elif my_args['type'] is DriverFactory.DRIVER_REST:
-            return rest.Driver(my_args)
+            return restd.Driver(my_args)
         elif my_args['type'] is DriverFactory.DRIVER_Z0MQ:
-            return zeromq.Driver(my_args)
+            return zeromqd.Driver(my_args)
+        elif my_args['type'] is DriverFactory.DRIVER_NATS:
+            return natsd.Driver(my_args)
         else:
             raise exceptions.ArianeNotImplemented('type ' + my_args['type'])

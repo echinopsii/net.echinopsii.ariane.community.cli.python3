@@ -26,8 +26,8 @@ class DriverResponse(object):
         self.response_content = response_content
 
     def get(self):
-        '''
+        """
         mimic pykka future get method
         :return:
-        '''
+        """
         return self

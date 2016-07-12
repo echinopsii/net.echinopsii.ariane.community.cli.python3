@@ -25,7 +25,7 @@ setup(name='ariane_clip3',
       download_url='https://github.com/echinopsii/net.echinopsii.ariane.community.cli.python3.git/tarball/0.1.4',
       packages=['ariane_clip3', 'ariane_clip3.rabbitmq', 'ariane_clip3.rest', 'ariane_clip3.zeromq'],
       license='AGPLv3',
-      install_requires=['requests', 'epika-python3', 'pykka', 'pyzmq'],
+      install_requires=['asyncio-nats-client', 'requests', 'epika-python3', 'pykka', 'pyzmq'],
       package_data={'': ['LICENSE', 'README.md']},
       classifiers=[
           'Development Status :: 4 - Beta',

@@ -240,7 +240,21 @@ class Service(pykka.ThreadingActor):
         """
         LOGGER.debug("request " + str(props) + " received")
         try:
-            self.cb(ch, props, body)
+            properties = props.headers.copy()
+            properties['app_id'] = props.app_id
+            properties['cluster_id'] = props.cluster_id
+            properties['content_encoding'] = props.content_encoding
+            properties['content_type'] = props.content_type
+            properties['correlation_id'] = props.correlation_id
+            properties['delivery_mode'] = props.delivery_mode
+            properties['expiration'] = props.expiration
+            properties['message_id'] = props.message_id
+            properties['priority'] = props.priority
+            properties['reply_to'] = props.reply_to
+            properties['timestamp'] = props.timestamp
+            properties['type'] = props.type
+            properties['user_id'] = props.user_id
+            self.cb(properties, body)
         except Exception as e:
             LOGGER.warn("Exception raised while treating msg {"+str(props)+","+str(body)+"}")
         LOGGER.debug("request " + str(props) + " treated")

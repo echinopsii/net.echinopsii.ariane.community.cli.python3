@@ -689,16 +689,15 @@ class InjectorCachedComponent(pykka.ThreadingActor):
 
         return ret
 
-    def refresh(self, channel, props, body):
+    def refresh(self, props, body):
         """
         the refresh method called when on demand refresh service receive a message. then call the parent actor sniff
         method if message is compliant on what is attended
-        :param channel: the rabbitmq channel from where the message is coming
         :param props: the message properties
         :param body: the message body
         :return:
         """
-        operation = props.headers['OPERATION']
+        operation = props['OPERATION']
         if operation == "REFRESH":
             if self.parent_actor_ref is not None:
                 parent_actor = self.parent_actor_ref.proxy()
@@ -963,8 +962,8 @@ class InjectorCachedGear(pykka.ThreadingActor):
 
         return ret
 
-    def admin(self, channel, props, body):
-        operation = props.headers['OPERATION']
+    def admin(self, props, body):
+        operation = props['OPERATION']
         if operation == "START":
             if self.parent_actor_ref is not None:
                 parent_actor = self.parent_actor_ref.proxy()
