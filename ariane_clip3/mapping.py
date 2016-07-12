@@ -22,6 +22,7 @@ import threading
 from ariane_clip3.driver_factory import DriverFactory
 from ariane_clip3 import driver_factory
 from ariane_clip3 import exceptions
+from ariane_clip3.driver_common import DriverTools
 
 __author__ = 'mffrench'
 
@@ -79,139 +80,6 @@ class MappingService(object):
         self.link_service = None
         self.transport_service = None
 
-    @staticmethod
-    def property_array(value):
-        typed_array = []
-        if isinstance(value[0], str):
-            typed_array.append('string')
-        elif isinstance(value[0], int):
-            if isinstance(value[0], bool):
-                typed_array.append('boolean')
-            else:
-                typed_array.append('long')
-        elif isinstance(value[0], float):
-            typed_array.append('double')
-        elif isinstance(value[0], bool):
-            typed_array.append('boolean')
-        elif isinstance(value[0], list):
-            typed_array.append('array')
-        elif isinstance(value[0], dict):
-            typed_array.append('map')
-            for value_a in value:
-                for key, val in value_a.items():
-                    value_a[key] = MappingService.property_map(val)
-        if isinstance(value[0], list):
-            transformed_value_array = []
-            for value_array in value:
-                transformed_value_array.append(MappingService.property_array(value_array))
-            typed_array.append(transformed_value_array)
-        else:
-            typed_array.append(value)
-        return typed_array
-
-    @staticmethod
-    def property_map(value):
-        ret = []
-        if isinstance(value, str):
-            ret.append('string')
-        elif isinstance(value, int):
-            if isinstance(value, bool):
-                ret.append('boolean')
-            else:
-                # in python 3 long and int are now same type
-                # by default we will use long type for the server
-                ret.append('long')
-        elif isinstance(value, float):
-            ret.append('double')
-        elif isinstance(value, list):
-            ret.append('array')
-            if value.__len__() > 0:
-                value = MappingService.property_array(value)
-            else:
-                pass
-        elif isinstance(value, dict):
-            ret.append('map')
-            for key, val in value.items():
-                value[key] = MappingService.property_map(val)
-        elif isinstance(value, bool):
-            ret.append('boolean')
-        ret.append(value)
-        return ret
-
-    @staticmethod
-    def property_params(name, value):
-        p_type = None
-        if isinstance(value, str):
-            p_type = 'string'
-        elif isinstance(value, int):
-            if isinstance(value, bool):
-                p_type = 'boolean'
-            else:
-                # in python 3 long and int are now same type
-                # by default we will use long type for the server
-                p_type = 'long'
-        elif isinstance(value, float):
-            p_type = 'double'
-        elif isinstance(value, list):
-            p_type = 'array'
-            if value.__len__() > 0:
-                value = json.dumps(MappingService.property_array(value))
-            else:
-                pass
-        elif isinstance(value, dict):
-            p_type = 'map'
-            for key, val in value.items():
-                value[key] = MappingService.property_map(val)
-            value = json.dumps(value)
-        elif isinstance(value, bool):
-            p_type = 'boolean'
-
-        if p_type is not None:
-            params = {
-                'propertyName': name,
-                'propertyValue': value,
-                'propertyType': p_type
-            }
-        else:
-            params = {
-                'propertyName': name,
-                'propertyValue': value
-            }
-
-        return params
-
-    @staticmethod
-    def json2properties(json_props):
-        properties = {}
-        if isinstance(json_props, list):
-            for prop in json_props:
-                if isinstance(prop['propertyValue'], list):
-                    properties[prop['propertyName']] = prop['propertyValue'][1]
-                elif isinstance(prop['propertyValue'], map):
-                    map_property = {}
-                    for prop_key, prop_value in prop['propertyValue'].items():
-                        if prop_value.__len__() > 1:
-                            map_property[prop_key] = prop_value[1]
-                        else:
-                            LOGGER.warn(prop_key + " will be ignored as its definition is incomplete...")
-                    properties[prop['propertyName']] = map_property
-                elif prop['propertyType'] == 'array':
-                    j_data = json.loads(prop['propertyValue'])
-                    if j_data.__len__() > 1:
-                        properties[prop['propertyName']] = j_data[1]
-                    else:
-                        LOGGER.warn(prop['propertyName'] + " will be ignored as its definition is incomplete...")
-                elif prop['propertyType'] == 'map':
-                    j_data = json.loads(prop['propertyValue'])
-                    map_property = {}
-                    for prop_key, prop_value in j_data.items():
-                        map_property[prop_key] = prop_value[1]
-                    properties[prop['propertyName']] = map_property
-                else:
-                    properties[prop['propertyName']] = prop['propertyValue']
-        else:
-            properties = json_props
-        return properties
 
 class SessionService(object):
     requester = None
@@ -855,7 +723,7 @@ class Container(object):
         """
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'containerProperties' in json_obj:
-                properties = MappingService.json2properties(json_obj['containerProperties'])
+                properties = DriverTools.json2properties(json_obj['containerProperties'])
             else:
                 properties = None
         else:
@@ -942,7 +810,7 @@ class Container(object):
             self.type = json_obj['containerType']
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 if 'containerProperties' in json_obj:
-                    self.properties = MappingService.json2properties(json_obj['containerProperties'])
+                    self.properties = DriverTools.json2properties(json_obj['containerProperties'])
                 else:
                     self.properties = None
             else:
@@ -961,7 +829,7 @@ class Container(object):
         if not sync or self.id is None:
             self.properties_2_add.append(c_property_tuple)
         else:
-            property_param = MappingService.property_params(c_property_tuple[0], c_property_tuple[1])
+            property_param = DriverTools.property_params(c_property_tuple[0], c_property_tuple[1])
             params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addContainerProperty'
@@ -1291,7 +1159,7 @@ class Container(object):
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
         for key, value in consolidated_properties.items():
-            consolidated_container_properties.append(MappingService.property_params(key, value))
+            consolidated_container_properties.append(DriverTools.property_params(key, value))
         post_payload['containerProperties'] = consolidated_container_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
@@ -1552,7 +1420,7 @@ class Node(object):
         """
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'nodeProperties' in json_obj:
-                properties = MappingService.json2properties(json_obj['nodeProperties'])
+                properties = DriverTools.json2properties(json_obj['nodeProperties'])
             else:
                 properties = None
         else:
@@ -1622,7 +1490,7 @@ class Node(object):
             self.endpoints_id = json_obj['nodeEndpointsID']
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 if 'nodeProperties' in json_obj:
-                    self.properties = MappingService.json2properties(json_obj['nodeProperties'])
+                    self.properties = DriverTools.json2properties(json_obj['nodeProperties'])
                 else:
                     self.properties = None
             else:
@@ -1704,7 +1572,7 @@ class Node(object):
         if not sync or self.id is None:
             self.properties_2_add.append(n_property_tuple)
         else:
-            property_param = MappingService.property_params(n_property_tuple[0], n_property_tuple[1])
+            property_param = DriverTools.property_params(n_property_tuple[0], n_property_tuple[1])
             params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addNodeProperty'
@@ -1908,7 +1776,7 @@ class Node(object):
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
         for key, value in consolidated_properties.items():
-                consolidated_node_properties.append(MappingService.property_params(key, value))
+                consolidated_node_properties.append(DriverTools.property_params(key, value))
         post_payload['nodeProperties'] = consolidated_node_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
@@ -2308,7 +2176,7 @@ class Endpoint(object):
         """
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'endpointProperties' in json_obj:
-                properties = MappingService.json2properties(json_obj['endpointProperties'])
+                properties = DriverTools.json2properties(json_obj['endpointProperties'])
             else:
                 properties = None
         else:
@@ -2369,7 +2237,7 @@ class Endpoint(object):
             self.twin_endpoints_id = json_obj['endpointTwinEndpointsID']
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 if 'endpointProperties' in json_obj:
-                    self.properties = MappingService.json2properties(json_obj['endpointProperties'])
+                    self.properties = DriverTools.json2properties(json_obj['endpointProperties'])
                 else:
                     self.properties = None
             else:
@@ -2437,7 +2305,7 @@ class Endpoint(object):
         if not sync or self.id is None:
             self.properties_2_add.append(e_property_tuple)
         else:
-            property_param = MappingService.property_params(e_property_tuple[0], e_property_tuple[1])
+            property_param = DriverTools.property_params(e_property_tuple[0], e_property_tuple[1])
             params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addEndpointProperty'
@@ -2627,7 +2495,7 @@ class Endpoint(object):
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
         for key, value in consolidated_properties.items():
-            consolidated_endpoint_properties.append(MappingService.property_params(key, value))
+            consolidated_endpoint_properties.append(DriverTools.property_params(key, value))
         post_payload['endpointProperties'] = consolidated_endpoint_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
@@ -2731,7 +2599,6 @@ class LinkService(object):
             sep_id = None
             tep_id = None
 
-        params = None
         if lid is not None and lid:
             params = SessionService.complete_transactional_req({'ID': lid})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
@@ -3095,7 +2962,7 @@ class Transport(object):
         """
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'transportProperties' in json_obj:
-                properties = MappingService.json2properties(json_obj['transportProperties'])
+                properties = DriverTools.json2properties(json_obj['transportProperties'])
             else:
                 properties = None
         else:
@@ -3148,7 +3015,7 @@ class Transport(object):
             self.name = json_obj['transportName']
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 if 'transportProperties' in json_obj:
-                    self.properties = MappingService.json2properties(json_obj['transportProperties'])
+                    self.properties = DriverTools.json2properties(json_obj['transportProperties'])
                 else:
                     self.properties = None
             else:
@@ -3167,7 +3034,7 @@ class Transport(object):
         if not sync or self.id is None:
             self.properties_2_add.append(t_property_tuple)
         else:
-            property_param = MappingService.property_params(t_property_tuple[0], t_property_tuple[1])
+            property_param = DriverTools.property_params(t_property_tuple[0], t_property_tuple[1])
             params = SessionService.complete_transactional_req({'ID': self.id})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'addTransportProperty'
@@ -3274,7 +3141,7 @@ class Transport(object):
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
         for key, value in consolidated_properties.items():
-            consolidated_transport_properties.append(MappingService.property_params(key, value))
+            consolidated_transport_properties.append(DriverTools.property_params(key, value))
         post_payload['transportProperties'] = consolidated_transport_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})

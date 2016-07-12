@@ -35,8 +35,8 @@ class InjectorCachedRegistryFactoryTest(unittest.TestCase):
             'ariane.app': 'Ariane',
             'ariane.cmp': 'echinopsii'
         }
-        args = {'type': 'RBMQ', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
+        args = {'type': 'NATS', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
+                'port': 4222, 'client_properties': client_properties}
 
         cls.injector_service = InjectorService(args)
 

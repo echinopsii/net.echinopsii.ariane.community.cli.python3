@@ -16,19 +16,22 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import asyncio
+import base64
 import copy
 import json
 import socket
 import uuid
 import logging
+import threading
 
 from nats.aio.client import Client
+from nats.aio.utils import new_inbox
 from nats.aio.errors import ErrNoServers
+import time
 import pykka
 
 from ariane_clip3 import exceptions
-from ariane_clip3.driver_common import DriverResponse
-
+from ariane_clip3.driver_common import DriverTools, DriverResponse
 
 LOGGER = logging.getLogger(__name__)
 
@@ -66,23 +69,18 @@ class Requester(pykka.ThreadingActor):
             connection_args['host']+":"+str(connection_args['port'])
         ]
         self.name = self.connection_args['client_properties']['information'] + " - requestor on " + my_args['request_q']
-        self.loop = asyncio.get_event_loop()
-        self.options = {
-            "servers": self.servers,
-            "name": self.name,
-            # "disconnected_cb": self.disconnected_cb,
-            # "reconnected_cb": self.reconnected_cb,
-            # "error_cb": self.error_cb,
-            # "closed_cb": self.closed_cb,
-            "io_loop": self.loop,
-        }
-
+        self.loop = None
+        self.options = None
+        self.service = None
         self.nc = Client()
         self.requestQ = my_args['request_q']
+        self.responseQ = None
+        self.responseQS = None
+        self.response = None
+        self.is_started = False
 
         if not self.fire_and_forget:
-            # self.result = self.channel.queue_declare(exclusive=True)
-            # self.callback_queue = self.result.method.queue
+            self.responseQ = new_inbox()
             self.response = None
             self.corr_id = None
 
@@ -103,37 +101,75 @@ class Requester(pykka.ThreadingActor):
     # def closed_cb(self):
     #     print("Connection is closed")
 
-    def run(self):
+    def connect(self):
         try:
             yield from self.nc.connect(**self.options)
+            if not self.fire_and_forget:
+                self.responseQS = yield from self.nc.subscribe(self.responseQ, cb=self.on_response)
+            self.is_started = True
         except ErrNoServers as e:
             print(e)
             return
-        if not self.fire_and_forget:
-            pass
+
+    def run_event_loop(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.options = {
+            "servers": self.servers,
+            "name": self.name,
+            # "disconnected_cb": self.disconnected_cb,
+            # "reconnected_cb": self.reconnected_cb,
+            # "error_cb": self.error_cb,
+            # "closed_cb": self.closed_cb,
+            "io_loop": self.loop,
+        }
+        self.loop.create_task(self.connect())
+        self.loop.run_forever()
 
     def on_start(self):
         """
         start requester
         """
-        self.loop.call_soon(self.run())
-        self.loop.run_forever()
+        self.service = threading.Thread(target=self.run_event_loop, name=self.requestQ + " requestor thread")
+        self.service.start()
+        while not self.is_started:
+            time.sleep(0.01)
 
     def on_stop(self):
         """
         stop requester
         """
-        yield from self.nc.close()
-        self.loop.stop()
-        self.loop.close()
+        self.is_started = False
+        try:
+            next(self.nc.unsubscribe(self.responseQS))
+        except StopIteration as e:
+            pass
+        try:
+            next(self.nc.close())
+        except StopIteration as e:
+            pass
+        try:
+            self.loop.stop()
+            while self.loop.is_running():
+                time.sleep(1)
+            self.loop.close()
+        except Exception as e:
+            pass
 
     def on_response(self, msg):
         """
         setup response if correlation id is the good one
         """
-        pass
-        # if self.corr_id == props.correlation_id:
-        #     self.response = {'props': props, 'body': body}
+        working_response = json.loads(msg.data.decode())
+        working_properties = DriverTools.json2properties(working_response['properties'])
+        if self.corr_id == working_properties['MSG_CORRELATION_ID']:
+            working_body = b''+bytes(working_response['body'], 'utf8') if 'body' in working_response else None
+            working_body_decoded = base64.b64decode(working_body) if working_body is not None else \
+                bytes(json.dumps({}), 'utf8')
+            self.response = {
+                'properties': working_properties,
+                'body': working_body_decoded
+            }
 
     def call(self, my_args=None):
         """
@@ -148,60 +184,80 @@ class Requester(pykka.ThreadingActor):
         if 'body' not in my_args or my_args['body'] is None:
             my_args['body'] = ''
 
+        self.response = None
+
         if not self.fire_and_forget:
             self.corr_id = str(uuid.uuid4())
             properties = my_args['properties']
-            properties['correlation_id'] = self.corr_id
+            properties['MSG_CORRELATION_ID'] = self.corr_id
         else:
             properties = my_args['properties']
 
+        typed_properties = []
+        for key, value in properties.items():
+            typed_properties.append(DriverTools.property_params(key, value))
+
         body = my_args['body']
+        if body:
+            body = base64.b64encode(b''+bytes(body, 'utf8')).decode("utf-8")
 
         msg_data = json.dumps({
-            'properties': properties,
+            'properties': typed_properties,
             'body': body
         })
 
         if not self.fire_and_forget:
-            yield from self.nc.request(self.requestQ, b''+msg_data, expected=1, cb=self.on_response)
+            try:
+                next(self.nc.publish_request(self.requestQ, self.responseQ, b''+bytes(msg_data, 'utf8')))
+            except StopIteration as e:
+                pass
         else:
-            yield from self.nc.publish(self.requestQ, b''+msg_data)
+            try:
+                next(self.nc.publish(self.requestQ, b''+bytes(msg_data, 'utf8')))
+            except StopIteration as e:
+                pass
 
-            # while self.response is None:
-            #     self.connection.process_data_events()
+        try:
+            next(self.nc.flush(1))
+        except StopIteration as e:
+            pass
 
-            # rc_ = self.response['props'].headers['RC']
-            # if rc_ != 0:
-            #     try:
-            #         content = json.loads(self.response['body'].decode("UTF-8"))
-            #     except ValueError:
-            #         content = self.response['body'].decode("UTF-8")
-            #     return DriverResponse(
-            #         rc=rc_,
-            #         error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE']
-            #         if 'SERVER_ERROR_MESSAGE' in self.response['props'].headers else '',
-            #         response_content=content
-            #     )
-            # else:
-            #     try:
-            #         if 'MSG_PROPERTIES' in self.response['props'].headers:
-            #             props = json.loads(self.response['props'].headers['MSG_PROPERTIES'])
-            #         else:
-            #             props = None
-            #     except ValueError:
-            #         if 'MSG_PROPERTIES' in self.response['props'].headers:
-            #             props = self.response['props'].headers['MSG_PROPERTIES']
-            #         else:
-            #             props = None
-            #     try:
-            #         content = json.loads(self.response['body'].decode("UTF-8"))
-            #     except ValueError:
-            #         content = self.response['body'].decode("UTF-8")
-            #     return DriverResponse(
-            #         rc=rc_,
-            #         response_properties=props,
-            #         response_content=content
-            #     )
+        if not self.fire_and_forget:
+            while self.response is None:
+                time.sleep(0.001)
+
+            rc_ = int(self.response['properties']['RC'])
+            if rc_ != 0:
+                try:
+                    content = json.loads(self.response['body'].decode("UTF-8"))
+                except ValueError:
+                    content = self.response['body'].decode("UTF-8")
+                return DriverResponse(
+                    rc=rc_,
+                    error_message=self.response['properties']['SERVER_ERROR_MESSAGE']
+                    if 'SERVER_ERROR_MESSAGE' in self.response['properties'] else '',
+                    response_content=content
+                )
+            else:
+                try:
+                    if 'MSG_PROPERTIES' in self.response['properties']:
+                        props = json.loads(self.response['properties']['MSG_PROPERTIES'])
+                    else:
+                        props = None
+                except ValueError:
+                    if 'MSG_PROPERTIES' in self.response['properties']:
+                        props = self.response['props']['MSG_PROPERTIES']
+                    else:
+                        props = None
+                try:
+                    content = json.loads(self.response['body'].decode("UTF-8"))
+                except ValueError:
+                    content = self.response['body'].decode("UTF-8")
+                return DriverResponse(
+                    rc=rc_,
+                    response_properties=props,
+                    response_content=content
+                )
 
 
 class Service(pykka.ThreadingActor):
@@ -236,33 +292,29 @@ class Service(pykka.ThreadingActor):
             "nats://" + connection_args['user'] + ":" + connection_args['password'] + "@" +
             connection_args['host']+":"+str(connection_args['port'])
         ]
-        self.name = self.connection_args['client_properties']['information'] + " - requestor on " + my_args['request_q']
-        self.loop = asyncio.get_event_loop()
-        self.options = {
-            "servers": self.servers,
-            "name": self.name,
-            # "disconnected_cb": self.disconnected_cb,
-            # "reconnected_cb": self.reconnected_cb,
-            # "error_cb": self.error_cb,
-            # "closed_cb": self.closed_cb,
-            "io_loop": self.loop,
-        }
-
+        self.name = self.connection_args['client_properties']['information'] + " - requestor on " + my_args['service_q']
+        self.loop = None
+        self.options = None
         self.nc = Client()
         self.serviceQ = my_args['service_q']
+        self.serviceQS = None
         self.service_name = my_args['service_name']
+        self.service = None
         self.cb = my_args['treatment_callback']
         self.is_started = False
 
-    @asyncio.coroutine
     def on_request(self, msg):
         """
         message consumed treatment through provided callback and basic ack
         """
         LOGGER.debug("request " + str(msg) + " received")
         try:
-            nats_msg = json.loads(msg.data.decode())
-            self.cb(nats_msg['properties'], nats_msg['body'])
+            working_response = json.loads(msg.data.decode())
+            working_properties = DriverTools.json2properties(working_response['properties'])
+            working_body = b''+bytes(working_response['body'], 'utf8') if 'body' in working_response else None
+            working_body_decoded = base64.b64decode(working_body) if working_body is not None else \
+                bytes(json.dumps({}), 'utf8')
+            self.cb(working_properties, working_body_decoded)
         except Exception as e:
             LOGGER.warn("Exception raised while treating msg {"+str(msg)+","+str(msg)+"}")
         LOGGER.debug("request " + str(msg) + " treated")
@@ -276,20 +328,59 @@ class Service(pykka.ThreadingActor):
             print(e)
             return
 
+    def connect(self):
+        try:
+            yield from self.nc.connect(**self.options)
+            self.serviceQS = yield from self.nc.subscribe(self.serviceQ, cb=self.on_request)
+            self.is_started = True
+        except ErrNoServers as e:
+            print(e)
+            return
+
+    def run_event_loop(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.options = {
+            "servers": self.servers,
+            "name": self.name,
+            # "disconnected_cb": self.disconnected_cb,
+            # "reconnected_cb": self.reconnected_cb,
+            # "error_cb": self.error_cb,
+            # "closed_cb": self.closed_cb,
+            "io_loop": self.loop,
+        }
+        self.loop.create_task(self.connect())
+        self.loop.run_forever()
+
     def on_start(self):
         """
         start the service
         """
-        self.loop.call_soon(self.run())
-        self.loop.run_forever()
+        self.service = threading.Thread(target=self.run_event_loop, name=self.serviceQ + " service thread")
+        self.service.start()
+        while not self.is_started:
+            time.sleep(0.01)
 
     def on_stop(self):
         """
         stop the service
         """
-        yield from self.nc.close()
-        self.loop.stop()
-        self.loop.close()
+        self.is_started = False
+        try:
+            next(self.nc.unsubscribe(self.serviceQS))
+        except StopIteration as e:
+            pass
+        try:
+            next(self.nc.close())
+        except StopIteration as e:
+            pass
+        try:
+            self.loop.stop()
+            while self.loop.is_running():
+                time.sleep(1)
+            self.loop.close()
+        except Exception as e:
+            pass
 
 class Driver(object):
     """
@@ -365,8 +456,6 @@ class Driver(object):
             if service.is_started:
                 service.stop()
         self.services_registry.clear()
-
-        pykka.ActorRegistry.stop_all()
 
         return self
 

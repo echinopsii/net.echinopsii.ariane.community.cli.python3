@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
 import logging
+import types
 import pykka
 from ariane_clip3 import driver_factory
 
@@ -99,7 +100,6 @@ class InjectorUITreeService(object):
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_TREE_Q'}
         if InjectorUITreeService.requester is None:
             InjectorUITreeService.requester = injector_driver.make_requester(args)
-            InjectorUITreeService.requester.start()
 
     @staticmethod
     def find_ui_tree_entity(entity_id=None, entity_value=None, entity_ca=None):
@@ -357,7 +357,7 @@ class InjectorCachedRegistryFactoryService(object):
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_CACHEFACTORY_Q'}
         if InjectorCachedRegistryFactoryService.requester is None:
             InjectorCachedRegistryFactoryService.requester = injector_driver.make_requester(args)
-            InjectorCachedRegistryFactoryService.requester.start()
+            # InjectorCachedRegistryFactoryService.requester.start()
 
     @staticmethod
     def make_gears_cache_registry(args):
@@ -473,7 +473,6 @@ class InjectorCachedComponentService(object):
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_COMP_Q'}
         if InjectorCachedComponentService.requester is None:
             InjectorCachedComponentService.requester = injector_driver.make_requester(args)
-            InjectorCachedComponentService.requester.start()
             InjectorCachedComponentService.cache_id = cache_id
 
     @staticmethod
@@ -819,7 +818,6 @@ class InjectorCachedGearService(object):
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_GEAR_Q'}
         if InjectorCachedGearService.requester is None:
             InjectorCachedGearService.requester = injector_driver.make_requester(args)
-            InjectorCachedGearService.requester.start()
             InjectorCachedGearService.cache_id = cache_id
             InjectorCachedGearService.driver = injector_driver
 
