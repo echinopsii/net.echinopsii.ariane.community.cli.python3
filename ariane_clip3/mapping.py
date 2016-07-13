@@ -2874,7 +2874,7 @@ class TransportService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
-        if MappingService.driver_type == DriverFactory.DRIVER_RBMQ:
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_TRANSPORT_SERVICE_Q'}
             TransportService.requester = mapping_driver.make_requester(args)
             TransportService.requester.start()
