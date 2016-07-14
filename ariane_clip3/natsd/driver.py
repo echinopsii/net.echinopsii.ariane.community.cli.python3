@@ -68,7 +68,7 @@ class Requester(pykka.ThreadingActor):
             "nats://" + connection_args['user'] + ":" + connection_args['password'] + "@" +
             connection_args['host']+":"+str(connection_args['port'])
         ]
-        self.name = self.connection_args['client_properties']['information'] + " - requestor on " + my_args['request_q']
+        self.name = self.connection_args['client_properties']['ariane.app'] + " - requestor on " + my_args['request_q']
         self.loop = None
         self.options = None
         self.service = None
@@ -292,7 +292,7 @@ class Service(pykka.ThreadingActor):
             "nats://" + connection_args['user'] + ":" + connection_args['password'] + "@" +
             connection_args['host']+":"+str(connection_args['port'])
         ]
-        self.name = self.connection_args['client_properties']['information'] + " - requestor on " + my_args['service_q']
+        self.name = self.connection_args['client_properties']['ariane.app'] + " - requestor on " + my_args['service_q']
         self.loop = None
         self.options = None
         self.nc = Client()
