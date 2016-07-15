@@ -44,7 +44,7 @@ class Requester(pykka.ThreadingActor):
     :param my_args: dict like {connection, request_q}
     """
 
-    def __init__(self, my_args=None, connection_args=None):
+    def __init__(self, my_args=None, connection=None, loop=None):  # connection_args=None):
         """
         NATS requester constructor
         :param my_args: dict like {connection, request_q}
@@ -60,19 +60,21 @@ class Requester(pykka.ThreadingActor):
         else:
             self.fire_and_forget = True
 
-        Driver.validate_driver_conf(connection_args)
+        # Driver.validate_driver_conf(connection_args)
 
         super(Requester, self).__init__()
-        self.connection_args = copy.deepcopy(connection_args)
-        self.servers = [
-            "nats://" + connection_args['user'] + ":" + connection_args['password'] + "@" +
-            connection_args['host']+":"+str(connection_args['port'])
-        ]
-        self.name = self.connection_args['client_properties']['ariane.app'] + " - requestor on " + my_args['request_q']
-        self.loop = None
-        self.options = None
-        self.service = None
-        self.nc = Client()
+        # self.connection_args = copy.deepcopy(connection_args)
+        # self.servers = [
+        #     "nats://" + connection_args['user'] + ":" + connection_args['password'] + "@" +
+        #     connection_args['host']+":"+str(connection_args['port'])
+        # ]
+        # self.name = self.connection_args['client_properties']['ariane.app'] + " - requestor on " + my_args['request_q']
+        # self.loop = None
+        # self.options = None
+        # self.service = None
+        # self.nc = Client()
+        self.nc = connection
+        self.loop = loop
         self.requestQ = my_args['request_q']
         self.responseQ = None
         self.responseQS = None
@@ -81,6 +83,7 @@ class Requester(pykka.ThreadingActor):
 
         if not self.fire_and_forget:
             self.responseQ = new_inbox()
+            # self.responseT = None
             self.response = None
             self.corr_id = None
 
@@ -101,39 +104,44 @@ class Requester(pykka.ThreadingActor):
     # def closed_cb(self):
     #     print("Connection is closed")
 
-    def connect(self):
-        try:
-            yield from self.nc.connect(**self.options)
-            if not self.fire_and_forget:
-                self.responseQS = yield from self.nc.subscribe(self.responseQ, cb=self.on_response)
-            self.is_started = True
-        except ErrNoServers as e:
-            print(e)
-            return
+    # def connect(self):
+    #     try:
+    #         yield from self.nc.connect(**self.options)
+    #         if not self.fire_and_forget:
+    #             self.responseQS = yield from self.nc.subscribe(self.responseQ, cb=self.on_response)
+    #         self.is_started = True
+    #     except ErrNoServers as e:
+    #         print(e)
+    #         return
 
-    def run_event_loop(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.options = {
-            "servers": self.servers,
-            "name": self.name,
-            # "disconnected_cb": self.disconnected_cb,
-            # "reconnected_cb": self.reconnected_cb,
-            # "error_cb": self.error_cb,
-            # "closed_cb": self.closed_cb,
-            "io_loop": self.loop,
-        }
-        self.loop.create_task(self.connect())
-        self.loop.run_forever()
+    # def run_event_loop(self):
+    #     self.loop = asyncio.new_event_loop()
+    #     self.options = {
+    #         "servers": self.servers,
+    #         "name": self.name,
+    #         # "disconnected_cb": self.disconnected_cb,
+    #         # "reconnected_cb": self.reconnected_cb,
+    #         # "error_cb": self.error_cb,
+    #         # "closed_cb": self.closed_cb,
+    #         "io_loop": self.loop,
+    #     }
+    #     self.loop.create_task(self.connect())
+    #     self.loop.run_forever()
 
     def on_start(self):
         """
         start requester
         """
-        self.service = threading.Thread(target=self.run_event_loop, name=self.requestQ + " requestor thread")
-        self.service.start()
-        while not self.is_started:
-            time.sleep(0.01)
+        if not self.fire_and_forget:
+            self.responseQS = asyncio.run_coroutine_threadsafe(
+                self.nc.subscribe(self.responseQ, cb=self.on_response),
+                self.loop
+            ).result()
+        self.is_started = True
+        # self.responseT = threading.Thread(target=self.subscribe_on_response_q, name=self.requestQ + " requestor thread")
+        # self.responseT.start()
+        # while not self.is_started:
+        #     time.sleep(0.01)
 
     def on_stop(self):
         """
@@ -144,17 +152,17 @@ class Requester(pykka.ThreadingActor):
             next(self.nc.unsubscribe(self.responseQS))
         except StopIteration as e:
             pass
-        try:
-            next(self.nc.close())
-        except StopIteration as e:
-            pass
-        try:
-            self.loop.stop()
-            while self.loop.is_running():
-                time.sleep(1)
-            self.loop.close()
-        except Exception as e:
-            pass
+        # try:
+        #     next(self.nc.close())
+        # except StopIteration as e:
+        #     pass
+        # try:
+        #     self.loop.stop()
+        #     while self.loop.is_running():
+        #         time.sleep(1)
+        #     self.loop.close()
+        # except Exception as e:
+        #     pass
 
     def on_response(self, msg):
         """
@@ -339,7 +347,6 @@ class Service(pykka.ThreadingActor):
 
     def run_event_loop(self):
         self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
         self.options = {
             "servers": self.servers,
             "name": self.name,
@@ -434,13 +441,48 @@ class Driver(object):
             raise e
 
         self.connection_args = my_args
+        self.servers = [
+            "nats://" + self.connection_args['user'] + ":" + self.connection_args['password'] + "@" +
+            self.connection_args['host']+":"+str(self.connection_args['port'])
+        ]
+        self.name = self.connection_args['client_properties']['ariane.app'] + " - requestor on " + my_args['request_q']
+        self.loop = None
+        self.options = None
+        self.nc = Client()
+        self.is_started = False
+
         self.services_registry = []
         self.requester_registry = []
+
+    def connect(self):
+        try:
+            yield from self.nc.connect(**self.options)
+            self.is_started = True
+        except ErrNoServers as e:
+            print(e)
+            return
+
+    def run_event_loop(self):
+        self.loop = asyncio.new_event_loop()
+        self.options = {
+            "servers": self.servers,
+            "name": self.name,
+            # "disconnected_cb": self.disconnected_cb,
+            # "reconnected_cb": self.reconnected_cb,
+            # "error_cb": self.error_cb,
+            # "closed_cb": self.closed_cb,
+            "io_loop": self.loop,
+        }
+        self.loop.create_task(self.connect())
+        self.loop.run_forever()
 
     def start(self):
         """
         :return: self
         """
+        threading.Thread(target=self.run_event_loop, name="NATS connection thread").start()
+        while not self.is_started:
+            time.sleep(0.01)
         return self
 
     def stop(self):
@@ -456,6 +498,18 @@ class Driver(object):
             if service.is_started:
                 service.stop()
         self.services_registry.clear()
+
+        try:
+            next(self.nc.close())
+        except StopIteration as e:
+            pass
+        try:
+            self.loop.stop()
+            while self.loop.is_running():
+                time.sleep(1)
+            self.loop.close()
+        except Exception as e:
+            pass
 
         return self
 
