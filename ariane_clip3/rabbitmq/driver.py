@@ -70,9 +70,9 @@ class Requester(pykka.ThreadingActor):
 
         self.channel = self.connection.channel()
         self.requestQ = my_args['request_q']
-        self.channel.queue_declare(queue=self.requestQ)
+        self.channel.queue_declare(queue=self.requestQ, auto_delete=True)
         if not self.fire_and_forget:
-            self.result = self.channel.queue_declare(exclusive=True)
+            self.result = self.channel.queue_declare(exclusive=True, auto_delete=True)
             self.callback_queue = self.result.method.queue
             self.response = None
             self.corr_id = None
@@ -267,7 +267,7 @@ class Service(pykka.ThreadingActor):
         """
         self.connection = pika.BlockingConnection(self.parameters)
         self.channel = self.connection.channel()
-        self.channel.queue_declare(queue=self.serviceQ)
+        self.channel.queue_declare(queue=self.serviceQ, auto_delete=True)
         self.channel.basic_consume(self.on_request, self.serviceQ)
         self.service = threading.Thread(target=self.run, name=self.service_name)
         self.service.start()
