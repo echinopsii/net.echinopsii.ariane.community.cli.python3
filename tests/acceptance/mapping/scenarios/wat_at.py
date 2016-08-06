@@ -11,9 +11,9 @@ from acceptance.mapping.scenarios.scorpiusAppHisto import scorpiusAppHistoTest
 class WatTest(unittest.TestCase):
 
     def test_mapping_wat(self):
-        user="yoda"
-        password="secret"
-        srvurl="http://env-mffrench.lab01.dev:6969/"
+        user = "yoda"
+        password = "secret"
+        srvurl = "http://localhost:6969/"
         s = requests.Session()
         s.auth = (user, password)
         print("import sagittarius RVDs into mapping")

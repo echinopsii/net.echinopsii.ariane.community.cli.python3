@@ -218,7 +218,7 @@ class OSInstanceTest(unittest.TestCase):
         new_ip_address.save()
 
         new_niCard = NICard(name='Fake NIC name',
-                            macAddress='00:00:00:00:00:10',
+                            mac_address='00:00:00:00:00:10',
                             duplex="fake duplex",
                             speed=20,
                             mtu=40,

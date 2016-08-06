@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import datetime
 import logging
-import types
 import pykka
 from ariane_clip3 import driver_factory
 
@@ -137,7 +136,7 @@ class InjectorUITreeService(object):
                 err_msg = 'Problem while finding injector UI Tree Menu Entity ('+search_criteria+':' + \
                           str(criteria_value) + '). ' + \
                           'Reason: ' + str(result.error_message)
-                LOGGER.debug(err_msg)
+                LOGGER.warning(err_msg)
 
         return ret
 
@@ -301,7 +300,7 @@ class InjectorUITreeEntity(object):
                 if result.rc != 0:
                     err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
-                    LOGGER.debug(err_msg)
+                    LOGGER.warning(err_msg)
                     ok = False
 
             else:  # UPDATE
@@ -311,7 +310,7 @@ class InjectorUITreeEntity(object):
                 if result.rc != 0:
                     err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
-                    LOGGER.debug(err_msg)
+                    LOGGER.warning(err_msg)
                     ok = False
 
             if ok and self.parent_id is not None:
@@ -321,7 +320,7 @@ class InjectorUITreeEntity(object):
                 if result.rc != 0:
                     err_msg = 'Problem while updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                               'Reason: ' + str(result.error_message)
-                    LOGGER.debug(err_msg)
+                    LOGGER.warning(err_msg)
         else:
             err_msg = 'Problem while saving or updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                       'Reason: id and/or value and/or type is/are not defined !'
@@ -338,11 +337,11 @@ class InjectorUITreeEntity(object):
             if result.rc != 0:
                 err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                           'Reason: ' + str(result.error_message)
-                LOGGER.debug(err_msg)
+                LOGGER.warning(err_msg)
         else:
             err_msg = 'Problem while removing injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                       'Reason: id is null or injector UI Tree Menu Entity not found'
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
 
 
 class InjectorCachedRegistryFactoryService(object):
@@ -495,7 +494,7 @@ class InjectorCachedComponentService(object):
             else:
                 err_msg = 'Problem while finding component ( id : ' + co_id + \
                           'Reason: ' + str(result.error_message)
-                LOGGER.debug(err_msg)
+                LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -513,7 +512,7 @@ class InjectorCachedComponentService(object):
         else:
             err_msg = 'Problem while getting components cache size' +\
                       'Reason: ' + str(result.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -657,7 +656,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         if result.rc != 0:
             err_msg = 'Problem while saving component ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
             ret = False
 
         return ret
@@ -677,7 +676,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         if result.rc != 0:
             err_msg = 'Problem while saving component ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
             ret = False
 
         if self.service is not None and self.service.is_started:
@@ -836,7 +835,7 @@ class InjectorCachedGearService(object):
         else:
             err_msg = 'Problem while getting gears cache size' + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -930,7 +929,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         if result.rc != 0:
             err_msg = 'Problem while saving gear ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
             ret = False
 
         return ret
@@ -949,7 +948,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         if result.rc != 0:
             err_msg = 'Problem while deleting gear ( id : ' + self.id + \
                       'Reason: ' + str(result.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
             ret = False
 
         if self.service is not None and self.service.is_started:

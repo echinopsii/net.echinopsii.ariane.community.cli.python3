@@ -58,7 +58,7 @@ class NICardTest(unittest.TestCase):
 
     def test_new_niCard(self):
         new_niCard = NICard(name='Fake NIC name',
-                            macAddress='00:00:00:00:00:10',
+                            mac_address='00:00:00:00:00:10',
                             duplex="fake duplex",
                             speed=20,
                             mtu=40,
@@ -71,7 +71,7 @@ class NICardTest(unittest.TestCase):
 
     def test_remove_niCard(self):
         rm_niCard = NICard(name='Fake NIC name',
-                           macAddress='00:00:00:00:00:10',
+                           mac_address='00:00:00:00:00:10',
                            duplex="fake duplex",
                            speed=20,
                            mtu=40,
@@ -83,7 +83,7 @@ class NICardTest(unittest.TestCase):
 
     def test_niCard_get(self):
         new_niCard = NICard(name='Fake NIC name',
-                            macAddress='00:00:00:00:00:10',
+                            mac_address='00:00:00:00:00:10',
                             duplex="fake duplex",
                             speed=20,
                             mtu=40,
@@ -96,7 +96,7 @@ class NICardTest(unittest.TestCase):
 
     def test_niCard_find_by_id(self):
         new_niCard = NICard(name='Fake NIC name',
-                            macAddress='00:00:00:00:00:10',
+                            mac_address='00:00:00:00:00:10',
                             duplex="fake duplex",
                             speed=20,
                             mtu=40,
@@ -104,12 +104,12 @@ class NICardTest(unittest.TestCase):
                             nic_ipa_id=self.new_ipAddress.id)
         new_niCard.save()
 
-        self.assertIsNotNone(NICardService.find_niCard(nic_id=new_niCard.id))
+        self.assertIsNotNone(NICardService.find_nicard(nic_id=new_niCard.id))
         new_niCard.remove()
 
     def test_niCard_find_by_name(self):
         new_niCard = NICard(name='Fake NIC name',
-                            macAddress='00:00:00:00:00:10',
+                            mac_address='00:00:00:00:00:10',
                             duplex="fake duplex",
                             speed=20,
                             mtu=40,
@@ -117,5 +117,5 @@ class NICardTest(unittest.TestCase):
                             nic_ipa_id=self.new_ipAddress.id)
         new_niCard.save()
 
-        self.assertIsNotNone(NICardService.find_niCard(nic_name=new_niCard.name))
+        self.assertIsNotNone(NICardService.find_nicard(nic_name=new_niCard.name))
         new_niCard.remove()

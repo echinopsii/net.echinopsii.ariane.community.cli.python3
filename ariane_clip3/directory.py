@@ -80,7 +80,7 @@ class LocationService(object):
             else:
                 err_msg = 'Problem while finding location (id:' + str(loc_id) + ', name:' + str(loc_name) + ').' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(err_msg)
+                LOGGER.warning(err_msg)
 
         return ret
 
@@ -98,7 +98,7 @@ class LocationService(object):
                 ret.append(Location.json_2_location(location))
         else:
             err_msg = 'Problem while getting locations. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -119,7 +119,7 @@ class Location(object):
                         address=json_obj['locationAddress'],
                         zip_code=json_obj['locationZipCode'],
                         town=json_obj['locationTown'],
-                        type=json_obj['locationType'],
+                        dc_type=json_obj['locationType'],
                         country=json_obj['locationCountry'],
                         gps_latitude=json_obj['locationGPSLat'],
                         gps_longitude=json_obj['locationGPSLng'],
@@ -169,14 +169,17 @@ class Location(object):
                 self.address = json_obj['locationAddress']
                 self.zip_code = json_obj['locationZipCode']
                 self.town = json_obj['locationTown']
-                self.type= json_obj['locationType']
+                self.type = json_obj['locationType']
                 self.country = json_obj['locationCountry']
                 self.gpsLatitude = json_obj['locationGPSLat']
                 self.gpsLongitude = json_obj['locationGPSLng']
                 self.routing_area_ids = json_obj['locationRoutingAreasID']
                 self.subnet_ids = json_obj['locationSubnetsID']
+            else:
+                LOGGER.warning('Problem while syncing location ' + self.name + ' name. Reason: ' +
+                               str(response.error_message))
 
-    def __init__(self, locid=None, name=None, description=None, address=None, zip_code=None, town=None, type=None,
+    def __init__(self, locid=None, name=None, description=None, address=None, zip_code=None, town=None, dc_type=None,
                  country=None, gps_latitude=None, gps_longitude=None, routing_area_ids=None, subnet_ids=None):
         """
         build ariane_clip3 Location object
@@ -199,7 +202,7 @@ class Location(object):
         self.address = address
         self.zip_code = zip_code
         self.town = town
-        self.type = type
+        self.type = dc_type
         self.country = country
         self.gpsLatitude = gps_latitude
         self.gpsLongitude = gps_longitude
@@ -243,7 +246,7 @@ class Location(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/add', 'parameters': params}
                 response = LocationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -277,7 +280,7 @@ class Location(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/routingareas/delete', 'parameters': params}
                 response = LocationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -311,7 +314,7 @@ class Location(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
                 response = LocationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -345,7 +348,7 @@ class Location(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
                 response = LocationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating location ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -439,7 +442,7 @@ class Location(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = LocationService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 LOGGER.debug('Problem while saving location ' + self.name + '. Reason: ' + str(response.error_message))
             )
         else:
@@ -477,7 +480,7 @@ class Location(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = LocationService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting location ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -522,7 +525,7 @@ class RoutingAreaService(object):
             else:
                 err_msg = 'Problem while finding routing area (id:' + str(ra_id) + ', name:' + str(ra_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -542,7 +545,7 @@ class RoutingAreaService(object):
                 ret.append(RoutingArea.json_2_routing_area(routing_area))
         else:
             err_msg = 'Problem while getting routing areas. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -611,6 +614,11 @@ class RoutingArea(object):
                 self.multicast = json_obj['routingAreaMulticast']
                 self.loc_ids = json_obj['routingAreaLocationsID']
                 self.subnet_ids = json_obj['routingAreaSubnetsID']
+            else:
+                LOGGER.warning(
+                    'Problem while syncing routing area ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
 
     def __init__(self, raid=None, name=None, description=None, ra_type=None, multicast=None,
                  routing_area_loc_ids=None, routing_area_subnet_ids=None):
@@ -668,7 +676,7 @@ class RoutingArea(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -702,7 +710,7 @@ class RoutingArea(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete', 'parameters': params}
                 response = RoutingAreaService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating routing area ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -757,7 +765,7 @@ class RoutingArea(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = RoutingAreaService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving routing area' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -787,7 +795,7 @@ class RoutingArea(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = RoutingAreaService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting routing area ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -832,7 +840,7 @@ class SubnetService(object):
             else:
                 err_msg = 'Problem while finding subnet (id:' + str(sb_id) + ', name:' + str(sb_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -852,7 +860,7 @@ class SubnetService(object):
                 ret.append(Subnet.json_2_subnet(subnet))
         else:
             err_msg = 'Problem while getting subnets. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -906,16 +914,22 @@ class Subnet(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = SubnetService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['subnetID']
-            self.name = json_obj['subnetName']
-            self.description = json_obj['subnetDescription']
-            self.ip = json_obj['subnetIP']
-            self.mask = json_obj['subnetMask']
-            self.routing_area_id = json_obj['subnetRoutingAreaID']
-            self.loc_ids = json_obj['subnetLocationsID']
-            self.ipAddress_ids = json_obj['subnetIPAddressesID']
-            self.osi_ids = json_obj['subnetOSInstancesID']
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing subnet ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                json_obj = response.response_content
+                self.id = json_obj['subnetID']
+                self.name = json_obj['subnetName']
+                self.description = json_obj['subnetDescription']
+                self.ip = json_obj['subnetIP']
+                self.mask = json_obj['subnetMask']
+                self.routing_area_id = json_obj['subnetRoutingAreaID']
+                self.loc_ids = json_obj['subnetLocationsID']
+                self.ipAddress_ids = json_obj['subnetIPAddressesID']
+                self.osi_ids = json_obj['subnetOSInstancesID']
 
     def __init__(self, subnetid=None, name=None, description=None, ip=None, mask=None,
                  routing_area_id=None, subnet_loc_ids=None, ip_address_ids=None, subnet_osi_ids=None):
@@ -981,7 +995,7 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/locations/add', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1015,7 +1029,7 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/locations/delete', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1049,7 +1063,7 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1083,7 +1097,7 @@ class Subnet(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = SubnetService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating subnet ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1165,7 +1179,7 @@ class Subnet(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = SubnetService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving subnet ' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -1203,7 +1217,7 @@ class Subnet(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = SubnetService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting subnet ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -1227,19 +1241,12 @@ class IPAddressService(object):
         :return: found IP Address or None if not found
         """
         if (ipa_id is None or not ipa_id) and (ipa_fqdn is None or not ipa_fqdn) and \
-                (
-                            (ipa_ip_address is None or not ipa_ip_address) and
-                            (
-                                        (ipa_subnet_id is None or not ipa_subnet_id) or
-                                        (ipa_osi_id is None or not ipa_osi_id)
-                            )
-                ):
+                ((ipa_ip_address is None or not ipa_ip_address) and
+                    ((ipa_subnet_id is None or not ipa_subnet_id) or (ipa_osi_id is None or not ipa_osi_id))):
             raise exceptions.ArianeCallParametersError('id and fqdn and (ip_address,(ip_subnet_id|ip_osi_id))')
 
-        if (ipa_id is not None and ipa_id) and (
-                    (ipa_fqdn is not None and ipa_fqdn) or
-                    (ipa_ip_address is not None and ipa_ip_address)
-        ):
+        if (ipa_id is not None and ipa_id) and \
+           ((ipa_fqdn is not None and ipa_fqdn) or (ipa_ip_address is not None and ipa_ip_address)):
             LOGGER.warn('Both id and (fqdn or ipAddress) are defined. Will give you search on id.')
             ipa_fqdn = None
             ipa_ip_address = None
@@ -1272,7 +1279,7 @@ class IPAddressService(object):
             else:
                 err_msg = 'Problem while finding IP Address (id:' + str(ipa_id) + ', ipAddress:' + str(ipa_ip_address) \
                           + '). Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -1292,7 +1299,7 @@ class IPAddressService(object):
                 ret.append(IPAddress.json_2_ip_address(ipAddress))
         else:
             err_msg = 'Problem while getting IP Address. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -1338,12 +1345,18 @@ class IPAddress(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = IPAddressService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['ipAddressID']
-            self.ip_address = json_obj['ipAddressIPA']
-            self.fqdn = json_obj['ipAddressFQDN']
-            self.ipa_os_instance_id = json_obj['ipAddressOSInstanceID']
-            self.ipa_subnet_id = json_obj['ipAddressSubnetID']
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing IP address ' + self.ip_address + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                json_obj = response.response_content
+                self.id = json_obj['ipAddressID']
+                self.ip_address = json_obj['ipAddressIPA']
+                self.fqdn = json_obj['ipAddressFQDN']
+                self.ipa_os_instance_id = json_obj['ipAddressOSInstanceID']
+                self.ipa_subnet_id = json_obj['ipAddressSubnetID']
 
     def __str__(self):
         """
@@ -1398,7 +1411,7 @@ class IPAddress(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = IPAddressService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving IP Address ' + self.ip_address + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -1421,7 +1434,7 @@ class IPAddress(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = IPAddressService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting IP Address' + self.ip_address + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -1437,18 +1450,18 @@ class NICardService(object):
         NICardService.requester = directory_driver.make_requester(args)
 
     @staticmethod
-    def find_niCard(nic_id=None, nic_mac_Address=None, nic_name=None):
+    def find_nicard(nic_id=None, nic_mac_address=None, nic_name=None):
         """
         find the NICard (nic) according nic id (prioritary) or name or mac_Address
         :rtype : object
         :param nic_id: the NIC id
-        :param nic_mac_Address: the NIC mac Address
+        :param nic_mac_address: the NIC mac Address
         :param nic_name : name
         :return: found NIC or None if not found
         """
         if (nic_id is None or not nic_id) and (nic_name is None or not nic_name) and \
                 (
-                        (nic_mac_Address is None or not nic_mac_Address)
+                    (nic_mac_address is None or not nic_mac_address)
 
                 ):
             raise exceptions.ArianeCallParametersError('id and name and (mac_Address))')
@@ -1458,11 +1471,11 @@ class NICardService(object):
         ):
             LOGGER.warn('Both id and (name or macAddress) are defined. Will give you search on id.')
             nic_name = None
-            nic_mac_Address = None
+            nic_mac_address = None
 
         if (nic_id is None or not nic_id) and (nic_name is not None and nic_name):
             LOGGER.warn('Both name and macAddress are defined. Will give you search on name.')
-            nic_mac_Address = None
+            nic_mac_address = None
 
         params = None
         if nic_id is not None and nic_id:
@@ -1475,11 +1488,11 @@ class NICardService(object):
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = NICardService.requester.call(args)
             if response.rc is 0:
-                ret = NICard.json_2_niCard(response.response_content)
+                ret = NICard.json_2_nicard(response.response_content)
             else:
                 err_msg = 'Problem while finding NIC (id:' + str(nic_id) + ', name:' + str(nic_name) \
                           + '). Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -1496,23 +1509,23 @@ class NICardService(object):
         if response.rc is 0:
             ret = []
             for nic in response.response_content['nicards']:
-                ret.append(NICard.json_2_niCard(nic))
+                ret.append(NICard.json_2_nicard(nic))
         else:
             err_msg = 'Problem while getting NIC. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
 class NICard(object):
     @staticmethod
-    def json_2_niCard(json_obj):
+    def json_2_nicard(json_obj):
         """
         transform JSON obj coming from Ariane to ariane_clip3 object
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 NICard object
         """
         return NICard(nic_id=json_obj['niCardID'],
-                      macAddress=json_obj['niCardMacAddress'],
+                      mac_address=json_obj['niCardMacAddress'],
                       name=json_obj['niCardName'],
                       speed=json_obj['niCardSpeed'],
                       duplex=json_obj['niCardDuplex'],
@@ -1520,7 +1533,7 @@ class NICard(object):
                       nic_osi_id=['niCardOSInstanceID'],
                       nic_ipa_id=json_obj['niCardIPAddressID'])
 
-    def niCard_2_json(self):
+    def nicard_2_json(self):
         """
         transform ariane_clip3 OS Instance object to Ariane server JSON obj
         :return: Ariane JSON obj
@@ -1528,7 +1541,7 @@ class NICard(object):
         json_obj = {
             'niCardID': self.id,
             'niCardName': self.name,
-            'niCardMacAddress': self.macAddress,
+            'niCardMacAddress': self.mac_address,
             'niCardDuplex': self.duplex,
             'niCardSpeed': self.speed,
             'niCardMtu': self.mtu,
@@ -1551,15 +1564,21 @@ class NICard(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = NICardService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['niCardID']
-            self.name = json_obj['niCardName']
-            self.macAddress = json_obj['niCardMacAddress']
-            self.duplex = json_obj['niCardDuplex']
-            self.speed = json_obj['niCardSpeed']
-            self.mtu = json_obj['niCardMtu']
-            self.nic_ipa_id = json_obj['niCardIPAddressID']
-            self.nic_osi_id = json_obj['niCardOSInstanceID']
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing NIC ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                json_obj = response.response_content
+                self.id = json_obj['niCardID']
+                self.name = json_obj['niCardName']
+                self.mac_address = json_obj['niCardMacAddress']
+                self.duplex = json_obj['niCardDuplex']
+                self.speed = json_obj['niCardSpeed']
+                self.mtu = json_obj['niCardMtu']
+                self.nic_ipa_id = json_obj['niCardIPAddressID']
+                self.nic_osi_id = json_obj['niCardOSInstanceID']
 
     def __str__(self):
         """
@@ -1567,23 +1586,23 @@ class NICard(object):
         """
         return str(self.__dict__)
 
-    def __init__(self, nic_id=None, name=None, macAddress=None, duplex=None,
+    def __init__(self, nic_id=None, name=None, mac_address=None, duplex=None,
                  speed=None, mtu=None, nic_osi_id=None, nic_ipa_id=None):
         """
         build ariane_clip3 OS instance object
         :param nic_id: default None. it will be erased by any interaction with Ariane server
-        :param macAddress: default None
+        :param mac_address: default None
         :param name: default None
         :param duplex: default None
         :param speed: default None
         :param mtu: default None
-        :param nic_osi_ids: default None
+        :param nic_osi_id: default None
         :param nic_ipa_id: default None
         :return:
         """
         self.id = nic_id
         self.name = name
-        self.macAddress = macAddress
+        self.mac_address = mac_address
         self.duplex = duplex
         self.speed = speed
         self.mtu = mtu
@@ -1608,8 +1627,8 @@ class NICard(object):
         if self.name is not None:
             post_payload['niCardName'] = self.name
 
-        if self.macAddress is not None:
-            post_payload['niCardMacAddress'] = self.macAddress
+        if self.mac_address is not None:
+            post_payload['niCardMacAddress'] = self.mac_address
 
         if self.duplex is not None:
             post_payload['niCardDuplex'] = self.duplex
@@ -1629,7 +1648,7 @@ class NICard(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = NICardService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving NIC ' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -1652,7 +1671,7 @@ class NICard(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = NICardService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting NIC' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -1697,7 +1716,7 @@ class OSInstanceService(object):
             else:
                 err_msg = 'Problem while finding OS Instance (id:' + str(osi_id) + ', name:' + str(osi_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -1717,7 +1736,7 @@ class OSInstanceService(object):
                 ret.append(OSInstance.json_2_os_instance(osInstance))
         else:
             err_msg = 'Problem while getting os instances. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -1779,26 +1798,32 @@ class OSInstance(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = OSInstanceService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['osInstanceID']
-            self.name = json_obj['osInstanceName']
-            self.description = json_obj['osInstanceDescription']
-            self.admin_gate_uri = json_obj['osInstanceAdminGateURI']
-            if json_obj['osInstanceOSTypeID'] == -1:
-                self.ost_id = None
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing OS instance ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
             else:
-                self.ost_id = json_obj['osInstanceOSTypeID']
-            if json_obj['osInstanceEmbeddingOSInstanceID'] == -1:
-                self.embedding_osi_id = None
-            else:
-                self.embedding_osi_id = json_obj['osInstanceEmbeddingOSInstanceID']
-            self.embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
-            self.ip_address_ids = json_obj['osInstanceIPAddressesID']
-            self.niCard_ids = json_obj['osInstanceNICardsID']
-            self.application_ids = json_obj['osInstanceApplicationsID']
-            self.environment_ids = json_obj['osInstanceEnvironmentsID']
-            self.subnet_ids = json_obj['osInstanceSubnetsID']
-            self.team_ids = json_obj['osInstanceTeamsID']
+                json_obj = response.response_content
+                self.id = json_obj['osInstanceID']
+                self.name = json_obj['osInstanceName']
+                self.description = json_obj['osInstanceDescription']
+                self.admin_gate_uri = json_obj['osInstanceAdminGateURI']
+                if json_obj['osInstanceOSTypeID'] == -1:
+                    self.ost_id = None
+                else:
+                    self.ost_id = json_obj['osInstanceOSTypeID']
+                if json_obj['osInstanceEmbeddingOSInstanceID'] == -1:
+                    self.embedding_osi_id = None
+                else:
+                    self.embedding_osi_id = json_obj['osInstanceEmbeddingOSInstanceID']
+                self.embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
+                self.ip_address_ids = json_obj['osInstanceIPAddressesID']
+                self.niCard_ids = json_obj['osInstanceNICardsID']
+                self.application_ids = json_obj['osInstanceApplicationsID']
+                self.environment_ids = json_obj['osInstanceEnvironmentsID']
+                self.subnet_ids = json_obj['osInstanceSubnetsID']
+                self.team_ids = json_obj['osInstanceTeamsID']
 
     def __init__(self, osiid=None, name=None, description=None, admin_gate_uri=None,
                  osi_embedding_osi_id=None, osi_ost_id=None,
@@ -1881,7 +1906,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1915,7 +1940,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/subnets/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1949,7 +1974,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1983,7 +2008,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ipAddresses/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2017,7 +2042,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/niCards/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2025,9 +2050,9 @@ class OSInstance(object):
                     self.niCard_ids.append(nic.id)
                     nic.nic_osi_id = self.id
             else:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
-                    nic.name  + ' id is None'
+                    nic.name + ' id is None'
                 )
 
     def del_nic(self, nic, sync=True):
@@ -2051,7 +2076,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/niCards/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2059,7 +2084,7 @@ class OSInstance(object):
                     self.niCard_ids.remove(nic.id)
                     nic.nic_osi_id = None
             else:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating OS instance ' + self.name + ' name. Reason: NIC ' +
                     nic.name + ' id is None'
                 )
@@ -2086,7 +2111,7 @@ class OSInstance(object):
                         'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2121,7 +2146,7 @@ class OSInstance(object):
                         'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2155,7 +2180,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2189,7 +2214,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2223,7 +2248,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/environments/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2257,7 +2282,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/environments/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2291,7 +2316,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/teams/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2325,7 +2350,7 @@ class OSInstance(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/teams/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS instance ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2470,7 +2495,7 @@ class OSInstance(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = OSInstanceService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving OS instance' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -2549,7 +2574,7 @@ class OSInstance(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = OSInstanceService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting OS instance ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -2576,7 +2601,8 @@ class OSTypeService(object):
         if (ost_id is None or not ost_id) and (ost_name is None or not ost_name) and (ost_arch is None or not ost_arch):
             raise exceptions.ArianeCallParametersError('id and (name, architecture)')
 
-        if (ost_id is not None and ost_id) and ((ost_name is not None and ost_name) or (ost_arch is not None and ost_arch)):
+        if (ost_id is not None and ost_id) and ((ost_name is not None and ost_name) or
+                                                (ost_arch is not None and ost_arch)):
             LOGGER.warn('Both id and (name, arc) are defined. Will give you search on id.')
             ost_name = None
             ost_arch = None
@@ -2600,7 +2626,7 @@ class OSTypeService(object):
             else:
                 err_msg = 'Problem while finding OS Type (id:' + str(ost_id) + ', name:' + str(ost_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -2620,7 +2646,7 @@ class OSTypeService(object):
                 ret.append(OSType.json_2_ostype(os_type))
         else:
             err_msg = 'Problem while getting OS Types. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
 
         return ret
 
@@ -2667,15 +2693,21 @@ class OSType(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = OSTypeService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['osTypeID']
-            self.name = json_obj['osTypeName']
-            self.architecture = json_obj['osTypeArchitecture']
-            if json_obj['osTypeCompanyID'] == -1:
-                self.company_id = None
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing OS type ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
             else:
-                self.company_id = json_obj['osTypeCompanyID']
-            self.osi_ids = json_obj['osTypeOSInstancesID']
+                json_obj = response.response_content
+                self.id = json_obj['osTypeID']
+                self.name = json_obj['osTypeName']
+                self.architecture = json_obj['osTypeArchitecture']
+                if json_obj['osTypeCompanyID'] == -1:
+                    self.company_id = None
+                else:
+                    self.company_id = json_obj['osTypeCompanyID']
+                self.osi_ids = json_obj['osTypeOSInstancesID']
 
     def __init__(self, ostid=None, name=None, architecture=None,
                  os_type_company_id=None, os_type_company=None, os_type_os_instance_ids=None):
@@ -2730,7 +2762,7 @@ class OSType(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = OSTypeService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS type ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2764,7 +2796,7 @@ class OSType(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = OSTypeService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating OS type ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2818,7 +2850,7 @@ class OSType(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = OSTypeService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving os type' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -2848,7 +2880,7 @@ class OSType(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = OSTypeService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting os type ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -2893,7 +2925,7 @@ class ApplicationService(object):
             else:
                 err_msg = 'Problem while finding application (id:' + str(app_id) + ', name:' + str(app_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -2913,7 +2945,7 @@ class ApplicationService(object):
                 ret.append(Application.json_2_application(application))
         else:
             err_msg = 'Problem while getting applications. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -2965,21 +2997,27 @@ class Application(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = ApplicationService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['applicationID']
-            self.name = json_obj['applicationName']
-            self.description = json_obj['applicationDescription']
-            self.short_name = json_obj['applicationShortName']
-            self.color_code = json_obj['applicationColorCode']
-            if json_obj['applicationCompanyID'] == -1:
-                self.company_id = None
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing application ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
             else:
-                self.company_id = json_obj['applicationCompanyID']
-            if json_obj['applicationTeamID'] == -1:
-                self.team_id = None
-            else:
-                self.team_id = json_obj['applicationTeamID']
-            self.osi_ids = json_obj['applicationOSInstancesID']
+                json_obj = response.response_content
+                self.id = json_obj['applicationID']
+                self.name = json_obj['applicationName']
+                self.description = json_obj['applicationDescription']
+                self.short_name = json_obj['applicationShortName']
+                self.color_code = json_obj['applicationColorCode']
+                if json_obj['applicationCompanyID'] == -1:
+                    self.company_id = None
+                else:
+                    self.company_id = json_obj['applicationCompanyID']
+                if json_obj['applicationTeamID'] == -1:
+                    self.team_id = None
+                else:
+                    self.team_id = json_obj['applicationTeamID']
+                self.osi_ids = json_obj['applicationOSInstancesID']
 
     def __init__(self, appid=None, name=None, description=None, short_name=None, color_code=None,
                  company=None, company_id=None, team=None, team_id=None, osi_ids=None):
@@ -3041,7 +3079,7 @@ class Application(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating application ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3075,7 +3113,7 @@ class Application(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = ApplicationService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating application ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3143,7 +3181,7 @@ class Application(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = ApplicationService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving application ' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -3169,7 +3207,7 @@ class Application(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = ApplicationService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting application ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -3214,7 +3252,7 @@ class CompanyService(object):
             else:
                 err_msg = 'Problem while finding company (id:' + str(cmp_id) + ', name:' + str(cmp_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -3234,7 +3272,7 @@ class CompanyService(object):
                 ret.append(Company.json_2_company(company))
         else:
             err_msg = 'Problem while getting companies. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -3280,12 +3318,18 @@ class Company(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = CompanyService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['companyID']
-            self.name = json_obj['companyName']
-            self.description = json_obj['companyDescription']
-            self.applications_ids = json_obj['companyApplicationsID']
-            self.ost_ids = json_obj['companyOSTypesID']
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing company ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                json_obj = response.response_content
+                self.id = json_obj['companyID']
+                self.name = json_obj['companyName']
+                self.description = json_obj['companyDescription']
+                self.applications_ids = json_obj['companyApplicationsID']
+                self.ost_ids = json_obj['companyOSTypesID']
 
     def __init__(self, cmpid=None, name=None, description=None,
                  application_ids=None, ost_ids=None):
@@ -3341,7 +3385,7 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3375,7 +3419,7 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3409,7 +3453,7 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/add', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3443,7 +3487,7 @@ class Company(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/ostypes/delete', 'parameters': params}
                 response = CompanyService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating company ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3504,7 +3548,7 @@ class Company(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = CompanyService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving company' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -3542,7 +3586,7 @@ class Company(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = CompanyService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting company ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -3587,7 +3631,7 @@ class EnvironmentService(object):
             else:
                 err_msg = 'Problem while finding environment (id:' + str(env_id) + ', name:' + str(env_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -3607,7 +3651,7 @@ class EnvironmentService(object):
                 ret.append(Environment.json_2_environment(environment))
         else:
             err_msg = 'Problem while getting environments. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -3653,12 +3697,18 @@ class Environment(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = EnvironmentService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['environmentID']
-            self.name = json_obj['environmentName']
-            self.description = json_obj['environmentDescription']
-            self.color_code = json_obj['environmentColorCode']
-            self.osi_ids = json_obj['environmentOSInstancesID']
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing environment ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                json_obj = response.response_content
+                self.id = json_obj['environmentID']
+                self.name = json_obj['environmentName']
+                self.description = json_obj['environmentDescription']
+                self.color_code = json_obj['environmentColorCode']
+                self.osi_ids = json_obj['environmentOSInstancesID']
 
     def __init__(self, envid=None, name=None, description=None,
                  color_code=None, osi_ids=None):
@@ -3712,7 +3762,7 @@ class Environment(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = EnvironmentService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating environment ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3746,7 +3796,7 @@ class Environment(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = EnvironmentService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating environment ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -3795,7 +3845,7 @@ class Environment(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = EnvironmentService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving environment ' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -3825,7 +3875,7 @@ class Environment(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = EnvironmentService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting environment ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -3870,7 +3920,7 @@ class TeamService(object):
             else:
                 err_msg = 'Problem while finding team (id:' + str(team_id) + ', name:' + str(team_name) + '). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(
+                LOGGER.warning(
                     err_msg
                 )
 
@@ -3890,7 +3940,7 @@ class TeamService(object):
                 ret.append(Team.json_2_team(team))
         else:
             err_msg = 'Problem while getting teams. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -3938,13 +3988,19 @@ class Team(object):
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
             response = TeamService.requester.call(args)
-            json_obj = response.response_content
-            self.id = json_obj['teamID']
-            self.name = json_obj['teamName']
-            self.description = json_obj['teamDescription']
-            self.color_code = json_obj['teamColorCode']
-            self.osi_ids = json_obj['teamOSInstancesID']
-            self.app_ids = json_obj['teamApplicationsID']
+            if response.rc is not 0:
+                LOGGER.warning(
+                    'Problem while syncing team ' + self.name + ' name. Reason: ' +
+                    str(response.error_message)
+                )
+            else:
+                json_obj = response.response_content
+                self.id = json_obj['teamID']
+                self.name = json_obj['teamName']
+                self.description = json_obj['teamDescription']
+                self.color_code = json_obj['teamColorCode']
+                self.osi_ids = json_obj['teamOSInstancesID']
+                self.app_ids = json_obj['teamApplicationsID']
 
     def __init__(self, teamid=None, name=None, description=None,
                  color_code=None, app_ids=None, osi_ids=None):
@@ -4002,7 +4058,7 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/add', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -4036,7 +4092,7 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/osinstances/delete', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -4070,7 +4126,7 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/add', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -4104,7 +4160,7 @@ class Team(object):
                 args = {'http_operation': 'GET', 'operation_path': 'update/applications/delete', 'parameters': params}
                 response = TeamService.requester.call(args)
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating team ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -4168,7 +4224,7 @@ class Team(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = TeamService.requester.call(args)
         if response.rc is not 0:
-            LOGGER.debug(
+            LOGGER.warning(
                 'Problem while saving team ' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
@@ -4206,7 +4262,7 @@ class Team(object):
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
             response = TeamService.requester.call(args)
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting team ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self

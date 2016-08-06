@@ -124,7 +124,7 @@ class SessionService(object):
         else:
             err_msg = 'Problem while opening session (client_id:' + str(client_id) + '). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return session_id
 
     @staticmethod
@@ -152,7 +152,7 @@ class SessionService(object):
         else:
             err_msg = 'Problem while commiting on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
 
     @staticmethod
     def rollback():
@@ -179,7 +179,7 @@ class SessionService(object):
         else:
             err_msg = 'Problem while rollbacking on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
 
     @staticmethod
     def close_session():
@@ -208,7 +208,7 @@ class SessionService(object):
         else:
             err_msg = 'Problem while closing session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
 
     @staticmethod
     def complete_transactional_req(args):
@@ -278,7 +278,7 @@ class ClusterService(object):
         else:
             err_msg = 'Problem while finding cluster (id:' + str(cid) + '). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -310,8 +310,8 @@ class ClusterService(object):
             for datacenter in response.response_content['clusters']:
                 ret.append(Cluster.json_2_cluster(datacenter))
         else:
-            err_msg = 'Problem while getting datacenters. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            err_msg = 'Problem while getting clusters. Reason: ' + str(response.error_message)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -367,6 +367,9 @@ class Cluster(object):
 
                 if response.rc is 0:
                     json_obj = response.response_content
+                else:
+                    err_msg = 'Problem while syncing cluster. Reason: ' + str(response.error_message)
+                    LOGGER.warning(err_msg)
 
         if json_obj is not None:
             self.id = json_obj['clusterID']
@@ -403,7 +406,7 @@ class Cluster(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating cluster ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -446,7 +449,7 @@ class Cluster(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating cluster ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -541,7 +544,7 @@ class Cluster(object):
             response = response.get()
 
         if response.rc is not 0:
-            LOGGER.debug('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
+            LOGGER.warning('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['clusterID']
             if self.containers_2_add is not None:
@@ -578,7 +581,7 @@ class Cluster(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting cluster ' + self.name + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -647,7 +650,7 @@ class ContainerService(object):
                 err_msg = 'Problem while finding container (id:' + str(cid) + ', primary admin gate url '\
                           + str(primary_admin_gate_url) + ' ). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(err_msg)
+                LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -682,7 +685,7 @@ class ContainerService(object):
                 ret.append(Container.json_2_container(container))
         else:
             err_msg = 'Problem while getting containers. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -793,6 +796,9 @@ class Container(object):
 
                 if response.rc is 0:
                     json_obj = response.response_content
+                else:
+                    err_msg = 'Problem while syncing container. Reason: ' + str(response.error_message)
+                    LOGGER.warning(err_msg)
 
         if json_obj is not None:
             self.id = json_obj['containerID']
@@ -848,7 +854,7 @@ class Container(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating container ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
@@ -883,7 +889,7 @@ class Container(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating container ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
@@ -922,7 +928,7 @@ class Container(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating container ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -962,7 +968,7 @@ class Container(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating container ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1180,7 +1186,7 @@ class Container(object):
             response = response.get()
 
         if response.rc is not 0:
-            LOGGER.debug('Problem while saving container' + self.name + '. Reason: ' + str(response.error_message))
+            LOGGER.warning('Problem while saving container' + self.name + '. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['containerID']
             if self.child_containers_2_add is not None:
@@ -1241,7 +1247,7 @@ class Container(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting container ' + self.gate_uri + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -1371,7 +1377,7 @@ class NodeService(object):
                 err_msg = 'Problem while searching node (id:' + str(nid) + ', primary admin gate url ' \
                           + str(endpoint_url) + ' ). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(err_msg)
+                LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -1406,7 +1412,7 @@ class NodeService(object):
                 ret.append(Node.json_2_node(node))
         else:
             err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -1479,6 +1485,9 @@ class Node(object):
 
                 if response.rc is 0:
                     json_obj = response.response_content
+                else:
+                    err_msg = 'Problem while syncing node. Reason: ' + str(response.error_message)
+                    LOGGER.warning(err_msg)
 
         if json_obj is not None:
             self.id = json_obj['nodeID']
@@ -1591,7 +1600,7 @@ class Node(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating node ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
@@ -1626,7 +1635,7 @@ class Node(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating node ' + self.name + ' name. Reason: ' +
                     str(response.error_message)
                 )
@@ -1666,7 +1675,7 @@ class Node(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating node ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1707,7 +1716,7 @@ class Node(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating node ' + self.name + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -1796,7 +1805,7 @@ class Node(object):
             response = response.get()
 
         if response.rc is not 0:
-            LOGGER.debug('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
+            LOGGER.warning('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['nodeID']
             if self.twin_nodes_2_add is not None:
@@ -1838,7 +1847,7 @@ class Node(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting node ' + self.id + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -1895,7 +1904,7 @@ class GateService(object):
         else:
             err_msg = 'Problem while searching gate (id:' + str(nid) + ' ). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -1930,7 +1939,7 @@ class GateService(object):
                 ret.append(Gate.json_2_gate(gate))
         else:
             err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -1968,6 +1977,9 @@ class Gate(Node):
 
                 if response.rc is 0:
                     json_obj = response.response_content
+                else:
+                    err_msg = 'Problem while syncing gate. Reason: ' + str(response.error_message)
+                    LOGGER.warning(err_msg)
 
         if json_obj is not None:
             if 'node' in json_obj:
@@ -2039,7 +2051,7 @@ class Gate(Node):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.error('Problem while saving node' + self.name + '. Reason: ' +
+                LOGGER.warning('Problem while saving node' + self.name + '. Reason: ' +
                              str(response.error_message))
             else:
                 self.sync(json_obj=response.response_content)
@@ -2127,7 +2139,7 @@ class EndpointService(object):
                 err_msg = 'Problem while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
                           + str(url) + ' ). ' + \
                           'Reason: ' + str(response.error_message)
-                LOGGER.debug(err_msg)
+                LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -2162,7 +2174,7 @@ class EndpointService(object):
                 ret.append(Endpoint.json_2_endpoint(endpoint))
         else:
             err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -2229,6 +2241,9 @@ class Endpoint(object):
 
                 if response.rc is 0:
                     json_obj = response.response_content
+                else:
+                    err_msg = 'Problem while syncing endpoint. Reason: ' + str(response.error_message)
+                    LOGGER.warning(err_msg)
 
         if json_obj is not None:
             self.id = json_obj['endpointID']
@@ -2324,7 +2339,7 @@ class Endpoint(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                     str(response.error_message)
                 )
@@ -2359,7 +2374,7 @@ class Endpoint(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                     str(response.error_message)
                 )
@@ -2399,7 +2414,7 @@ class Endpoint(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2440,7 +2455,7 @@ class Endpoint(object):
                     response = response.get()
 
                 if response.rc is not 0:
-                    LOGGER.debug(
+                    LOGGER.warning(
                         'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
                         str(response.error_message)
                     )
@@ -2515,7 +2530,7 @@ class Endpoint(object):
             response = response.get()
 
         if response.rc is not 0:
-            LOGGER.debug('Problem while saving endpoint ' + self.url + '. Reason: ' + str(response.error_message))
+            LOGGER.warning('Problem while saving endpoint ' + self.url + '. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['endpointID']
             if self.twin_endpoints_2_add is not None:
@@ -2556,7 +2571,7 @@ class Endpoint(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -2642,7 +2657,7 @@ class LinkService(object):
         else:
             err_msg = 'Problem while searching link (id:' + str(lid) + '). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -2677,7 +2692,7 @@ class LinkService(object):
                 ret.append(Link.json_2_link(link))
         else:
             err_msg = 'Problem while getting links. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -2726,6 +2741,9 @@ class Link(object):
 
                 if response.rc is 0:
                     json_obj = response.response_content
+                else:
+                    err_msg = 'Problem while syncing link. Reason: ' + str(response.error_message)
+                    LOGGER.warning(err_msg)
 
         if json_obj is not None:
             self.id = json_obj['linkID']
@@ -2821,7 +2839,7 @@ class Link(object):
             response = response.get()
 
         if response.rc is not 0:
-            LOGGER.debug('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
+            LOGGER.warning('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
                          + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['linkID']
@@ -2857,7 +2875,7 @@ class Link(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
                 )
                 return self
@@ -2913,7 +2931,7 @@ class TransportService(object):
         else:
             err_msg = 'Problem while searching transport (id:' + str(tid) + '). ' + \
                       'Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
     @staticmethod
@@ -2948,7 +2966,7 @@ class TransportService(object):
                 ret.append(Transport.json_2_transport(transport))
         else:
             err_msg = 'Problem while getting transports. Reason: ' + str(response.error_message)
-            LOGGER.debug(err_msg)
+            LOGGER.warning(err_msg)
         return ret
 
 
@@ -3009,6 +3027,9 @@ class Transport(object):
 
                 if response.rc is 0:
                     json_obj = response.response_content
+                else:
+                    err_msg = 'Problem while syncing transport. Reason: ' + str(response.error_message)
+                    LOGGER.warning(err_msg)
 
         if json_obj is not None:
             self.id = json_obj['transportID']
@@ -3053,7 +3074,7 @@ class Transport(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating transport ' + self.name + ' properties. Reason: ' +
                     str(response.error_message)
                 )
@@ -3088,7 +3109,7 @@ class Transport(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while updating transport ' + self.name + ' properties. Reason: ' +
                     str(response.error_message)
                 )
@@ -3161,7 +3182,7 @@ class Transport(object):
             response = response.get()
 
         if response.rc is not 0:
-            LOGGER.debug('Problem while saving transport {' + self.name + '}. Reason: ' + str(response.error_message))
+            LOGGER.warning('Problem while saving transport {' + self.name + '}. Reason: ' + str(response.error_message))
         else:
             self.id = response.response_content['transportID']
         self.properties_2_add.clear()
@@ -3192,7 +3213,7 @@ class Transport(object):
                 response = response.get()
 
             if response.rc is not 0:
-                LOGGER.debug(
+                LOGGER.warning(
                     'Problem while deleting transport ' + str(self.id) + '. Reason: ' + str(response.error_message)
                 )
                 return self
