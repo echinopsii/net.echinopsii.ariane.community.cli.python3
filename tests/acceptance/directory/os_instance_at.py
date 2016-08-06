@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import unittest
 from ariane_clip3.directory import DirectoryService, OSInstance, RoutingArea, Subnet, Application, Environment, Team,\
-    IPAddress, NICard
+    IPAddress, NIC
 
 __author__ = 'mffrench'
 
@@ -217,7 +217,7 @@ class OSInstanceTest(unittest.TestCase):
                                    ipa_subnet_id=new_subnet.id)
         new_ip_address.save()
 
-        new_niCard = NICard(name='Fake NIC name',
+        new_niCard = NIC(name='Fake NIC name',
                             mac_address='00:00:00:00:00:10',
                             duplex="fake duplex",
                             speed=20,
@@ -227,27 +227,27 @@ class OSInstanceTest(unittest.TestCase):
 
         new_niCard.save()
 
-        new_osinstance.add_nicard(new_niCard, sync=False)
-        self.assertTrue(new_niCard in new_osinstance.niCard_2_add)
-        self.assertIsNone(new_osinstance.niCard_ids)
+        new_osinstance.add_nic(new_niCard, sync=False)
+        self.assertTrue(new_niCard in new_osinstance.nic_2_add)
+        self.assertIsNone(new_osinstance.nic_ids)
         self.assertEqual(new_niCard.nic_osi_id, -1)
         new_osinstance.save()
-        self.assertTrue(new_niCard not in new_osinstance.niCard_2_add)
-        self.assertTrue(new_niCard.id in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard not in new_osinstance.nic_2_add)
+        self.assertTrue(new_niCard.id in new_osinstance.nic_ids)
         self.assertTrue(new_niCard.nic_osi_id == new_osinstance.id)
         new_osinstance.del_nic(new_niCard, sync=False)
-        self.assertTrue(new_niCard in new_osinstance.niCard_2_rm)
-        self.assertTrue(new_niCard.id in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard in new_osinstance.nic_2_rm)
+        self.assertTrue(new_niCard.id in new_osinstance.nic_ids)
         self.assertTrue(new_niCard.nic_osi_id == new_osinstance.id)
         new_osinstance.save()
-        self.assertTrue(new_niCard not in new_osinstance.niCard_2_rm)
-        self.assertTrue(new_niCard.id not in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard not in new_osinstance.nic_2_rm)
+        self.assertTrue(new_niCard.id not in new_osinstance.nic_ids)
         self.assertTrue(new_niCard.nic_osi_id == -1)
-        new_osinstance.add_nicard(new_niCard)
-        self.assertTrue(new_niCard.id in new_osinstance.niCard_ids)
+        new_osinstance.add_nic(new_niCard)
+        self.assertTrue(new_niCard.id in new_osinstance.nic_ids)
         self.assertTrue(new_niCard.nic_osi_id == new_osinstance.id)
         new_osinstance.del_nic(new_niCard)
-        self.assertTrue(new_niCard.id not in new_osinstance.niCard_ids)
+        self.assertTrue(new_niCard.id not in new_osinstance.nic_ids)
         self.assertIsNone(new_niCard.nic_osi_id)
         new_niCard.remove()
         new_osinstance.remove()

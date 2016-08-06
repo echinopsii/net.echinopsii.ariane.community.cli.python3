@@ -40,7 +40,7 @@ class DirectoryService(object):
         self.environment_service = EnvironmentService(self.driver)
         self.team_service = TeamService(self.driver)
         self.ipAddress_service = IPAddressService(self.driver)
-        self.niCard_service = NICardService(self.driver)
+        self.nic_service = NICService(self.driver)
 
 
 class LocationService(object):
@@ -1442,17 +1442,17 @@ class IPAddress(object):
                 return None
 
 
-class NICardService(object):
+class NICService(object):
     requester = None
 
     def __init__(self, directory_driver):
-        args = {'repository_path': 'rest/directories/common/infrastructure/network/niCard/'}
-        NICardService.requester = directory_driver.make_requester(args)
+        args = {'repository_path': 'rest/directories/common/infrastructure/network/nic/'}
+        NICService.requester = directory_driver.make_requester(args)
 
     @staticmethod
-    def find_nicard(nic_id=None, nic_mac_address=None, nic_name=None):
+    def find_nic(nic_id=None, nic_mac_address=None, nic_name=None):
         """
-        find the NICard (nic) according nic id (prioritary) or name or mac_Address
+        find the NIC according nic id (prioritary) or name or mac_Address
         :rtype : object
         :param nic_id: the NIC id
         :param nic_mac_address: the NIC mac Address
@@ -1460,35 +1460,33 @@ class NICardService(object):
         :return: found NIC or None if not found
         """
         if (nic_id is None or not nic_id) and (nic_name is None or not nic_name) and \
-                (
-                    (nic_mac_address is None or not nic_mac_address)
+           (nic_mac_address is None or not nic_mac_address):
+            raise exceptions.ArianeCallParametersError('id and name and mac_Address)')
 
-                ):
-            raise exceptions.ArianeCallParametersError('id and name and (mac_Address))')
-
-        if (nic_id is not None and nic_id) and (
-                (nic_name is not None and nic_name)
-        ):
+        if (nic_id is not None and nic_id) and \
+           ((nic_name is not None and nic_name) or (nic_mac_address is not None and nic_mac_address)):
             LOGGER.warn('Both id and (name or macAddress) are defined. Will give you search on id.')
             nic_name = None
             nic_mac_address = None
 
-        if (nic_id is None or not nic_id) and (nic_name is not None and nic_name):
-            LOGGER.warn('Both name and macAddress are defined. Will give you search on name.')
-            nic_mac_address = None
+        if (nic_name is not None or nic_name) and (nic_mac_address is not None and nic_mac_address):
+            LOGGER.warn('Both name and mac address are defined. Will give you search on mac address.')
+            nic_name = None
 
         params = None
         if nic_id is not None and nic_id:
             params = {'id': nic_id}
+        elif nic_mac_address is not None and nic_mac_address:
+            params = {'macAddress': nic_mac_address}
         elif nic_name is not None and nic_name:
             params = {'name': nic_name}
 
         ret = None
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = NICardService.requester.call(args)
+            response = NICService.requester.call(args)
             if response.rc is 0:
-                ret = NICard.json_2_nicard(response.response_content)
+                ret = NIC.json_2_nic(response.response_content)
             else:
                 err_msg = 'Problem while finding NIC (id:' + str(nic_id) + ', name:' + str(nic_name) \
                           + '). Reason: ' + str(response.error_message)
@@ -1504,49 +1502,49 @@ class NICardService(object):
         :return: all knows NIC
         """
         args = {'http_operation': 'GET', 'operation_path': ''}
-        response = NICardService.requester.call(args)
+        response = NICService.requester.call(args)
         ret = None
         if response.rc is 0:
             ret = []
-            for nic in response.response_content['nicards']:
-                ret.append(NICard.json_2_nicard(nic))
+            for nic in response.response_content['nics']:
+                ret.append(NIC.json_2_nic(nic))
         else:
             err_msg = 'Problem while getting NIC. Reason: ' + str(response.error_message)
             LOGGER.warning(err_msg)
         return ret
 
 
-class NICard(object):
+class NIC(object):
     @staticmethod
-    def json_2_nicard(json_obj):
+    def json_2_nic(json_obj):
         """
         transform JSON obj coming from Ariane to ariane_clip3 object
         :param json_obj: the JSON obj coming from Ariane
-        :return: ariane_clip3 NICard object
+        :return: ariane_clip3 NIC object
         """
-        return NICard(nic_id=json_obj['niCardID'],
-                      mac_address=json_obj['niCardMacAddress'],
-                      name=json_obj['niCardName'],
-                      speed=json_obj['niCardSpeed'],
-                      duplex=json_obj['niCardDuplex'],
-                      mtu=json_obj['niCardMtu'],
-                      nic_osi_id=['niCardOSInstanceID'],
-                      nic_ipa_id=json_obj['niCardIPAddressID'])
+        return NIC(nic_id=json_obj['nicID'],
+                   mac_address=json_obj['nicMacAddress'],
+                   name=json_obj['nicName'],
+                   speed=json_obj['nicSpeed'],
+                   duplex=json_obj['nicDuplex'],
+                   mtu=json_obj['nicMtu'],
+                   nic_osi_id=['nicOSInstanceID'],
+                   nic_ipa_id=json_obj['nicIPAddressID'])
 
-    def nicard_2_json(self):
+    def nic_2_json(self):
         """
         transform ariane_clip3 OS Instance object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
         json_obj = {
-            'niCardID': self.id,
-            'niCardName': self.name,
-            'niCardMacAddress': self.mac_address,
-            'niCardDuplex': self.duplex,
-            'niCardSpeed': self.speed,
-            'niCardMtu': self.mtu,
-            'niCardOSInstanceID': self.nic_osi_id,
-            'niCardIPAddressID': self.nic_ipa_id
+            'nicID': self.id,
+            'nicName': self.name,
+            'nicMacAddress': self.mac_address,
+            'nicDuplex': self.duplex,
+            'nicSpeed': self.speed,
+            'nicMtu': self.mtu,
+            'nicOSInstanceID': self.nic_osi_id,
+            'nicIPAddressID': self.nic_ipa_id
         }
         return json.dumps(json_obj)
 
@@ -1563,7 +1561,7 @@ class NICard(object):
 
         if params is not None:
             args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-            response = NICardService.requester.call(args)
+            response = NICService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.warning(
                     'Problem while syncing NIC ' + self.name + ' name. Reason: ' +
@@ -1571,14 +1569,14 @@ class NICard(object):
                 )
             else:
                 json_obj = response.response_content
-                self.id = json_obj['niCardID']
-                self.name = json_obj['niCardName']
-                self.mac_address = json_obj['niCardMacAddress']
-                self.duplex = json_obj['niCardDuplex']
-                self.speed = json_obj['niCardSpeed']
-                self.mtu = json_obj['niCardMtu']
-                self.nic_ipa_id = json_obj['niCardIPAddressID']
-                self.nic_osi_id = json_obj['niCardOSInstanceID']
+                self.id = json_obj['nicID']
+                self.name = json_obj['nicName']
+                self.mac_address = json_obj['nicMacAddress']
+                self.duplex = json_obj['nicDuplex']
+                self.speed = json_obj['nicSpeed']
+                self.mtu = json_obj['nicMtu']
+                self.nic_ipa_id = json_obj['nicIPAddressID']
+                self.nic_osi_id = json_obj['nicOSInstanceID']
 
     def __str__(self):
         """
@@ -1622,37 +1620,37 @@ class NICard(object):
         post_payload = {}
 
         if self.id is not None:
-            post_payload['niCardID'] = self.id
+            post_payload['nicID'] = self.id
 
         if self.name is not None:
-            post_payload['niCardName'] = self.name
+            post_payload['nicName'] = self.name
 
         if self.mac_address is not None:
-            post_payload['niCardMacAddress'] = self.mac_address
+            post_payload['nicMacAddress'] = self.mac_address
 
         if self.duplex is not None:
-            post_payload['niCardDuplex'] = self.duplex
+            post_payload['nicDuplex'] = self.duplex
 
         if self.speed is not None:
-            post_payload['niCardSpeed'] = self.speed
+            post_payload['nicSpeed'] = self.speed
 
         if self.mtu is not None:
-            post_payload['niCardMtu'] = self.mtu
+            post_payload['nicMtu'] = self.mtu
 
         if self.nic_osi_id is not None:
-            post_payload['niCardOSInstanceID'] = self.nic_osi_id
+            post_payload['nicOSInstanceID'] = self.nic_osi_id
 
         if self.nic_ipa_id is not None:
-            post_payload['niCardIPAddressID'] = self.nic_ipa_id
+            post_payload['nicIPAddressID'] = self.nic_ipa_id
 
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
-        response = NICardService.requester.call(args)
+        response = NICService.requester.call(args)
         if response.rc is not 0:
             LOGGER.warning(
                 'Problem while saving NIC ' + self.name + '. Reason: ' + str(response.error_message)
             )
         else:
-            self.id = response.response_content['niCardID']
+            self.id = response.response_content['nicID']
 
         self.sync()
         return self
@@ -1669,7 +1667,7 @@ class NICard(object):
                 'id': self.id
             }
             args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
-            response = NICardService.requester.call(args)
+            response = NICService.requester.call(args)
             if response.rc is not 0:
                 LOGGER.warning(
                     'Problem while deleting NIC' + self.name + '. Reason: ' + str(response.error_message)
@@ -1756,7 +1754,7 @@ class OSInstance(object):
                           osi_ost_id=json_obj['osInstanceOSTypeID'],
                           osi_embedded_osi_ids=json_obj['osInstanceEmbeddedOSInstancesID'],
                           osi_ip_address_ids=json_obj['osInstanceIPAddressesID'],
-                          osi_nicard_ids=json_obj['osInstanceNICardsID'],
+                          osi_nic_ids=json_obj['osInstanceNICsID'],
                           osi_application_ids=json_obj['osInstanceApplicationsID'],
                           osi_environment_ids=json_obj['osInstanceEnvironmentsID'],
                           osi_subnet_ids=json_obj['osInstanceSubnetsID'],
@@ -1776,7 +1774,7 @@ class OSInstance(object):
             'osInstanceOSTypeID': self.ost_id,
             'osInstanceEmbeddedOSInstancesID': self.embedded_osi_ids,
             'osInstanceIPAddressesID': self.ip_address_ids,
-            'osInstanceNICardsID': self.niCard_ids,
+            'osInstanceNICsID': self.nic_ids,
             'osInstanceApplicationsID': self.application_ids,
             'osInstanceEnvironmentsID': self.environment_ids,
             'osInstanceSubnetsID': self.subnet_ids,
@@ -1819,7 +1817,7 @@ class OSInstance(object):
                     self.embedding_osi_id = json_obj['osInstanceEmbeddingOSInstanceID']
                 self.embedded_osi_ids = json_obj['osInstanceEmbeddedOSInstancesID']
                 self.ip_address_ids = json_obj['osInstanceIPAddressesID']
-                self.niCard_ids = json_obj['osInstanceNICardsID']
+                self.nic_ids = json_obj['osInstanceNICsID']
                 self.application_ids = json_obj['osInstanceApplicationsID']
                 self.environment_ids = json_obj['osInstanceEnvironmentsID']
                 self.subnet_ids = json_obj['osInstanceSubnetsID']
@@ -1828,7 +1826,7 @@ class OSInstance(object):
     def __init__(self, osiid=None, name=None, description=None, admin_gate_uri=None,
                  osi_embedding_osi_id=None, osi_ost_id=None,
                  osi_embedded_osi_ids=None, osi_application_ids=None, osi_environment_ids=None, osi_subnet_ids=None,
-                 osi_ip_address_ids=None, osi_nicard_ids=None, osi_team_ids=None):
+                 osi_ip_address_ids=None, osi_nic_ids=None, osi_team_ids=None):
         """
         build ariane_clip3 OS instance object
         :param osiid: default None. it will be erased by any interaction with Ariane server
@@ -1842,6 +1840,7 @@ class OSInstance(object):
         :param osi_environment_ids: default None
         :param osi_subnet_ids: default None
         :param osi_ip_address_ids: default None
+        :param osi_nic_ids: default None
         :param osi_team_ids: default None
         :return:
         """
@@ -1866,9 +1865,9 @@ class OSInstance(object):
         self.ip_address_ids = osi_ip_address_ids
         self.ip_address_2_add = []
         self.ip_address_2_rm = []
-        self.niCard_ids = osi_nicard_ids
-        self.niCard_2_add = []
-        self.niCard_2_rm = []
+        self.nic_ids = osi_nic_ids
+        self.nic_2_add = []
+        self.nic_2_rm = []
         self.team_ids = osi_team_ids
         self.team_2_add = []
         self.team_2_rm = []
@@ -2021,25 +2020,25 @@ class OSInstance(object):
                     ip_address.ipAddress + ' id is None'
                 )
 
-    def add_nicard(self, nic, sync=True):
+    def add_nic(self, nic, sync=True):
         """
-        add a niCard to this OS instance.
-        :param nic: the niCard to add on this OS instance
+        add a nic to this OS instance.
+        :param nic: the nic to add on this OS instance
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the niCard object on list to be added on next save().
+        add the nic object on list to be added on next save().
         :return:
         """
         if not sync:
-            self.niCard_2_add.append(nic)
+            self.nic_2_add.append(nic)
         else:
             if nic.id is None:
                 nic.save()
             if self.id is not None and nic.id is not None:
                 params = {
                     'id': self.id,
-                    'niCardID': nic.id
+                    'nicID': nic.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/niCards/add', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/nics/add', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.warning(
@@ -2047,7 +2046,7 @@ class OSInstance(object):
                         str(response.error_message)
                     )
                 else:
-                    self.niCard_ids.append(nic.id)
+                    self.nic_ids.append(nic.id)
                     nic.nic_osi_id = self.id
             else:
                 LOGGER.warning(
@@ -2057,23 +2056,23 @@ class OSInstance(object):
 
     def del_nic(self, nic, sync=True):
         """
-        delete niCard from this OS instance
-        :param nic: the niCard to be deleted from this OS instance
+        delete nic from this OS instance
+        :param nic: the nic to be deleted from this OS instance
         :param sync: If sync=True(default) synchronize with Ariane server. If sync=False,
-        add the niCard object on list to be removed on next save().
+        add the nic object on list to be removed on next save().
         :return:
         """
         if not sync:
-            self.niCard_2_rm.append(nic)
+            self.nic_2_rm.append(nic)
         else:
             if nic.id is None:
                 nic.sync()
             if self.id is not None and nic.id is not None:
                 params = {
                     'id': self.id,
-                    'niCardID': nic.id
+                    'nicID': nic.id
                 }
-                args = {'http_operation': 'GET', 'operation_path': 'update/niCards/delete', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'update/nics/delete', 'parameters': params}
                 response = OSInstanceService.requester.call(args)
                 if response.rc is not 0:
                     LOGGER.warning(
@@ -2081,7 +2080,7 @@ class OSInstance(object):
                         str(response.error_message)
                     )
                 else:
-                    self.niCard_ids.remove(nic.id)
+                    self.nic_ids.remove(nic.id)
                     nic.nic_osi_id = None
             else:
                 LOGGER.warning(
@@ -2422,19 +2421,19 @@ class OSInstance(object):
                 consolidated_ipa_id.append(ipa_2_add.id)
         post_payload['osInstanceIPAddressesID'] = consolidated_ipa_id
 
-        if self.niCard_ids is not None:
-            consolidated_nic_id = copy.deepcopy(self.niCard_ids)
-        if self.niCard_2_rm is not None:
-            for nic_2_rm in self.niCard_2_rm:
+        if self.nic_ids is not None:
+            consolidated_nic_id = copy.deepcopy(self.nic_ids)
+        if self.nic_2_rm is not None:
+            for nic_2_rm in self.nic_2_rm:
                 if nic_2_rm.id is None:
                     nic_2_rm.sync()
                 consolidated_nic_id.remove(nic_2_rm.id)
-        if self.niCard_2_add is not None:
-            for nic_2_add in self.niCard_2_add:
+        if self.nic_2_add is not None:
+            for nic_2_add in self.nic_2_add:
                 if nic_2_add.id is None:
                     nic_2_add.save()
                 consolidated_nic_id.append(nic_2_add.id)
-        post_payload['osInstanceNICardsID'] = consolidated_nic_id
+        post_payload['osInstanceNICsID'] = consolidated_nic_id
 
         if self.subnet_ids is not None:
             consolidated_snet_id = copy.deepcopy(self.subnet_ids)
@@ -2512,11 +2511,11 @@ class OSInstance(object):
             if self.ip_address_2_rm is not None:
                 for ipa_2_rm in self.ip_address_2_rm:
                     ipa_2_rm.sync()
-            if self.niCard_2_add is not None:
-                for nic_2_add in self.niCard_2_add:
+            if self.nic_2_add is not None:
+                for nic_2_add in self.nic_2_add:
                     nic_2_add.sync()
-            if self.niCard_2_rm is not None:
-                for nic_2_rm in self.niCard_2_rm:
+            if self.nic_2_rm is not None:
+                for nic_2_rm in self.nic_2_rm:
                     nic_2_rm.sync()
             if self.subnets_2_add is not None:
                 for snet_2_add in self.subnets_2_add:
@@ -2547,8 +2546,8 @@ class OSInstance(object):
         self.embedded_osi_2_rm.clear()
         self.ip_address_2_add.clear()
         self.ip_address_2_rm.clear()
-        self.niCard_2_add.clear()
-        self.niCard_2_rm.clear()
+        self.nic_2_add.clear()
+        self.nic_2_rm.clear()
         self.subnets_2_add.clear()
         self.subnets_2_rm.clear()
         self.application_2_add.clear()
