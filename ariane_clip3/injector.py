@@ -132,7 +132,7 @@ class InjectorUITreeService(object):
 
             if result.rc == 0:
                 ret = InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity(result.response_content)
-            else:
+            elif result.rc != 404:
                 err_msg = 'Problem while finding injector UI Tree Menu Entity ('+search_criteria+':' + \
                           str(criteria_value) + '). ' + \
                           'Reason: ' + str(result.error_message)
@@ -491,7 +491,7 @@ class InjectorCachedComponentService(object):
             if result.rc == 0:
                 ret = InjectorCachedComponent.json_2_injector_component(result.response_properties)
                 ret.blob = result.response_content
-            else:
+            elif result.rc != 404:
                 err_msg = 'Problem while finding component ( id : ' + co_id + \
                           'Reason: ' + str(result.error_message)
                 LOGGER.warning(err_msg)

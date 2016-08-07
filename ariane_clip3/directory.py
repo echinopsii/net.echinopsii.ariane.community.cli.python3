@@ -2511,7 +2511,7 @@ class OSInstance(object):
         response = OSInstanceService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving OS instance' + self.name +
+                'Problem while saving OS instance ' + self.name +
                 '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             )
         else:
