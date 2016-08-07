@@ -147,8 +147,8 @@ class SessionService(object):
 
             if response.rc != 0:
                 err_msg = 'Problem while committing on session (session_id:' + str(session_id) + '). ' + \
-                          'Reason: ' + str(response.error_message)
-                LOGGER.debug(err_msg)
+                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                LOGGER.warning(err_msg)
         else:
             err_msg = 'Problem while commiting on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
@@ -174,8 +174,8 @@ class SessionService(object):
 
             if response.rc != 0:
                 err_msg = 'Problem while rollbacking on session (session_id:' + str(session_id) + '). ' + \
-                          'Reason: ' + str(response.error_message)
-                LOGGER.debug(err_msg)
+                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                LOGGER.warning(err_msg)
         else:
             err_msg = 'Problem while rollbacking on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
@@ -201,8 +201,8 @@ class SessionService(object):
 
             if response.rc != 0:
                 err_msg = 'Problem while closing session (session_id:' + str(session_id) + '). ' + \
-                          'Reason: ' + str(response.error_message)
-                LOGGER.debug(err_msg)
+                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                LOGGER.warning(err_msg)
             else:
                 SessionService.session_registry.pop(thread_id)
         else:
@@ -275,9 +275,9 @@ class ClusterService(object):
 
         if response.rc == 0:
             ret = Cluster.json_2_cluster(response.response_content)
-        else:
+        elif response.rc != 404:
             err_msg = 'Problem while finding cluster (id:' + str(cid) + '). ' + \
-                      'Reason: ' + str(response.error_message)
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -305,11 +305,11 @@ class ClusterService(object):
             response = response.get()
 
         ret = None
-        if response.rc is 0:
+        if response.rc == 0:
             ret = []
             for datacenter in response.response_content['clusters']:
                 ret.append(Cluster.json_2_cluster(datacenter))
-        else:
+        elif response.rc != 404:
             err_msg = 'Problem while getting clusters. Reason: ' + str(response.error_message)
             LOGGER.warning(err_msg)
         return ret
@@ -365,10 +365,11 @@ class Cluster(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is 0:
+                if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing cluster. Reason: ' + str(response.error_message)
+                    err_msg = 'Problem while syncing cluster (id: ' + str(self.id) + '). ' \
+                              'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
 
         if json_obj is not None:
@@ -405,17 +406,17 @@ class Cluster(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating cluster ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating cluster ' + self.name + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     self.containers_id.append(container.id)
                     container.cluster_id = self.id
             else:
-                LOGGER.debug(
-                    'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
+                LOGGER.warning(
+                    'Problem while updating cluster ' + self.name + '. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
 
@@ -448,17 +449,17 @@ class Cluster(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating cluster ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating cluster ' + self.name + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     self.containers_id.remove(container.id)
                     container.cluster_id = None
             else:
-                LOGGER.debug(
-                    'Problem while updating cluster ' + self.name + ' name. Reason: container ' +
+                LOGGER.warning(
+                    'Problem while updating cluster ' + self.name + '. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
 
@@ -543,8 +544,9 @@ class Cluster(object):
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             response = response.get()
 
-        if response.rc is not 0:
-            LOGGER.warning('Problem while saving cluster' + self.name + '. Reason: ' + str(response.error_message))
+        if response.rc != 0:
+            LOGGER.warning('Problem while saving cluster' + self.name +
+                           '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")")
         else:
             self.id = response.response_content['clusterID']
             if self.containers_2_add is not None:
@@ -580,9 +582,10 @@ class Cluster(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting cluster ' + self.name + '. Reason: ' + str(response.error_message)
+                    'Problem while deleting cluster ' + self.name +
+                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -646,10 +649,10 @@ class ContainerService(object):
 
             if response.rc == 0:
                 ret = Container.json_2_container(response.response_content)
-            else:
+            elif response.rc != 404:
                 err_msg = 'Problem while finding container (id:' + str(cid) + ', primary admin gate url '\
                           + str(primary_admin_gate_url) + ' ). ' + \
-                          'Reason: ' + str(response.error_message)
+                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
         return ret
 
@@ -679,12 +682,13 @@ class ContainerService(object):
             response = response.get()
 
         ret = None
-        if response.rc is 0:
+        if response.rc == 0:
             ret = []
             for container in response.response_content['containers']:
                 ret.append(Container.json_2_container(container))
-        else:
-            err_msg = 'Problem while getting containers. Reason: ' + str(response.error_message)
+        elif response.rc != 404:
+            err_msg = 'Problem while getting containers. ' \
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -794,10 +798,11 @@ class Container(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is 0:
+                if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing container. Reason: ' + str(response.error_message)
+                    err_msg = 'Problem while syncing container (id: ' + str(self.id) + '). ' \
+                              'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
 
         if json_obj is not None:
@@ -853,10 +858,10 @@ class Container(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating container ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
+                    'Problem while updating container ' + self.name + '. Reason: ' +
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -888,10 +893,10 @@ class Container(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating container ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
+                    'Problem while updating container ' + self.name + '. Reason: ' +
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -927,10 +932,10 @@ class Container(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating container ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating container ' + self.name + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     child_container.sync()
@@ -967,10 +972,10 @@ class Container(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating container ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating container ' + self.name + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     child_container.sync()
@@ -1185,8 +1190,9 @@ class Container(object):
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             response = response.get()
 
-        if response.rc is not 0:
-            LOGGER.warning('Problem while saving container' + self.name + '. Reason: ' + str(response.error_message))
+        if response.rc != 0:
+            LOGGER.warning('Problem while saving container' + self.name +
+                           '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")")
         else:
             self.id = response.response_content['containerID']
             if self.child_containers_2_add is not None:
@@ -1246,9 +1252,10 @@ class Container(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting container ' + self.gate_uri + '. Reason: ' + str(response.error_message)
+                    'Problem while deleting container ' + self.gate_uri +
+                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -1373,10 +1380,10 @@ class NodeService(object):
                         ret.append(Node.json_2_node(node))
                 else:
                     ret = Node.json_2_node(response.response_content)
-            else:
+            elif response.rc != 404:
                 err_msg = 'Problem while searching node (id:' + str(nid) + ', primary admin gate url ' \
                           + str(endpoint_url) + ' ). ' + \
-                          'Reason: ' + str(response.error_message)
+                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
         return ret
 
@@ -1406,12 +1413,13 @@ class NodeService(object):
             response = response.get()
 
         ret = None
-        if response.rc is 0:
+        if response.rc == 0:
             ret = []
             for node in response.response_content['nodes']:
                 ret.append(Node.json_2_node(node))
-        else:
-            err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
+        elif response.rc != 404:
+            err_msg = 'Problem while getting nodes. ' \
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -1483,10 +1491,11 @@ class Node(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is 0:
+                if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing node. Reason: ' + str(response.error_message)
+                    err_msg = 'Problem while syncing node (id: ' + str(self.id) + '). ' \
+                              'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
 
         if json_obj is not None:
@@ -1599,10 +1608,10 @@ class Node(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating node ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
+                    'Problem while updating node ' + self.name + '. Reason: ' +
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -1634,10 +1643,10 @@ class Node(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating node ' + self.name + ' name. Reason: ' +
-                    str(response.error_message)
+                    'Problem while updating node ' + self.name + '. Reason: ' +
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -1674,10 +1683,10 @@ class Node(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating node ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating node ' + self.name + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     twin_node.sync()
@@ -1715,10 +1724,10 @@ class Node(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating node ' + self.name + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating node ' + self.name + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     twin_node.sync()
@@ -1804,8 +1813,9 @@ class Node(object):
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             response = response.get()
 
-        if response.rc is not 0:
-            LOGGER.warning('Problem while saving node' + self.name + '. Reason: ' + str(response.error_message))
+        if response.rc != 0:
+            LOGGER.warning('Problem while saving node' + self.name +
+                           '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")")
         else:
             self.id = response.response_content['nodeID']
             if self.twin_nodes_2_add is not None:
@@ -1846,9 +1856,10 @@ class Node(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting node ' + self.id + '. Reason: ' + str(response.error_message)
+                    'Problem while deleting node ' + self.id +
+                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -1901,9 +1912,9 @@ class GateService(object):
 
         if response.rc == 0:
             ret = Gate.json_2_gate(response.response_content)
-        else:
+        elif response.rc != 404:
             err_msg = 'Problem while searching gate (id:' + str(nid) + ' ). ' + \
-                      'Reason: ' + str(response.error_message)
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -1933,12 +1944,13 @@ class GateService(object):
             response = response.get()
 
         ret = None
-        if response.rc is 0:
+        if response.rc == 0:
             ret = []
             for gate in response.response_content['gates']:
                 ret.append(Gate.json_2_gate(gate))
-        else:
-            err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
+        elif response.rc != 404:
+            err_msg = 'Problem while getting nodes. ' \
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -1975,10 +1987,11 @@ class Gate(Node):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is 0:
+                if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing gate. Reason: ' + str(response.error_message)
+                    err_msg = 'Problem while syncing gate (id: ' + str(self.id) + '). ' \
+                              'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
 
         if json_obj is not None:
@@ -2050,9 +2063,9 @@ class Gate(Node):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning('Problem while saving node' + self.name + '. Reason: ' +
-                             str(response.error_message))
+                               str(response.error_message) + " (" + str(response.rc) + ")")
             else:
                 self.sync(json_obj=response.response_content)
         super(Gate, self).save()
@@ -2135,10 +2148,10 @@ class EndpointService(object):
                         ret.append(Endpoint.json_2_endpoint(endpoint))
                 else:
                     ret = Endpoint.json_2_endpoint(response.response_content)
-            else:
+            elif response.rc != 404:
                 err_msg = 'Problem while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
                           + str(url) + ' ). ' + \
-                          'Reason: ' + str(response.error_message)
+                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
         return ret
 
@@ -2168,12 +2181,13 @@ class EndpointService(object):
             response = response.get()
 
         ret = None
-        if response.rc is 0:
+        if response.rc == 0:
             ret = []
             for endpoint in response.response_content['endpoints']:
                 ret.append(Endpoint.json_2_endpoint(endpoint))
-        else:
-            err_msg = 'Problem while getting nodes. Reason: ' + str(response.error_message)
+        elif response.rc != 404:
+            err_msg = 'Problem while getting nodes. ' \
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -2239,10 +2253,11 @@ class Endpoint(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is 0:
+                if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing endpoint. Reason: ' + str(response.error_message)
+                    err_msg = 'Problem while syncing endpoint (id: ' + str(self.id) + '). ' \
+                              'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
 
         if json_obj is not None:
@@ -2338,10 +2353,10 @@ class Endpoint(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
-                    str(response.error_message)
+                    'Problem while updating endpoint ' + self.url + '. Reason: ' +
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -2373,10 +2388,10 @@ class Endpoint(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
-                    str(response.error_message)
+                    'Problem while updating endpoint ' + self.url + '. Reason: ' +
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -2413,10 +2428,10 @@ class Endpoint(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating endpoint ' + self.url + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     twin_endpoint.sync()
@@ -2454,10 +2469,10 @@ class Endpoint(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is not 0:
+                if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating endpoint ' + self.url + ' name. Reason: ' +
-                        str(response.error_message)
+                        'Problem while updating endpoint ' + self.url + '. Reason: ' +
+                        str(response.error_message) + " (" + str(response.rc) + ")"
                     )
                 else:
                     twin_endpoint.sync()
@@ -2529,8 +2544,9 @@ class Endpoint(object):
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             response = response.get()
 
-        if response.rc is not 0:
-            LOGGER.warning('Problem while saving endpoint ' + self.url + '. Reason: ' + str(response.error_message))
+        if response.rc != 0:
+            LOGGER.warning('Problem while saving endpoint ' + self.url +
+                           '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")")
         else:
             self.id = response.response_content['endpointID']
             if self.twin_endpoints_2_add is not None:
@@ -2570,9 +2586,10 @@ class Endpoint(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                    'Problem while deleting endpoint ' + str(self.id) +
+                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -2654,9 +2671,9 @@ class LinkService(object):
                 ret = []
                 for link in response.response_content['links']:
                     ret.append(Link.json_2_link(link))
-        else:
+        elif response.rc != 404:
             err_msg = 'Problem while searching link (id:' + str(lid) + '). ' + \
-                      'Reason: ' + str(response.error_message)
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -2686,12 +2703,13 @@ class LinkService(object):
             response = response.get()
 
         ret = None
-        if response.rc is 0:
+        if response.rc == 0:
             ret = []
             for link in response.response_content['links']:
                 ret.append(Link.json_2_link(link))
-        else:
-            err_msg = 'Problem while getting links. Reason: ' + str(response.error_message)
+        elif response.rc != 404:
+            err_msg = 'Problem while getting links. ' \
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -2739,10 +2757,11 @@ class Link(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is 0:
+                if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing link. Reason: ' + str(response.error_message)
+                    err_msg = 'Problem while syncing link (id: ' + str(id) + '). ' \
+                              'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
 
         if json_obj is not None:
@@ -2838,9 +2857,10 @@ class Link(object):
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             response = response.get()
 
-        if response.rc is not 0:
+        if response.rc != 0:
             LOGGER.warning('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
-                         + str(self.trp_id) + ' }. Reason: ' + str(response.error_message))
+                           + str(self.trp_id) + ' }. Reason: '
+                           + str(response.error_message) + " (" + str(response.rc) + ")")
         else:
             self.id = response.response_content['linkID']
             if self.sep is not None:
@@ -2874,9 +2894,10 @@ class Link(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting endpoint ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                    'Problem while deleting link ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                    + " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -2928,9 +2949,9 @@ class TransportService(object):
 
         if response.rc == 0:
             ret = Transport.json_2_transport(response.response_content)
-        else:
+        elif response.rc != 404:
             err_msg = 'Problem while searching transport (id:' + str(tid) + '). ' + \
-                      'Reason: ' + str(response.error_message)
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -2960,12 +2981,13 @@ class TransportService(object):
             response = response.get()
 
         ret = None
-        if response.rc is 0:
+        if response.rc == 0:
             ret = []
             for transport in response.response_content['transports']:
                 ret.append(Transport.json_2_transport(transport))
-        else:
-            err_msg = 'Problem while getting transports. Reason: ' + str(response.error_message)
+        elif response.rc != 404:
+            err_msg = 'Problem while getting transports. ' \
+                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -3025,10 +3047,11 @@ class Transport(object):
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     response = response.get()
 
-                if response.rc is 0:
+                if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing transport. Reason: ' + str(response.error_message)
+                    err_msg = 'Problem while syncing transport (id: ' + str(self.id) + '). ' \
+                              'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
 
         if json_obj is not None:
@@ -3073,10 +3096,10 @@ class Transport(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
                     'Problem while updating transport ' + self.name + ' properties. Reason: ' +
-                    str(response.error_message)
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -3108,10 +3131,10 @@ class Transport(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
                     'Problem while updating transport ' + self.name + ' properties. Reason: ' +
-                    str(response.error_message)
+                    str(response.error_message) + " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -3181,8 +3204,9 @@ class Transport(object):
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             response = response.get()
 
-        if response.rc is not 0:
-            LOGGER.warning('Problem while saving transport {' + self.name + '}. Reason: ' + str(response.error_message))
+        if response.rc != 0:
+            LOGGER.warning('Problem while saving transport {' + self.name + '}. Reason: ' +
+                           str(response.error_message) + " (" + str(response.rc) + ")")
         else:
             self.id = response.response_content['transportID']
         self.properties_2_add.clear()
@@ -3212,9 +3236,10 @@ class Transport(object):
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
 
-            if response.rc is not 0:
+            if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting transport ' + str(self.id) + '. Reason: ' + str(response.error_message)
+                    'Problem while deleting transport ' + str(self.id) +
+                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
                 )
                 return self
             else:
