@@ -1541,7 +1541,7 @@ class NIC(object):
                    speed=json_obj['nicSpeed'],
                    duplex=json_obj['nicDuplex'],
                    mtu=json_obj['nicMtu'],
-                   nic_osi_id=['nicOSInstanceID'],
+                   nic_osi_id=json_obj['nicOSInstanceID'],
                    nic_ipa_id=json_obj['nicIPAddressID'])
 
     def nic_2_json(self):
