@@ -47,6 +47,7 @@ class Requester(pykka.ThreadingActor):
         :param connection_args: dict like {user, password, host[, port, vhost, client_properties]}
         :return: self
         """
+        LOGGER.debug("rabbitmq.Requester.__init__")
         if my_args is None:
             raise exceptions.ArianeConfError("requestor arguments")
         if 'request_q' not in my_args or my_args['request_q'] is None or not my_args['request_q']:
@@ -81,6 +82,7 @@ class Requester(pykka.ThreadingActor):
         """
         start requester
         """
+        LOGGER.debug("rabbitmq.Requester.on_start")
         if not self.fire_and_forget:
             self.channel.basic_consume(self.on_response, no_ack=True,
                                        queue=self.callback_queue)
@@ -89,19 +91,33 @@ class Requester(pykka.ThreadingActor):
         """
         stop requester
         """
+        LOGGER.debug("rabbitmq.Requester.on_stop")
         try:
             self.channel.close()
         except Exception as e:
-            LOGGER.warn("Exception raised while closing channel")
+            LOGGER.warn("rabbitmq.Requester.on_stop - Exception raised while closing channel")
         try:
             self.connection.close()
         except Exception as e:
-            LOGGER.warn("Exception raised while closing connection")
+            LOGGER.warn("rabbitmq.Requester.on_stop - Exception raised while closing connection")
+
+    def on_failure(self, exception_type, exception_value, traceback_):
+        LOGGER.error("rabbitmq.Requester.on_failure - " + exception_type.__str__() + "/" + exception_value.__str__())
+        LOGGER.error("rabbitmq.Requester.on_failure - " + traceback_.format_exc())
+        try:
+            self.channel.close()
+        except Exception as e:
+            LOGGER.warn("rabbitmq.Requester.on_failure - Exception raised while closing channel")
+        try:
+            self.connection.close()
+        except Exception as e:
+            LOGGER.warn("rabbitmq.Requester.on_failure - Exception raised while closing connection")
 
     def on_response(self, ch, method_frame, props, body):
         """
         setup response is correlation id is the good one
         """
+        LOGGER.debug("rabbitmq.Requester.on_response")
         if self.corr_id == props.correlation_id:
             self.response = {'props': props, 'body': body}
 
@@ -111,6 +127,7 @@ class Requester(pykka.ThreadingActor):
         :param my_args: dict like {properties, body}
         :return response
         """
+        LOGGER.debug("rabbitmq.Requester.call")
         if my_args is None:
             raise exceptions.ArianeConfError("requestor call arguments")
         if 'properties' not in my_args or my_args['properties'] is None:
@@ -142,7 +159,7 @@ class Requester(pykka.ThreadingActor):
                                    properties=properties,
                                    body=str(my_args['body']))
 
-        LOGGER.debug("published msg {"+str(my_args['body'])+","+str(properties)+"}")
+        LOGGER.debug("rabbitmq.Requester.call - published msg {"+str(my_args['body'])+","+str(properties)+"}")
 
         if not self.fire_and_forget:
             while self.response is None:
@@ -196,6 +213,7 @@ class Service(pykka.ThreadingActor):
         :param connection_args: dict like {user, password, host[, port, vhost, client_properties]}
         :return: self
         """
+        LOGGER.debug("rabbitmq.Service.__init__")
         if my_args is None or connection_args is None:
             raise exceptions.ArianeConfError("service arguments")
         if 'service_q' not in my_args or my_args['service_q'] is None or not my_args['service_q']:
@@ -203,7 +221,8 @@ class Service(pykka.ThreadingActor):
         if 'treatment_callback' not in my_args or my_args['treatment_callback'] is None:
             raise exceptions.ArianeConfError("treatment_callback")
         if 'service_name' not in my_args or my_args['service_name'] is None or not my_args['service_name']:
-            LOGGER.warn("service_name is not defined ! Use default : " + self.__class__.__name__)
+            LOGGER.warn("rabbitmq.Service.__init__ - service_name is not defined ! Use default : " +
+                        self.__class__.__name__)
             my_args['service_name'] = self.__class__.__name__
 
         Driver.validate_driver_conf(connection_args)
@@ -229,16 +248,17 @@ class Service(pykka.ThreadingActor):
         """
         consume message from channel on the consuming thread.
         """
+        LOGGER.debug("rabbitmq.Service.run")
         try:
             self.channel.start_consuming()
         except Exception as e:
-            LOGGER.warn("Exception raised while consuming")
+            LOGGER.warn("rabbitmq.Service.run - Exception raised while consuming")
 
     def on_request(self, ch, method_frame, props, body):
         """
         message consumed treatment through provided callback and basic ack
         """
-        LOGGER.debug("request " + str(props) + " received")
+        LOGGER.debug("rabbitmq.Service.on_request - request " + str(props) + " received")
         try:
             properties = props.headers.copy()
             properties['app_id'] = props.app_id
@@ -256,15 +276,17 @@ class Service(pykka.ThreadingActor):
             properties['user_id'] = props.user_id
             self.cb(properties, body)
         except Exception as e:
-            LOGGER.warn("Exception raised while treating msg {"+str(props)+","+str(body)+"}")
-        LOGGER.debug("request " + str(props) + " treated")
+            LOGGER.warn("rabbitmq.Service.on_request - Exception raised while treating msg {" +
+                        str(props) + "," + str(body) + "}")
+        LOGGER.debug("rabbitmq.Service.on_request - request " + str(props) + " treated")
         ch.basic_ack(delivery_tag=method_frame.delivery_tag)
-        LOGGER.debug("request " + str(props) + " acked")
+        LOGGER.debug("rabbitmq.Service.on_request - request " + str(props) + " acked")
 
     def on_start(self):
         """
         start the service
         """
+        LOGGER.debug("rabbitmq.Service.on_start")
         self.connection = pika.BlockingConnection(self.parameters)
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=self.serviceQ, auto_delete=True)
@@ -277,21 +299,41 @@ class Service(pykka.ThreadingActor):
         """
         stop the service
         """
+        LOGGER.debug("rabbitmq.Service.on_stop")
         self.is_started = False
         try:
             self.channel.stop_consuming()
         except Exception as e:
-            LOGGER.warn("Exception raised while stoping consuming")
+            LOGGER.warn("rabbitmq.Service.on_stop - Exception raised while stoping consuming")
 
         try:
             self.channel.close()
         except Exception as e:
-            LOGGER.warn("Exception raised while closing channel")
+            LOGGER.warn("rabbitmq.Service.on_stop - Exception raised while closing channel")
 
         try:
             self.connection.close()
         except Exception as e:
-            LOGGER.warn("Exception raised while closing connection")
+            LOGGER.warn("rabbitmq.Service.on_stop - Exception raised while closing connection")
+
+    def on_failure(self, exception_type, exception_value, traceback_):
+        LOGGER.error("rabbitmq.Requester.on_failure - " + exception_type.__str__() + "/" + exception_value.__str__())
+        LOGGER.error("rabbitmq.Requester.on_failure - " + traceback_.format_exc())
+        self.is_started = False
+        try:
+            self.channel.stop_consuming()
+        except Exception as e:
+            LOGGER.warn("rabbitmq.Service.on_failure - Exception raised while stoping consuming")
+
+        try:
+            self.channel.close()
+        except Exception as e:
+            LOGGER.warn("rabbitmq.Service.on_failure - Exception raised while closing channel")
+
+        try:
+            self.connection.close()
+        except Exception as e:
+            LOGGER.warn("rabbitmq.Service.on_failure - Exception raised while closing connection")
 
 
 class Driver(object):
@@ -302,6 +344,7 @@ class Driver(object):
 
     @staticmethod
     def validate_driver_conf(my_args=None):
+        LOGGER.debug("rabbitmq.Driver.validate_driver_conf")
         default_port = 5672
         default_vhost = "/"
         default_client_properties = {
@@ -324,23 +367,25 @@ class Driver(object):
             raise exceptions.ArianeConfError("host")
         if 'port' not in my_args or my_args['port'] is None or not my_args['port']:
             my_args['port'] = default_port
-            LOGGER.info("port is not defined. Use default : " + str(default_port))
+            LOGGER.info("rabbitmq.Driver.validate_driver_conf - port is not defined. Use default : " +
+                        str(default_port))
         else:
             my_args['port'] = int(my_args['port'])
         if 'vhost' not in my_args or my_args['vhost'] is None or not my_args['vhost']:
             my_args['vhost'] = default_vhost
-            LOGGER.info("vhost is not defined. Use default : " + default_vhost)
+            LOGGER.info("rabbitmq.Driver.validate_driver_conf - vhost is not defined. Use default : " + default_vhost)
         if 'client_properties' not in my_args or my_args['client_properties'] is None:
             my_args['client_properties'] = default_client_properties
-            LOGGER.info("client properties are not defined. Use default " + str(default_client_properties))
+            LOGGER.info("rabbitmq.Driver.validate_driver_conf - client properties are not defined. Use default " +
+                        str(default_client_properties))
 
     def __init__(self, my_args=None):
-
         """
         RabbitMQ driver constructor
         :param my_args: dict like {user, password, host[, port, vhost, client_properties]}. Default = None
         :return: self
         """
+        LOGGER.debug("rabbitmq.Driver.__init__")
         self.type = my_args['type']
         self.configuration_OK = False
         try:
@@ -357,6 +402,7 @@ class Driver(object):
         """
         :return: self
         """
+        LOGGER.debug("rabbitmq.Driver.start")
         return self
 
     def stop(self):
@@ -364,6 +410,7 @@ class Driver(object):
         Stop services and requestors and then connection.
         :return: self
         """
+        LOGGER.debug("rabbitmq.Driver.stop")
         for requester in self.requester_registry:
             requester.stop()
         self.requester_registry.clear()
@@ -383,6 +430,7 @@ class Driver(object):
         :param my_args: dict like {service_q, treatment_callback [, service_name] }. Default : None
         :return: created service proxy
         """
+        LOGGER.debug("rabbitmq.Driver.make_service")
         if my_args is None:
             raise exceptions.ArianeConfError('service factory arguments')
         if not self.configuration_OK or self.connection_args is None:
@@ -397,6 +445,7 @@ class Driver(object):
         :param my_args: dict like {request_q}. Default : None
         :return: created requester proxy
         """
+        LOGGER.debug("rabbitmq.Driver.make_requester")
         if my_args is None:
             raise exceptions.ArianeConfError('requester factory arguments')
         if not self.configuration_OK or self.connection_args is None:
@@ -410,6 +459,7 @@ class Driver(object):
         not implemented
         :return:
         """
+        LOGGER.debug("rabbitmq.Driver.make_publisher")
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_publisher")
 
     def make_subscriber(self):
@@ -417,4 +467,5 @@ class Driver(object):
         not implemented
         :return:
         """
+        LOGGER.debug("rabbitmq.Driver.make_subscriber")
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_subscriber")
