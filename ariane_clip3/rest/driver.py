@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import logging
 import requests
 
 from ariane_clip3 import exceptions
@@ -22,6 +23,7 @@ from ariane_clip3.driver_common import DriverResponse
 
 __author__ = 'mffrench'
 
+LOGGER = logging.getLogger(__name__)
 
 class Requester(object):
     """
@@ -35,6 +37,7 @@ class Requester(object):
         :param my_args: dict like {session, base_url, repository_path}
         :return: self
         """
+        LOGGER.debug("rest.Requester.__init__")
         if my_args is None:
             raise exceptions.ArianeConfError('requester arguments')
         if 'session' not in my_args or my_args['session'] is None:
@@ -54,6 +57,7 @@ class Requester(object):
         :param my_args: dict like {http_operation, operation_path, parameters}
         :return: response
         """
+        LOGGER.debug("rest.Requester.call")
         if my_args is None:
             raise exceptions.ArianeConfError('requester call arguments')
         if 'http_operation' not in my_args or my_args['http_operation'] is None or not my_args['http_operation']:
@@ -111,6 +115,7 @@ class Driver(object):
         :param my_args: some dict like {base_url, user, password}
         :return:
         """
+        LOGGER.debug("rest.Driver.__init__")
         if my_args is None:
             raise exceptions.ArianeConfError("rest driver arguments")
         if 'base_url' not in my_args or my_args['base_url'] is None or not my_args['base_url']:
@@ -131,6 +136,7 @@ class Driver(object):
         instanciate request session with authent
         :return:
         """
+        LOGGER.debug("rest.Driver.start")
         self.session = requests.Session()
         self.session.auth = (self.user, self.password)
 
@@ -139,6 +145,7 @@ class Driver(object):
         uninstanciate request
         :return:
         """
+        LOGGER.debug("rest.Driver.stop")
         self.session = None
 
     def make_service(self):
@@ -146,6 +153,7 @@ class Driver(object):
         not implemented
         :return:
         """
+        LOGGER.debug("rest.Driver.make_service")
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_service")
 
     def make_requester(self, my_args=None):
@@ -154,6 +162,7 @@ class Driver(object):
         :param my_args: some dict not None dict
         :return: instanciated Requester
         """
+        LOGGER.debug("rest.Driver.make_requester")
         if my_args is None:
             raise exceptions.ArianeConfError('requester factory arguments')
         my_args['session'] = self.session
@@ -166,6 +175,7 @@ class Driver(object):
         not implemented
         :return:
         """
+        LOGGER.debug("rest.Driver.make_publisher")
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_publisher")
 
     def make_subscriber(self):
@@ -173,4 +183,5 @@ class Driver(object):
         not implemented
         :return:
         """
+        LOGGER.debug("rest.Driver.make_subscriber")
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_subscriber")
