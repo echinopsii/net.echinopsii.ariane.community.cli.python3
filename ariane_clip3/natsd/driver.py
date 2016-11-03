@@ -29,6 +29,7 @@ from nats.aio.utils import new_inbox
 from nats.aio.errors import ErrNoServers
 import time
 import pykka
+import sys
 
 from ariane_clip3 import exceptions
 from ariane_clip3.driver_common import DriverTools, DriverResponse
@@ -51,6 +52,7 @@ class Requester(pykka.ThreadingActor):
         :param connection_args: dict like {user, password, host[, port, client_properties]}
         :return: self
         """
+        LOGGER.debug("natsd.Requester.__init__")
         if my_args is None:
             raise exceptions.ArianeConfError("requestor arguments")
         if 'request_q' not in my_args or my_args['request_q'] is None or not my_args['request_q']:
@@ -102,6 +104,7 @@ class Requester(pykka.ThreadingActor):
     #     print("Connection is closed")
 
     def connect(self):
+        LOGGER.debug("natsd.Requester.connect")
         try:
             yield from self.nc.connect(**self.options)
             if not self.fire_and_forget:
@@ -112,6 +115,7 @@ class Requester(pykka.ThreadingActor):
             return
 
     def run_event_loop(self):
+        LOGGER.debug("natsd.Requester.run_event_loop")
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.options = {
@@ -130,6 +134,7 @@ class Requester(pykka.ThreadingActor):
         """
         start requester
         """
+        LOGGER.debug("natsd.Requester.on_start")
         self.service = threading.Thread(target=self.run_event_loop, name=self.requestQ + " requestor thread")
         self.service.start()
         while not self.is_started:
@@ -139,6 +144,27 @@ class Requester(pykka.ThreadingActor):
         """
         stop requester
         """
+        LOGGER.debug("natsd.Requester.on_stop")
+        self.is_started = False
+        try:
+            next(self.nc.unsubscribe(self.responseQS))
+        except StopIteration as e:
+            pass
+        try:
+            next(self.nc.close())
+        except StopIteration as e:
+            pass
+        try:
+            self.loop.stop()
+            while self.loop.is_running():
+                time.sleep(1)
+            self.loop.close()
+        except Exception as e:
+            pass
+
+    def on_failure(self, exception_type, exception_value, traceback_):
+        LOGGER.error("natsd.Requester.on_failure - " + exception_type.__str__() + "/" + exception_value.__str__())
+        LOGGER.error("natsd.Requester.on_failure - " + traceback_.format_exc())
         self.is_started = False
         try:
             next(self.nc.unsubscribe(self.responseQS))
@@ -160,16 +186,22 @@ class Requester(pykka.ThreadingActor):
         """
         setup response if correlation id is the good one
         """
+        LOGGER.debug("natsd.Requester.on_response: " + str(sys.getsizeof(msg)) + " bytes received")
         working_response = json.loads(msg.data.decode())
         working_properties = DriverTools.json2properties(working_response['properties'])
+        working_body = b''+bytes(working_response['body'], 'utf8') if 'body' in working_response else None
+        working_body_decoded = base64.b64decode(working_body) if working_body is not None else \
+            bytes(json.dumps({}), 'utf8')
         if self.corr_id == working_properties['MSG_CORRELATION_ID']:
-            working_body = b''+bytes(working_response['body'], 'utf8') if 'body' in working_response else None
-            working_body_decoded = base64.b64decode(working_body) if working_body is not None else \
-                bytes(json.dumps({}), 'utf8')
             self.response = {
                 'properties': working_properties,
                 'body': working_body_decoded
             }
+        else:
+            LOGGER.warn("natsd.Requester.on_response - discarded response : " + str({
+                'properties': working_properties,
+                'body': working_body_decoded
+            }))
 
     def call(self, my_args=None):
         """
@@ -177,6 +209,7 @@ class Requester(pykka.ThreadingActor):
         :param my_args: dict like {properties, body}
         :return response
         """
+        LOGGER.debug("natsd.Requester.call")
         if my_args is None:
             raise exceptions.ArianeConfError("requestor call arguments")
         if 'properties' not in my_args or my_args['properties'] is None:
@@ -205,14 +238,19 @@ class Requester(pykka.ThreadingActor):
             'properties': typed_properties,
             'body': body
         })
+        msgb = b''+bytes(msg_data, 'utf8')
 
         if not self.fire_and_forget:
             try:
-                next(self.nc.publish_request(self.requestQ, self.responseQ, b''+bytes(msg_data, 'utf8')))
+                LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) +
+                             " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + self.requestQ)
+                next(self.nc.publish_request(self.requestQ, self.responseQ, msgb))
+                LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
             except StopIteration as e:
                 pass
         else:
             try:
+                LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) + " on " + self.requestQ)
                 next(self.nc.publish(self.requestQ, b''+bytes(msg_data, 'utf8')))
             except StopIteration as e:
                 pass
@@ -223,8 +261,26 @@ class Requester(pykka.ThreadingActor):
             pass
 
         if not self.fire_and_forget:
-            while self.response is None:
+            log_count = 0
+            # Wait 10sec before raising error
+            exit_count = 10000
+            while self.response is None and exit_count > 0:
                 time.sleep(0.001)
+                log_count += 1
+                exit_count -= 1
+                if log_count == 100:
+                    log_count = 0
+                    LOGGER.debug("natsd.Requester.call - waiting response from " + self.responseQ)
+
+            if self.response is None:
+                LOGGER.warn("natsd.Requester.call - No response returned after 10sec !")
+                LOGGER.warn("natsd.Requester.call - Ignoring request : " + str(typed_properties) + " response")
+                self.corr_id = 0
+                return DriverResponse(
+                    rc=524,
+                    error_message='Request timeout (30 second) occured',
+                    response_content='Request timeout (30 second) occured'
+                )
 
             rc_ = int(self.response['properties']['RC'])
             if rc_ != 0:
@@ -274,6 +330,7 @@ class Service(pykka.ThreadingActor):
         :param connection_args: dict like {user, password, host[, port, client_properties]}
         :return: self
         """
+        LOGGER.debug("natsd.Service.__init__")
         if my_args is None or connection_args is None:
             raise exceptions.ArianeConfError("service arguments")
         if 'service_q' not in my_args or my_args['service_q'] is None or not my_args['service_q']:
@@ -281,7 +338,8 @@ class Service(pykka.ThreadingActor):
         if 'treatment_callback' not in my_args or my_args['treatment_callback'] is None:
             raise exceptions.ArianeConfError("treatment_callback")
         if 'service_name' not in my_args or my_args['service_name'] is None or not my_args['service_name']:
-            LOGGER.warn("service_name is not defined ! Use default : " + self.__class__.__name__)
+            LOGGER.warn("natsd.Service.__init__ - service_name is not defined ! Use default : " +
+                        self.__class__.__name__)
             my_args['service_name'] = self.__class__.__name__
 
         Driver.validate_driver_conf(connection_args)
@@ -307,7 +365,7 @@ class Service(pykka.ThreadingActor):
         """
         message consumed treatment through provided callback and basic ack
         """
-        LOGGER.debug("request " + str(msg) + " received")
+        LOGGER.debug("natsd.Service.on_request - request " + str(msg) + " received")
         try:
             working_response = json.loads(msg.data.decode())
             working_properties = DriverTools.json2properties(working_response['properties'])
@@ -316,10 +374,11 @@ class Service(pykka.ThreadingActor):
                 bytes(json.dumps({}), 'utf8')
             self.cb(working_properties, working_body_decoded)
         except Exception as e:
-            LOGGER.warn("Exception raised while treating msg {"+str(msg)+","+str(msg)+"}")
-        LOGGER.debug("request " + str(msg) + " treated")
+            LOGGER.warn("natsd.Service.on_request - Exception raised while treating msg {"+str(msg)+","+str(msg)+"}")
+        LOGGER.debug("natsd.Service.on_request - request " + str(msg) + " treated")
 
     def run(self):
+        LOGGER.debug("natsd.Service.run")
         try:
             yield from self.nc.connect(**self.options)
             yield from self.nc.subscribe(self.serviceQ, cb=self.on_request)
@@ -329,6 +388,7 @@ class Service(pykka.ThreadingActor):
             return
 
     def connect(self):
+        LOGGER.debug("natsd.Service.connect")
         try:
             yield from self.nc.connect(**self.options)
             self.serviceQS = yield from self.nc.subscribe(self.serviceQ, cb=self.on_request)
@@ -338,6 +398,7 @@ class Service(pykka.ThreadingActor):
             return
 
     def run_event_loop(self):
+        LOGGER.debug("natsd.Service.run_event_loop")
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.options = {
@@ -356,6 +417,7 @@ class Service(pykka.ThreadingActor):
         """
         start the service
         """
+        LOGGER.debug("natsd.Service.on_start")
         self.service = threading.Thread(target=self.run_event_loop, name=self.serviceQ + " service thread")
         self.service.start()
         while not self.is_started:
@@ -365,6 +427,27 @@ class Service(pykka.ThreadingActor):
         """
         stop the service
         """
+        LOGGER.debug("natsd.Service.on_stop")
+        self.is_started = False
+        try:
+            next(self.nc.unsubscribe(self.serviceQS))
+        except StopIteration as e:
+            pass
+        try:
+            next(self.nc.close())
+        except StopIteration as e:
+            pass
+        try:
+            self.loop.stop()
+            while self.loop.is_running():
+                time.sleep(1)
+            self.loop.close()
+        except Exception as e:
+            pass
+
+    def on_failure(self, exception_type, exception_value, traceback_):
+        LOGGER.error("natsd.Requester.on_failure - " + exception_type.__str__() + "/" + exception_value.__str__())
+        LOGGER.error("natsd.Requester.on_failure - " + traceback_.format_exc())
         self.is_started = False
         try:
             next(self.nc.unsubscribe(self.serviceQS))
@@ -390,6 +473,7 @@ class Driver(object):
 
     @staticmethod
     def validate_driver_conf(my_args=None):
+        LOGGER.debug("natsd.Driver.validate_driver_conf")
         default_port = 5672
         default_client_properties = {
             'product': 'Ariane',
@@ -411,20 +495,21 @@ class Driver(object):
             raise exceptions.ArianeConfError("host")
         if 'port' not in my_args or my_args['port'] is None or not my_args['port']:
             my_args['port'] = default_port
-            LOGGER.info("port is not defined. Use default : " + str(default_port))
+            LOGGER.info("natsd.Driver.validate_driver_conf - port is not defined. Use default : " + str(default_port))
         else:
             my_args['port'] = int(my_args['port'])
         if 'client_properties' not in my_args or my_args['client_properties'] is None:
             my_args['client_properties'] = default_client_properties
-            LOGGER.info("client properties are not defined. Use default " + str(default_client_properties))
+            LOGGER.info("natsd.Driver.validate_driver_conf - client properties are not defined. Use default " +
+                        str(default_client_properties))
 
     def __init__(self, my_args=None):
-
         """
         NATS driver constructor
         :param my_args: dict like {user, password, host[, port, client_properties]}. Default = None
         :return: self
         """
+        LOGGER.debug("natsd.Driver.__init__")
         self.type = my_args['type']
         self.configuration_OK = False
         try:
@@ -441,6 +526,7 @@ class Driver(object):
         """
         :return: self
         """
+        LOGGER.debug("natsd.Driver.start")
         return self
 
     def stop(self):
@@ -448,6 +534,7 @@ class Driver(object):
         Stop services and requestors and then connection.
         :return: self
         """
+        LOGGER.debug("natsd.Driver.stop")
         for requester in self.requester_registry:
             requester.stop()
         self.requester_registry.clear()
@@ -465,6 +552,7 @@ class Driver(object):
         :param my_args: dict like {service_q, treatment_callback [, service_name] }. Default : None
         :return: created service proxy
         """
+        LOGGER.debug("natsd.Driver.make_service")
         if my_args is None:
             raise exceptions.ArianeConfError('service factory arguments')
         if not self.configuration_OK or self.connection_args is None:
@@ -479,6 +567,7 @@ class Driver(object):
         :param my_args: dict like {request_q}. Default : None
         :return: created requester proxy
         """
+        LOGGER.debug("natsd.Driver.make_requester")
         if my_args is None:
             raise exceptions.ArianeConfError('requester factory arguments')
         if not self.configuration_OK or self.connection_args is None:
@@ -492,6 +581,7 @@ class Driver(object):
         not implemented
         :return:
         """
+        LOGGER.debug("natsd.Driver.make_publisher")
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_publisher")
 
     def make_subscriber(self):
@@ -499,4 +589,5 @@ class Driver(object):
         not implemented
         :return:
         """
+        LOGGER.debug("natsd.Driver.make_subscriber")
         raise exceptions.ArianeNotImplemented(self.__class__.__name__ + ".make_subscriber")
