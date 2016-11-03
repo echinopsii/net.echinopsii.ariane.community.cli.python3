@@ -47,6 +47,7 @@ class LocationService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("LocationService.__init__")
         args = {'repository_path': 'rest/directories/common/infrastructure/network/locations/'}
         LocationService.requester = directory_driver.make_requester(args)
 
@@ -58,11 +59,12 @@ class LocationService(object):
         :param loc_name: the location name
         :return: found location or None if not found
         """
+        LOGGER.debug("LocationService.find_location")
         if (loc_id is None or not loc_id) and (loc_name is None or not loc_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
         if (loc_id is not None and loc_id) and (loc_name is not None and loc_name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            LOGGER.warn('LocationService.find_location - Both id and name are defined. Will give you search on id.')
             loc_name = None
 
         params = None
@@ -78,8 +80,10 @@ class LocationService(object):
             if response.rc == 0:
                 ret = Location.json_2_location(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding location (id:' + str(loc_id) + ', name:' + str(loc_name) + ').' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'LocationService.find_location - Problem while finding location (id:' + str(loc_id) + \
+                          ', name:' + str(loc_name) + '). ' \
+                          'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
 
         return ret
@@ -89,6 +93,7 @@ class LocationService(object):
         """
         :return: all knows locations
         """
+        LOGGER.debug("LocationService.get_locations")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = LocationService.requester.call(args)
         ret = None
@@ -97,8 +102,9 @@ class LocationService(object):
             for location in response.response_content['locations']:
                 ret.append(Location.json_2_location(location))
         else:
-            err_msg = 'Problem while getting locations. ' \
-                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'LocationService.get_locations - Problem while getting locations. ' \
+                      'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -114,6 +120,7 @@ class Location(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 Location object
         """
+        LOGGER.debug("Location.json_2_location")
         return Location(locid=json_obj['locationID'],
                         name=json_obj['locationName'],
                         description=json_obj['locationDescription'],
@@ -132,6 +139,7 @@ class Location(object):
         transform ariane_clip3 location object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("Location.location_2_json")
         json_obj = {
             'locationID': self.id,
             'locationName': self.name,
@@ -153,6 +161,7 @@ class Location(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("Location.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -177,8 +186,10 @@ class Location(object):
                 self.routing_area_ids = json_obj['locationRoutingAreasID']
                 self.subnet_ids = json_obj['locationSubnetsID']
             else:
-                LOGGER.warning('Problem while syncing location (name:' + self.name + ', id: ' + str(self.id) +
-                               ') . Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")")
+                LOGGER.warning('Location.sync - Problem while syncing location (name:' +
+                               self.name + ', id: ' + str(self.id) + '). ' +
+                               'Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                               " (" + str(response.rc) + ")")
 
     def __init__(self, locid=None, name=None, description=None, address=None, zip_code=None, town=None, dc_type=None,
                  country=None, gps_latitude=None, gps_longitude=None, routing_area_ids=None, subnet_ids=None):
@@ -197,6 +208,7 @@ class Location(object):
         :param subnet_ids: default None
         :return:
         """
+        LOGGER.debug("Location.__init__")
         self.id = locid
         self.name = name
         self.description = description
@@ -234,6 +246,7 @@ class Location(object):
         add the routing area object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Location.add_routing_area")
         if not sync:
             self.routing_areas_2_add.append(routing_area)
         else:
@@ -248,16 +261,17 @@ class Location(object):
                 response = LocationService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating location ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Location.add_routing_area - Problem while updating location ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.routing_area_ids.append(routing_area.id)
                     routing_area.loc_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating location ' + self.name + '. Reason: routing area ' +
-                    routing_area.name + ' id is None or self.id is None.'
+                    'Location.add_routing_area - Problem while updating location ' + self.name +
+                    '. Reason: routing area ' + routing_area.name + ' id is None or self.id is None.'
                 )
 
     def del_routing_area(self, routing_area, sync=True):
@@ -268,6 +282,7 @@ class Location(object):
         add the routing area object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Location.del_routing_area")
         if not sync:
             self.routing_areas_2_rm.append(routing_area)
         else:
@@ -282,16 +297,17 @@ class Location(object):
                 response = LocationService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating location ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Location.del_routing_area - Problem while updating location ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.routing_area_ids.remove(routing_area.id)
                     routing_area.loc_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating location ' + self.name + '. Reason: routing area ' +
-                    routing_area.name + ' id is None'
+                    'Location.del_routing_area - Problem while updating location ' + self.name +
+                    '. Reason: routing area ' + routing_area.name + ' id is None'
                 )
 
     def add_subnet(self, subnet, sync=True):
@@ -302,6 +318,7 @@ class Location(object):
         add the subnet object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Location.add_subnet")
         if not sync:
             self.subnets_2_add.append(subnet)
         else:
@@ -316,15 +333,16 @@ class Location(object):
                 response = LocationService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating location ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Location.add_subnet - Problem while updating location ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.subnet_ids.append(subnet.id)
                     subnet.loc_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating location ' + self.name + '. Reason: subnet ' +
+                    'Location.add_subnet - Problem while updating location ' + self.name + '. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -336,6 +354,7 @@ class Location(object):
         add the subnet object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Location.del_subnet")
         if not sync:
             self.subnets_2_rm.append(subnet)
         else:
@@ -350,15 +369,16 @@ class Location(object):
                 response = LocationService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating location ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Location.del_subnet - Problem while updating location ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.subnet_ids.remove(subnet.id)
                     subnet.loc_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating location ' + self.name + '. Reason: subnet ' +
+                    'Location.del_subnet - Problem while updating location ' + self.name + '. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -378,6 +398,7 @@ class Location(object):
             'locationRoutingAreasID': self.routing_area_ids,
             'locationSubnetsID': self.subnet_ids
         """
+        LOGGER.debug("Location.save")
         post_payload = {}
         consolidated_ra_id = []
         consolidated_sn_id = []
@@ -443,9 +464,9 @@ class Location(object):
         args = {'http_operation': 'POST', 'operation_path': '', 'parameters': {'payload': json.dumps(post_payload)}}
         response = LocationService.requester.call(args)
         if response.rc != 0:
-            LOGGER.warning('Problem while saving location ' + self.name +
-                           '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
-                           )
+            LOGGER.warning('Location.save - Problem while saving location ' + self.name +
+                           '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                           " (" + str(response.rc) + ")")
         else:
             self.id = response.response_content['locationID']
             if self.routing_areas_2_add is not None:
@@ -472,6 +493,7 @@ class Location(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("Location.remove")
         if self.id is None:
             return None
         else:
@@ -482,8 +504,9 @@ class Location(object):
             response = LocationService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting location ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Location.remove - Problem while deleting location ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -494,6 +517,7 @@ class RoutingAreaService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("RoutingAreaService.__init__")
         args = {'repository_path': 'rest/directories/common/infrastructure/network/routingareas/'}
         RoutingAreaService.requester = directory_driver.make_requester(args)
 
@@ -505,11 +529,13 @@ class RoutingAreaService(object):
         :param ra_name: routing area name
         :return: found routing area or None
         """
+        LOGGER.debug("RoutingAreaService.find_routing_area")
         if (ra_id is None or not ra_id) and (ra_name is None or not ra_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
         if (ra_id is not None and ra_id) and (ra_name is not None and ra_name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            LOGGER.warn('RoutingAreaService.find_routing_area - Both id and name are defined. '
+                        'Will give you search on id.')
             ra_name = None
 
         params = None
@@ -525,8 +551,10 @@ class RoutingAreaService(object):
             if response.rc == 0:
                 ret = RoutingArea.json_2_routing_area(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding routing area (id:' + str(ra_id) + ', name:' + str(ra_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'RoutingAreaService.find_routing_area - Problem while finding routing area (id:' + \
+                          str(ra_id) + ', name:' + str(ra_name) + '). ' + \
+                          'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -538,6 +566,7 @@ class RoutingAreaService(object):
         """
         :return: all routing areas
         """
+        LOGGER.debug("RoutingAreaService.get_routing_areas")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = RoutingAreaService.requester.call(args)
         ret = None
@@ -546,7 +575,8 @@ class RoutingAreaService(object):
             for routing_area in response.response_content['routingAreas']:
                 ret.append(RoutingArea.json_2_routing_area(routing_area))
         elif response.rc != 404:
-            err_msg = 'Problem while getting routing areas. Reason: ' + str(response.error_message) + \
+            err_msg = 'RoutingAreaService.get_routing_areas - Problem while getting routing areas. ' \
+                      'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
@@ -570,6 +600,7 @@ class RoutingArea(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 RoutingArea object
         """
+        LOGGER.debug("RoutingArea.json_2_routing_area")
         return RoutingArea(raid=json_obj['routingAreaID'],
                            name=json_obj['routingAreaName'],
                            description=json_obj['routingAreaDescription'],
@@ -583,6 +614,7 @@ class RoutingArea(object):
         transform ariane_clip3 routing area object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("RoutingArea.routing_area_2_json")
         json_obj = {
             'routingAreaID': self.id,
             'routingAreaName': self.name,
@@ -599,6 +631,7 @@ class RoutingArea(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("RoutingArea.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -619,8 +652,9 @@ class RoutingArea(object):
                 self.subnet_ids = json_obj['routingAreaSubnetsID']
             else:
                 LOGGER.warning(
-                    'Problem while syncing routing area (name:' + self.name + ', id:' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'RoutingArea.sync - Problem while syncing routing area (name:' + self.name + ', id:' +
+                    str(self.id) + '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
 
     def __init__(self, raid=None, name=None, description=None, ra_type=None, multicast=None,
@@ -636,6 +670,7 @@ class RoutingArea(object):
         :param routing_area_subnet_ids: default None
         :return:
         """
+        LOGGER.debug("RoutingArea.__init__")
         self.id = raid
         self.name = name
         self.description = description
@@ -666,6 +701,7 @@ class RoutingArea(object):
         add the location object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("RoutingArea.add_location")
         if not sync:
             self.loc_2_add.append(location)
         else:
@@ -680,16 +716,17 @@ class RoutingArea(object):
                 response = RoutingAreaService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating routing area ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'RoutingArea.add_location - Problem while updating routing area ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.loc_ids.append(location.id)
                     location.routing_area_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating routing area ' + self.name + '. Reason: location ' +
-                    location.name + ' id is None or self.id is None'
+                    'RoutingArea.add_location - Problem while updating routing area ' + self.name +
+                    '. Reason: location ' + location.name + ' id is None or self.id is None'
                 )
 
     def del_location(self, location, sync=True):
@@ -700,6 +737,7 @@ class RoutingArea(object):
         add the location object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("RoutingArea.del_location")
         if not sync:
             self.loc_2_rm.append(location)
         else:
@@ -714,15 +752,17 @@ class RoutingArea(object):
                 response = RoutingAreaService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating routing area ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'RoutingArea.del_location - Problem while updating routing area ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.loc_ids.remove(location.id)
                     location.routing_area_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating routing area ' + self.name + '. Reason: location ' +
+                    'RoutingArea.del_location - Problem while updating routing area ' +
+                    self.name + '. Reason: location ' +
                     location.name + ' id is None or self.id is None'
                 )
 
@@ -730,6 +770,7 @@ class RoutingArea(object):
         """
         :return: save this routing area on Ariane server (create or update)
         """
+        LOGGER.debug("RoutingArea.save")
         post_payload = {}
         consolidated_loc_id = []
 
@@ -769,8 +810,9 @@ class RoutingArea(object):
         response = RoutingAreaService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving routing area' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'RoutingArea.save - Problem while saving routing area' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['routingAreaID']
@@ -790,6 +832,7 @@ class RoutingArea(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("RoutingArea.remove")
         if self.id is None:
             return None
         else:
@@ -800,8 +843,9 @@ class RoutingArea(object):
             response = RoutingAreaService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting routing area ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'RoutingArea.remove - Problem while deleting routing area ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -812,6 +856,7 @@ class SubnetService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("SubnetService.__init__")
         args = {'repository_path': 'rest/directories/common/infrastructure/network/subnets/'}
         SubnetService.requester = directory_driver.make_requester(args)
 
@@ -823,6 +868,7 @@ class SubnetService(object):
         :param sb_name: the subnet name
         :return: found subnet or None if not found
         """
+        LOGGER.debug("SubnetService.find_subnet")
         if (sb_id is None or not sb_id) and (sb_name is None or not sb_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -843,11 +889,11 @@ class SubnetService(object):
             if response.rc == 0:
                 ret = Subnet.json_2_subnet(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding subnet (id:' + str(sb_id) + ', name:' + str(sb_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
-                LOGGER.warning(
-                    err_msg
-                )
+                err_msg = 'SubnetService.find_subnet - Problem while finding subnet (id:' + str(sb_id) + \
+                          ', name:' + str(sb_name) + '). ' + \
+                          '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
+                LOGGER.warning(err_msg)
 
         return ret
 
@@ -856,6 +902,7 @@ class SubnetService(object):
         """
         :return: all knows subnets
         """
+        LOGGER.debug("SubnetService.get_subnets")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = SubnetService.requester.call(args)
         ret = None
@@ -864,8 +911,9 @@ class SubnetService(object):
             for subnet in response.response_content['subnets']:
                 ret.append(Subnet.json_2_subnet(subnet))
         elif response.rc != 404:
-            err_msg = 'Problem while getting subnets. ' \
-                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'SubnetService.get_subnets - Problem while getting subnets. ' \
+                      '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -878,6 +926,7 @@ class Subnet(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 Subnet object
         """
+        LOGGER.debug("Subnet.json_2_subnet")
         return Subnet(subnetid=json_obj['subnetID'],
                       name=json_obj['subnetName'],
                       description=json_obj['subnetDescription'],
@@ -893,6 +942,7 @@ class Subnet(object):
         transform ariane_clip3 subnet object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("Subnet.subnet_2_json")
         json_obj = {
             'subnetID': self.id,
             'subnetName': self.name,
@@ -911,6 +961,7 @@ class Subnet(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("Subnet.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -922,8 +973,9 @@ class Subnet(object):
             response = SubnetService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing subnet (name:' + self.name + ', id:' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Subnet.sync - Problem while syncing subnet (name:' + self.name + ', id:' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -952,6 +1004,7 @@ class Subnet(object):
         :param subnet_osi_ids: default None
         :return:
         """
+        LOGGER.debug("Subnet.__init__")
         self.id = subnetid
         self.name = name
         self.description = description
@@ -988,6 +1041,7 @@ class Subnet(object):
         add the location object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Subnet.add_location")
         if not sync:
             self.loc_2_add.append(location)
         else:
@@ -1002,15 +1056,16 @@ class Subnet(object):
                 response = SubnetService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating subnet ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Subnet.add_location - Problem while updating subnet ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.loc_ids.append(location.id)
                     location.subnet_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating subnet ' + self.name + '. Reason: location ' +
+                    'Subnet.add_location - Problem while updating subnet ' + self.name + '. Reason: location ' +
                     location.name + ' id is None or self.id is None'
                 )
 
@@ -1022,6 +1077,7 @@ class Subnet(object):
         add the location object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Subnet.del_location")
         if not sync:
             self.loc_2_rm.append(location)
         else:
@@ -1036,15 +1092,16 @@ class Subnet(object):
                 response = SubnetService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating subnet ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Subnet.del_location - Problem while updating subnet ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.loc_ids.remove(location.id)
                     location.subnet_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating subnet ' + self.name + '. Reason: location ' +
+                    'Subnet.del_location - Problem while updating subnet ' + self.name + '. Reason: location ' +
                     location.name + ' id is None or self.id is None'
                 )
 
@@ -1056,6 +1113,7 @@ class Subnet(object):
         add the OS instance object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Subnet.add_os_instance")
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -1070,15 +1128,16 @@ class Subnet(object):
                 response = SubnetService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating subnet ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Subnet.add_os_instance - Problem while updating subnet ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.subnet_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating subnet ' + self.name + '. Reason: OS instance ' +
+                    'Subnet.add_os_instance - Problem while updating subnet ' + self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -1090,6 +1149,7 @@ class Subnet(object):
         add the OS instance object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Subnet.del_os_instance")
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -1104,15 +1164,16 @@ class Subnet(object):
                 response = SubnetService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating subnet ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Subnet.del_os_instance - Problem while updating subnet ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.subnet_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating subnet ' + self.name + '. Reason: OS instance ' +
+                    'Subnet.del_os_instance - Problem while updating subnet ' + self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -1129,6 +1190,7 @@ class Subnet(object):
             'subnetLocationsID': self.loc_ids,
             'subnetOSInstancesID': self.osi_ids
         """
+        LOGGER.debug("Subnet.save")
         post_payload = {}
         consolidated_osi_id = []
         consolidated_loc_id = []
@@ -1186,8 +1248,9 @@ class Subnet(object):
         response = SubnetService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving subnet ' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'Subnet.save - Problem while saving subnet ' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['subnetID']
@@ -1215,6 +1278,7 @@ class Subnet(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("Subnet.remove")
         if self.id is None:
             return None
         else:
@@ -1225,8 +1289,9 @@ class Subnet(object):
             response = SubnetService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting subnet ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Subnet.remove - Problem while deleting subnet ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -1237,6 +1302,7 @@ class IPAddressService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("IPAddressService.__init__")
         args = {'repository_path': 'rest/directories/common/infrastructure/network/ipAddress/'}
         IPAddressService.requester = directory_driver.make_requester(args)
 
@@ -1248,6 +1314,7 @@ class IPAddressService(object):
         :param ipa_ip_address: the IP Address
         :return: found IP Address or None if not found
         """
+        LOGGER.debug("IPAddressService.find_ip_address")
         if (ipa_id is None or not ipa_id) and (ipa_fqdn is None or not ipa_fqdn) and \
                 ((ipa_ip_address is None or not ipa_ip_address) and
                     ((ipa_subnet_id is None or not ipa_subnet_id) or (ipa_osi_id is None or not ipa_osi_id))):
@@ -1255,7 +1322,8 @@ class IPAddressService(object):
 
         if (ipa_id is not None and ipa_id) and \
            ((ipa_fqdn is not None and ipa_fqdn) or (ipa_ip_address is not None and ipa_ip_address)):
-            LOGGER.warn('Both id and (fqdn or ipAddress) are defined. Will give you search on id.')
+            LOGGER.warn('IPAddressService.find_ip_address - Both id and (fqdn or ipAddress) are defined. '
+                        'Will give you search on id.')
             ipa_fqdn = None
             ipa_ip_address = None
             ipa_osi_id = None
@@ -1263,7 +1331,8 @@ class IPAddressService(object):
 
         if (ipa_id is None or not ipa_id) and (ipa_fqdn is not None and ipa_fqdn) and \
                 (ipa_ip_address is not None and ipa_ip_address):
-            LOGGER.warn('Both fqdn and ipAddress are defined. Will give you search on fqdn.')
+            LOGGER.warn('IPAddressService.find_ip_address - Both fqdn and ipAddress are defined. '
+                        'Will give you search on fqdn.')
             ipa_ip_address = None
             ipa_osi_id = None
             ipa_subnet_id = None
@@ -1285,8 +1354,10 @@ class IPAddressService(object):
             if response.rc == 0:
                 ret = IPAddress.json_2_ip_address(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding IP Address (id:' + str(ipa_id) + ', ipAddress:' + str(ipa_ip_address) \
-                          + '). Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'IPAddressService.find_ip_address - Problem while finding IP Address (id:' + \
+                          str(ipa_id) + ', ipAddress:' + str(ipa_ip_address) \
+                          + '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -1298,6 +1369,7 @@ class IPAddressService(object):
         """
         :return: all knows IP Address
         """
+        LOGGER.debug("IPAddressService.get_ip_addresses")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = IPAddressService.requester.call(args)
         ret = None
@@ -1306,8 +1378,9 @@ class IPAddressService(object):
             for ipAddress in response.response_content['ipAddresses']:
                 ret.append(IPAddress.json_2_ip_address(ipAddress))
         elif response.rc != 404:
-            err_msg = 'Problem while getting IP Address. Reason: ' + \
-                      str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'IPAddressService.get_ip_addresses - Problem while getting IP Address. ' \
+                      'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -1320,6 +1393,7 @@ class IPAddress(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 IP Address object
         """
+        LOGGER.debug("IPAddress.json_2_ip_address")
         return IPAddress(ipa_id=json_obj['ipAddressID'],
                          ip_address=json_obj['ipAddressIPA'],
                          fqdn=json_obj['ipAddressFQDN'],
@@ -1331,6 +1405,7 @@ class IPAddress(object):
         transform ariane_clip3 OS Instance object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("IPAddress.ip_address_2_json")
         json_obj = {
             'ipAddressID': self.id,
             'ipAddressIPA': self.ip_address,
@@ -1345,6 +1420,7 @@ class IPAddress(object):
         synchronize self from Ariane server according its id (priority) or name
         :return:
         """
+        LOGGER.debug("IPAddress.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -1356,8 +1432,10 @@ class IPAddress(object):
             response = IPAddressService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing IP address (name:' + self.ip_address + ', id: ' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'IPAddress.sync - Problem while syncing IP address (name:' + self.ip_address +
+                    ', id: ' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -1384,6 +1462,7 @@ class IPAddress(object):
         :param ipa_subnet_id: default None
         :return:
         """
+        LOGGER.debug("IPAddress.__init__")
         self.id = ipa_id
         self.ip_address = ip_address
         self.fqdn = fqdn
@@ -1400,6 +1479,7 @@ class IPAddress(object):
         """
         :return: save this IP Address on Ariane server (create or update)
         """
+        LOGGER.debug("IPAddress.save")
         post_payload = {}
 
         if self.id is not None:
@@ -1421,8 +1501,9 @@ class IPAddress(object):
         response = IPAddressService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving IP Address ' + self.ip_address +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'IPAddress.save - Problem while saving IP Address ' + self.ip_address +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['ipAddressID']
@@ -1435,6 +1516,7 @@ class IPAddress(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("IPAddress.remove")
         if self.id is None:
             return None
         else:
@@ -1445,8 +1527,9 @@ class IPAddress(object):
             response = IPAddressService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting IP Address' + self.ip_address +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'IPAddress.remove - Problem while deleting IP Address' + self.ip_address +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -1457,6 +1540,7 @@ class NICService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("NICService.__init__")
         args = {'repository_path': 'rest/directories/common/infrastructure/network/nic/'}
         NICService.requester = directory_driver.make_requester(args)
 
@@ -1470,18 +1554,21 @@ class NICService(object):
         :param nic_name : name
         :return: found NIC or None if not found
         """
+        LOGGER.debug("NICService.find_nic")
         if (nic_id is None or not nic_id) and (nic_name is None or not nic_name) and \
            (nic_mac_address is None or not nic_mac_address):
             raise exceptions.ArianeCallParametersError('id and name and mac_Address)')
 
         if (nic_id is not None and nic_id) and \
            ((nic_name is not None and nic_name) or (nic_mac_address is not None and nic_mac_address)):
-            LOGGER.warn('Both id and (name or macAddress) are defined. Will give you search on id.')
+            LOGGER.warn('NICService.find_nic - Both id and (name or macAddress) are defined. '
+                        'Will give you search on id.')
             nic_name = None
             nic_mac_address = None
 
         if (nic_name is not None or nic_name) and (nic_mac_address is not None and nic_mac_address):
-            LOGGER.warn('Both name and mac address are defined. Will give you search on mac address.')
+            LOGGER.warn('NICService.find_nic - Both name and mac address are defined. '
+                        'Will give you search on mac address.')
             nic_name = None
 
         params = None
@@ -1499,9 +1586,11 @@ class NICService(object):
             if response.rc == 0:
                 ret = NIC.json_2_nic(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding NIC (id:' + str(nic_id) + ', name:' + str(nic_name) + \
+                err_msg = 'NICService.find_nic - Problem while finding NIC (id:' + str(nic_id) + \
+                          ', name:' + str(nic_name) + \
                           ", mac address:" + str(nic_mac_address) \
-                          + '). Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                          + '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -1513,6 +1602,7 @@ class NICService(object):
         """
         :return: all knows NIC
         """
+        LOGGER.debug("NICService.get_nics")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = NICService.requester.call(args)
         ret = None
@@ -1521,8 +1611,9 @@ class NICService(object):
             for nic in response.response_content['nics']:
                 ret.append(NIC.json_2_nic(nic))
         elif response.rc != 404:
-            err_msg = 'Problem while getting NIC. Reason: ' + \
-                      str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'NICService.get_nics - Problem while getting NIC. ' \
+                      'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -1535,6 +1626,7 @@ class NIC(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 NIC object
         """
+        LOGGER.debug("NIC.json_2_nic")
         return NIC(nic_id=json_obj['nicID'],
                    mac_address=json_obj['nicMacAddress'],
                    name=json_obj['nicName'],
@@ -1549,6 +1641,7 @@ class NIC(object):
         transform ariane_clip3 OS Instance object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("NIC.nic_2_json")
         json_obj = {
             'nicID': self.id,
             'nicName': self.name,
@@ -1566,6 +1659,7 @@ class NIC(object):
         synchronize self from Ariane server according its id (priority) or name
         :return:
         """
+        LOGGER.debug("NIC.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -1577,8 +1671,9 @@ class NIC(object):
             response = NICService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing NIC (name:' + self.name + ', id:' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'NIC.sync - Problem while syncing NIC (name:' + self.name + ', id:' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -1611,6 +1706,7 @@ class NIC(object):
         :param nic_ipa_id: default None
         :return:
         """
+        LOGGER.debug("NIC.__init__")
         self.id = nic_id
         self.name = name
         self.mac_address = mac_address
@@ -1630,6 +1726,7 @@ class NIC(object):
         """
         :return: save this NIC on Ariane server (create or update)
         """
+        LOGGER.debug("NIC.save")
         post_payload = {}
 
         if self.id is not None:
@@ -1660,8 +1757,9 @@ class NIC(object):
         response = NICService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving NIC ' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'NIC.save - Problem while saving NIC ' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['nicID']
@@ -1674,6 +1772,7 @@ class NIC(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("NIC.remove")
         if self.id is None:
             return None
         else:
@@ -1684,8 +1783,9 @@ class NIC(object):
             response = NICService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting NIC' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'NIC.remove - Problem while deleting NIC' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -1696,6 +1796,7 @@ class OSInstanceService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("OSInstanceService.__init__")
         args = {'repository_path': 'rest/directories/common/infrastructure/system/osinstances/'}
         OSInstanceService.requester = directory_driver.make_requester(args)
 
@@ -1707,11 +1808,13 @@ class OSInstanceService(object):
         :param osi_name: the OS instance name
         :return: found OS instance or None if not found
         """
+        LOGGER.debug("OSInstanceService.find_os_instance")
         if (osi_id is None or not osi_id) and (osi_name is None or not osi_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
         if (osi_id is not None and osi_id) and (osi_name is not None and osi_name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            LOGGER.warn('OSInstanceService.find_os_instance - Both id and name are defined. '
+                        'Will give you search on id.')
             osi_name = None
 
         params = None
@@ -1727,8 +1830,10 @@ class OSInstanceService(object):
             if response.rc == 0:
                 ret = OSInstance.json_2_os_instance(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding OS Instance (id:' + str(osi_id) + ', name:' + str(osi_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'OSInstanceService.find_os_instance - Problem while finding OS Instance (id:' + \
+                          str(osi_id) + ', name:' + str(osi_name) + '). ' + \
+                          '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -1740,6 +1845,7 @@ class OSInstanceService(object):
         """
         :return: all knows OS instance
         """
+        LOGGER.debug("OSInstanceService.get_os_instances")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = OSInstanceService.requester.call(args)
         ret = None
@@ -1748,8 +1854,9 @@ class OSInstanceService(object):
             for osInstance in response.response_content['osInstances']:
                 ret.append(OSInstance.json_2_os_instance(osInstance))
         elif response.rc != 404:
-            err_msg = 'Problem while getting os instances. ' \
-                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'OSInstanceService.get_os_instances - Problem while getting os instances. ' \
+                      '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -1762,6 +1869,7 @@ class OSInstance(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 OS instance object
         """
+        LOGGER.debug("OSInstance.json_2_os_instance")
         return OSInstance(osiid=json_obj['osInstanceID'],
                           name=json_obj['osInstanceName'],
                           description=json_obj['osInstanceDescription'],
@@ -1781,6 +1889,7 @@ class OSInstance(object):
         transform ariane_clip3 OS Instance object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("OSInstance.os_instance_2_json")
         json_obj = {
             'osInstanceID': self.id,
             'osInstanceName': self.name,
@@ -1803,6 +1912,7 @@ class OSInstance(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("OSInstance.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -1814,8 +1924,9 @@ class OSInstance(object):
             response = OSInstanceService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing OS instance (name:' + self.name + ', id:' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'OSInstance.sync - Problem while syncing OS instance (name:' + self.name + ', id:' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -1860,6 +1971,7 @@ class OSInstance(object):
         :param osi_team_ids: default None
         :return:
         """
+        LOGGER.debug("OSInstance.__init__")
         self.id = osiid
         self.name = name
         self.description = description
@@ -1908,6 +2020,7 @@ class OSInstance(object):
         add the subnet object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.add_subnet")
         if not sync:
             self.subnets_2_add.append(subnet)
         else:
@@ -1922,15 +2035,16 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.add_subnet - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.subnet_ids.append(subnet.id)
                     subnet.osi_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: subnet ' +
+                    'OSInstance.add_subnet - Problem while updating OS instance ' + self.name + '. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -1942,6 +2056,7 @@ class OSInstance(object):
         add the subnet object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.del_subnet")
         if not sync:
             self.subnets_2_rm.append(subnet)
         else:
@@ -1956,15 +2071,16 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.del_subnet - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.subnet_ids.remove(subnet.id)
                     subnet.osi_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: subnet ' +
+                    'OSInstance.del_subnet - Problem while updating OS instance ' + self.name + '. Reason: subnet ' +
                     subnet.name + ' id is None'
                 )
 
@@ -1976,6 +2092,7 @@ class OSInstance(object):
         add the subnet object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.add_ip_address")
         if not sync:
             self.ip_address_2_add.append(ip_address)
         else:
@@ -1990,16 +2107,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.add_ip_address - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.ip_address_ids.append(ip_address.id)
                     ip_address.ipa_os_instance_id = self.id
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: IP Address ' +
-                    ip_address.ipAddress + ' id is None'
+                    'OSInstance.add_ip_address - Problem while updating OS instance ' +
+                    self.name + '. Reason: IP Address ' + ip_address.ipAddress + ' id is None'
                 )
 
     def del_ip_address(self, ip_address, sync=True):
@@ -2010,6 +2128,7 @@ class OSInstance(object):
         add the ipAddress object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.del_ip_address")
         if not sync:
             self.ip_address_2_rm.append(ip_address)
         else:
@@ -2024,16 +2143,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.del_ip_address - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.ip_address_ids.remove(ip_address.id)
                     ip_address.ipa_os_instance_id = None
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: IP Address ' +
-                    ip_address.ipAddress + ' id is None'
+                    'OSInstance.del_ip_address - Problem while updating OS instance ' + self.name +
+                    '. Reason: IP Address ' + ip_address.ipAddress + ' id is None'
                 )
 
     def add_nic(self, nic, sync=True):
@@ -2044,6 +2164,7 @@ class OSInstance(object):
         add the nic object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.add_nic")
         if not sync:
             self.nic_2_add.append(nic)
         else:
@@ -2058,16 +2179,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.add_nic - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.nic_ids.append(nic.id)
                     nic.nic_osi_id = self.id
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: NIC ' +
-                    nic.name + ' id is None'
+                    'OSInstance.add_nic - Problem while updating OS instance ' + self.name +
+                    '. Reason: NIC ' + nic.name + ' id is None'
                 )
 
     def del_nic(self, nic, sync=True):
@@ -2078,6 +2200,7 @@ class OSInstance(object):
         add the nic object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.del_nic")
         if not sync:
             self.nic_2_rm.append(nic)
         else:
@@ -2092,15 +2215,16 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.del_nic - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.nic_ids.remove(nic.id)
                     nic.nic_osi_id = None
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: NIC ' +
+                    'OSInstance.del_nic - Problem while updating OS instance ' + self.name + '. Reason: NIC ' +
                     nic.name + ' id is None'
                 )
 
@@ -2112,6 +2236,7 @@ class OSInstance(object):
         add the embedded OS instance object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.add_embedded_osi")
         if not sync:
             self.embedded_osi_2_add.append(e_osi)
         else:
@@ -2127,16 +2252,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.add_embedded_osi - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.embedded_osi_ids.append(e_osi.id)
                     e_osi.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: embedded OS instance ' +
-                    e_osi.name + ' id is None'
+                    'OSInstance.add_embedded_osi - Problem while updating OS instance ' + self.name +
+                    '. Reason: embedded OS instance ' + e_osi.name + ' id is None'
                 )
 
     def del_embedded_osi(self, e_osi, sync=True):
@@ -2147,6 +2273,7 @@ class OSInstance(object):
         add the embedded OS instance object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.del_embedded_osi")
         if not sync:
             self.embedded_osi_2_rm.append(e_osi)
         else:
@@ -2162,16 +2289,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.del_embedded_osi - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.embedded_osi_ids.remove(e_osi.id)
                     e_osi.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: embedded OS instance ' +
-                    e_osi.name + ' id is None'
+                    'OSInstance.del_embedded_osi - Problem while updating OS instance ' +
+                    self.name + '. Reason: embedded OS instance ' + e_osi.name + ' id is None'
                 )
 
     def add_application(self, application, sync=True):
@@ -2182,6 +2310,7 @@ class OSInstance(object):
         add the application object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.add_application")
         if not sync:
             self.application_2_add.append(application)
         else:
@@ -2196,16 +2325,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.add_application - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.application_ids.append(application.id)
                     application.osi_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: application ' +
-                    application.name + ' id is None'
+                    'OSInstance.add_application - Problem while updating OS instance ' + self.name +
+                    '. Reason: application ' + application.name + ' id is None'
                 )
 
     def del_application(self, application, sync=True):
@@ -2216,6 +2346,7 @@ class OSInstance(object):
         add the application object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.del_application")
         if not sync:
             self.application_2_rm.append(application)
         else:
@@ -2230,16 +2361,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.del_application - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.application_ids.remove(application.id)
                     application.osi_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: application ' +
-                    application.name + ' id is None'
+                    'OSInstance.del_application - Problem while updating OS instance ' + self.name +
+                    '. Reason: application ' + application.name + ' id is None'
                 )
 
     def add_environment(self, environment, sync=True):
@@ -2250,6 +2382,7 @@ class OSInstance(object):
         add the environment object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.add_environment")
         if not sync:
             self.environment_2_add.append(environment)
         else:
@@ -2264,16 +2397,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.add_environment - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.environment_ids.append(environment.id)
                     environment.osi_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: application ' +
-                    environment.name + ' id is None'
+                    'OSInstance.add_environment - Problem while updating OS instance ' +
+                    self.name + '. Reason: application ' + environment.name + ' id is None'
                 )
 
     def del_environment(self, environment, sync=True):
@@ -2284,6 +2418,7 @@ class OSInstance(object):
         add the environment object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.del_environment")
         if not sync:
             self.environment_2_rm.append(environment)
         else:
@@ -2298,16 +2433,17 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.del_environment - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.environment_ids.remove(environment.id)
                     environment.osi_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: application ' +
-                    environment.name + ' id is None'
+                    'OSInstance.del_environment - Problem while updating OS instance ' + self.name +
+                    '. Reason: application ' + environment.name + ' id is None'
                 )
 
     def add_team(self, team, sync=True):
@@ -2318,6 +2454,7 @@ class OSInstance(object):
         add the team object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.add_team")
         if not sync:
             self.team_2_add.append(team)
         else:
@@ -2332,15 +2469,16 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.add_team - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.team_ids.append(team.id)
                     team.osi_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: application ' +
+                    'OSInstance.add_team - Problem while updating OS instance ' + self.name + '. Reason: application ' +
                     team.name + ' id is None'
                 )
 
@@ -2352,6 +2490,7 @@ class OSInstance(object):
         add the team object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSInstance.del_team")
         if not sync:
             self.team_2_rm.append(team)
         else:
@@ -2366,15 +2505,16 @@ class OSInstance(object):
                 response = OSInstanceService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS instance ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSInstance.del_team - Problem while updating OS instance ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.team_ids.remove(team.id)
                     team.osi_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating OS instance ' + self.name + '. Reason: application ' +
+                    'OSInstance.del_team - Problem while updating OS instance ' + self.name + '. Reason: application ' +
                     team.name + ' id is None'
                 )
 
@@ -2382,6 +2522,7 @@ class OSInstance(object):
         """
         :return: save this OS instance on Ariane server (create or update)
         """
+        LOGGER.debug("OSInstance.save")
         post_payload = {}
         consolidated_osi_id = []
         consolidated_ipa_id = []
@@ -2511,8 +2652,9 @@ class OSInstance(object):
         response = OSInstanceService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving OS instance ' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'OSInstance.save - Problem while saving OS instance ' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['osInstanceID']
@@ -2581,6 +2723,7 @@ class OSInstance(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("OSInstance.remove")
         if self.id is None:
             return None
         else:
@@ -2591,8 +2734,9 @@ class OSInstance(object):
             response = OSInstanceService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting OS instance ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'OSInstance.remove - Problem while deleting OS instance ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -2603,6 +2747,7 @@ class OSTypeService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("OSTypeService.__init__")
         args = {'repository_path': 'rest/directories/common/infrastructure/system/ostypes/'}
         OSTypeService.requester = directory_driver.make_requester(args)
 
@@ -2615,12 +2760,13 @@ class OSTypeService(object):
         :param ost_arch: the OS type architecture
         :return: found OS type or None if not found
         """
+        LOGGER.debug("OSTypeService.find_ostype")
         if (ost_id is None or not ost_id) and (ost_name is None or not ost_name) and (ost_arch is None or not ost_arch):
             raise exceptions.ArianeCallParametersError('id and (name, architecture)')
 
         if (ost_id is not None and ost_id) and ((ost_name is not None and ost_name) or
                                                 (ost_arch is not None and ost_arch)):
-            LOGGER.warn('Both id and (name, arc) are defined. Will give you search on id.')
+            LOGGER.warn('OSTypeService.find_ostype - Both id and (name, arc) are defined. Will give you search on id.')
             ost_name = None
             ost_arch = None
 
@@ -2641,8 +2787,10 @@ class OSTypeService(object):
             if response.rc == 0:
                 ret = OSType.json_2_ostype(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding OS Type (id:' + str(ost_id) + ', name:' + str(ost_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'OSTypeService.find_ostype - Problem while finding OS Type (id:' + str(ost_id) + \
+                          ', name:' + str(ost_name) + '). ' + \
+                          'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -2654,6 +2802,7 @@ class OSTypeService(object):
         """
         :return: all knows OS types
         """
+        LOGGER.debug("OSTypeService.get_ostypes")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = OSTypeService.requester.call(args)
         ret = None
@@ -2662,8 +2811,9 @@ class OSTypeService(object):
             for os_type in response.response_content['osTypes']:
                 ret.append(OSType.json_2_ostype(os_type))
         elif response.rc != 404:
-            err_msg = 'Problem while getting OS Types.' \
-                      ' Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'OSTypeService.get_ostypes - Problem while getting OS Types.' \
+                      '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
 
         return ret
@@ -2677,6 +2827,7 @@ class OSType(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 OS type object
         """
+        LOGGER.debug("OSType.json_2_ostype")
         return OSType(ostid=json_obj['osTypeID'],
                       name=json_obj['osTypeName'],
                       architecture=json_obj['osTypeArchitecture'],
@@ -2688,6 +2839,7 @@ class OSType(object):
         transform ariane_clip3 OS Type object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("OSType.ostype_2_json")
         json_obj = {
             'osTypeID': self.id,
             'osTypeName': self.name,
@@ -2702,6 +2854,7 @@ class OSType(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("OSType.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -2713,8 +2866,9 @@ class OSType(object):
             response = OSTypeService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing OS type (name:' + self.name + ', id: ' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'OSType.sync - Problem while syncing OS type (name:' + self.name + ', id: ' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -2738,6 +2892,7 @@ class OSType(object):
         :param os_type_os_instance_ids: default None
         :return:
         """
+        LOGGER.debug("OSType.__init__")
         self.id = ostid
         self.name = name
         self.architecture = architecture
@@ -2767,6 +2922,7 @@ class OSType(object):
         add the OS instance object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("OSType.add_os_instance")
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -2781,15 +2937,16 @@ class OSType(object):
                 response = OSTypeService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS type ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSType.add_os_instance - Problem while updating OS type ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating OS type ' + self.name + '. Reason: OS instance ' +
+                    'OSType.add_os_instance - Problem while updating OS type ' + self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -2801,6 +2958,7 @@ class OSType(object):
         add the OS instance object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("OSType.del_os_instance")
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -2815,15 +2973,16 @@ class OSType(object):
                 response = OSTypeService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating OS type ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'OSType.del_os_instance - Problem while updating OS type ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating OS type ' + self.name + '. Reason: OS instance ' +
+                    'OSType.del_os_instance - Problem while updating OS type ' + self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -2831,6 +2990,7 @@ class OSType(object):
         """
         :return: save this OS type on Ariane server (create or update)
         """
+        LOGGER.debug("OSType.save")
         if self.company is not None:
             if self.company.id is None:
                 self.company.save()
@@ -2869,8 +3029,9 @@ class OSType(object):
         response = OSTypeService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving os type' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'OSType.save - Problem while saving os type' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['osTypeID']
@@ -2890,6 +3051,7 @@ class OSType(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("OSType.remove")
         if self.id is None:
             return None
         else:
@@ -2900,8 +3062,9 @@ class OSType(object):
             response = OSTypeService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting os type ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'OSType.remove - Problem while deleting os type ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -2912,6 +3075,7 @@ class ApplicationService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("ApplicationService.__init__")
         args = {'repository_path': 'rest/directories/common/organisation/applications/'}
         ApplicationService.requester = directory_driver.make_requester(args)
 
@@ -2923,11 +3087,13 @@ class ApplicationService(object):
         :param app_name: the application name
         :return: found application or None if not found
         """
+        LOGGER.debug("ApplicationService.find_application")
         if (app_id is None or not app_id) and (app_name is None or not app_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
         if (app_id is not None and app_id) and (app_name is not None and app_name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            LOGGER.warn('ApplicationService.find_application - Both id and name are defined. '
+                        'Will give you search on id.')
             app_name = None
 
         params = None
@@ -2943,8 +3109,10 @@ class ApplicationService(object):
             if response.rc == 0:
                 ret = Application.json_2_application(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding application (id:' + str(app_id) + ', name:' + str(app_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'ApplicationService.find_application - Problem while finding application (id:' + \
+                          str(app_id) + ', name:' + str(app_name) + '). ' + \
+                          'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -2956,6 +3124,7 @@ class ApplicationService(object):
         """
         :return: all knows applications
         """
+        LOGGER.debug("ApplicationService.get_applications")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = ApplicationService.requester.call(args)
         ret = None
@@ -2964,8 +3133,9 @@ class ApplicationService(object):
             for application in response.response_content['applications']:
                 ret.append(Application.json_2_application(application))
         elif response.rc != 404:
-            err_msg = 'Problem while getting applications. ' \
-                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'ApplicationService.get_applications - Problem while getting applications. ' \
+                      'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -2978,6 +3148,7 @@ class Application(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 Application object
         """
+        LOGGER.debug("Application.json_2_application")
         return Application(appid=json_obj['applicationID'],
                            name=json_obj['applicationName'],
                            description=json_obj['applicationDescription'],
@@ -2992,6 +3163,7 @@ class Application(object):
         transform ariane_clip3 Application object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("Application.application_2_json")
         json_obj = {
             'applicationID': self.id,
             'applicationName': self.name,
@@ -3009,6 +3181,7 @@ class Application(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("Application.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -3020,8 +3193,9 @@ class Application(object):
             response = ApplicationService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing application (name:' + self.name + 'id: ' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Application.sync - Problem while syncing application (name:' + self.name + 'id: ' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -3054,6 +3228,7 @@ class Application(object):
         :param osi_ids: default None
         :return:
         """
+        LOGGER.debug("Application.__init__")
         self.id = appid
         self.name = name
         self.description = description
@@ -3087,6 +3262,7 @@ class Application(object):
         add the OS instance object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Application.add_os_instance")
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -3101,15 +3277,17 @@ class Application(object):
                 response = ApplicationService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating application ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Application.add_os_instance - Problem while updating application ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.application_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating application ' + self.name + '. Reason: OS instance ' +
+                    'Application.add_os_instance - Problem while updating application ' +
+                    self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3121,6 +3299,7 @@ class Application(object):
         add the OS instance object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Application.del_os_instance")
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -3135,15 +3314,17 @@ class Application(object):
                 response = ApplicationService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating application ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Application.del_os_instance - Problem while updating application ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.application_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating application ' + self.name + '. Reason: OS instance ' +
+                    'Application.del_os_instance - Problem while updating application ' +
+                    self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3151,6 +3332,7 @@ class Application(object):
         """
         :return: save this application on Ariane server (create or update)
         """
+        LOGGER.debug("Application.save")
         if self.company is not None:
             if self.company.id is None:
                 self.company.save()
@@ -3203,8 +3385,9 @@ class Application(object):
         response = ApplicationService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving application ' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'Application.save - Problem while saving application ' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['applicationID']
@@ -3220,6 +3403,7 @@ class Application(object):
         return self
 
     def remove(self):
+        LOGGER.debug("Application.remove")
         if self.id is None:
             return None
         else:
@@ -3230,8 +3414,9 @@ class Application(object):
             response = ApplicationService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting application ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Application.remove - Problem while deleting application ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -3242,6 +3427,7 @@ class CompanyService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("CompanyService.__init__")
         args = {'repository_path': 'rest/directories/common/organisation/companies/'}
         CompanyService.requester = directory_driver.make_requester(args)
 
@@ -3253,11 +3439,12 @@ class CompanyService(object):
         :param cmp_name: the company name
         :return: found company or None if not found
         """
+        LOGGER.debug("CompanyService.find_company")
         if (cmp_id is None or not cmp_id) and (cmp_name is None or not cmp_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
         if (cmp_id is not None and cmp_id) and (cmp_name is not None and cmp_name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            LOGGER.warn('CompanyService.find_company - Both id and name are defined. Will give you search on id.')
             cmp_name = None
 
         params = None
@@ -3273,8 +3460,10 @@ class CompanyService(object):
             if response.rc == 0:
                 ret = Company.json_2_company(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding company (id:' + str(cmp_id) + ', name:' + str(cmp_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'CompanyService.find_company - Problem while finding company (id:' + str(cmp_id) + \
+                          ', name:' + str(cmp_name) + '). ' + \
+                          'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -3286,6 +3475,7 @@ class CompanyService(object):
         """
         :return: all knows companies
         """
+        LOGGER.debug("CompanyService.get_companies")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = CompanyService.requester.call(args)
         ret = None
@@ -3294,8 +3484,9 @@ class CompanyService(object):
             for company in response.response_content['companies']:
                 ret.append(Company.json_2_company(company))
         elif response.rc != 404:
-            err_msg = 'Problem while getting companies. ' \
-                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'CompanyService.get_companies - Problem while getting companies. ' \
+                      'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -3308,6 +3499,7 @@ class Company(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 Company object
         """
+        LOGGER.debug("Company.json_2_company")
         return Company(cmpid=json_obj['companyID'],
                        name=json_obj['companyName'],
                        description=json_obj['companyDescription'],
@@ -3319,6 +3511,7 @@ class Company(object):
         transform ariane_clip3 company object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("Company.company_2_json")
         json_obj = {
             'companyID': self.id,
             'companyName': self.name,
@@ -3333,6 +3526,7 @@ class Company(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("Company.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -3344,8 +3538,9 @@ class Company(object):
             response = CompanyService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing company (name:' + self.name + ', id:' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Company.sync - Problem while syncing company (name:' + self.name + ', id:' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -3366,6 +3561,7 @@ class Company(object):
         :param ost_ids: default None
         :return:
         """
+        LOGGER.debug("Company.__init__")
         self.id = cmpid
         self.name = name
         self.description = description
@@ -3396,6 +3592,7 @@ class Company(object):
         add the application object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Company.add_application")
         if not sync:
             self.applications_2_add.append(application)
         else:
@@ -3410,15 +3607,16 @@ class Company(object):
                 response = CompanyService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating company ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Company.add_application - Problem while updating company ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.applications_ids.append(application.id)
                     application.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating company ' + self.name + '. Reason: application ' +
+                    'Company.add_application - Problem while updating company ' + self.name + '. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -3430,6 +3628,7 @@ class Company(object):
         add the application object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Company.del_application")
         if not sync:
             self.applications_2_rm.append(application)
         else:
@@ -3444,15 +3643,16 @@ class Company(object):
                 response = CompanyService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating company ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Company.del_application - Problem while updating company ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.applications_ids.remove(application.id)
                     application.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating company ' + self.name + '. Reason: application ' +
+                    'Company.del_application - Problem while updating company ' + self.name + '. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -3464,6 +3664,7 @@ class Company(object):
         add the OS type object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Company.add_ostype")
         if not sync:
             self.ost_2_add.append(ostype)
         else:
@@ -3478,15 +3679,16 @@ class Company(object):
                 response = CompanyService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating company ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Company.add_ostype - Problem while updating company ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.ost_ids.append(ostype.id)
                     ostype.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating company ' + self.name + '. Reason: ostype ' +
+                    'Company.add_ostype - Problem while updating company ' + self.name + '. Reason: ostype ' +
                     ostype.name + ' id is None or self.id is None'
                 )
 
@@ -3498,6 +3700,7 @@ class Company(object):
         add the OS type object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Company.del_ostype")
         if not sync:
             self.ost_2_rm.append(ostype)
         else:
@@ -3512,15 +3715,16 @@ class Company(object):
                 response = CompanyService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating company ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Company.del_ostype - Problem while updating company ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.ost_ids.remove(ostype.id)
                     ostype.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating company ' + self.name + '. Reason: ostype ' +
+                    'Company.del_ostype - Problem while updating company ' + self.name + '. Reason: ostype ' +
                     ostype.name + ' id is None or self.id is None'
                 )
 
@@ -3528,6 +3732,7 @@ class Company(object):
         """
         :return: save this company on Ariane server (create or update)
         """
+        LOGGER.debug("Company.save")
         post_payload = {}
         consolidated_app_id = []
         consolidated_ost_id = []
@@ -3573,8 +3778,9 @@ class Company(object):
         response = CompanyService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving company' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'Company.save - Problem while saving company' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['companyID']
@@ -3602,6 +3808,7 @@ class Company(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("Company.remove")
         if self.id is None:
             return None
         else:
@@ -3612,8 +3819,9 @@ class Company(object):
             response = CompanyService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting company ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Company.remove - Problem while deleting company ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -3624,6 +3832,7 @@ class EnvironmentService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("EnvironmentService.__init__")
         args = {'repository_path': 'rest/directories/common/organisation/environments/'}
         EnvironmentService.requester = directory_driver.make_requester(args)
 
@@ -3635,6 +3844,7 @@ class EnvironmentService(object):
         :param env_name: the environment name
         :return: found environment or None if not found
         """
+        LOGGER.debug("EnvironmentService.find_environment")
         if (env_id is None or not env_id) and (env_name is None or not env_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
@@ -3655,8 +3865,10 @@ class EnvironmentService(object):
             if response.rc == 0:
                 ret = Environment.json_2_environment(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding environment (id:' + str(env_id) + ', name:' + str(env_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'EnvironmentService.find_environment - Problem while finding environment (id:' + \
+                          str(env_id) + ', name:' + str(env_name) + '). ' + \
+                          'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -3668,6 +3880,7 @@ class EnvironmentService(object):
         """
         :return: all knows environments
         """
+        LOGGER.debug("EnvironmentService.get_environments")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = EnvironmentService.requester.call(args)
         ret = None
@@ -3676,7 +3889,9 @@ class EnvironmentService(object):
             for environment in response.response_content['environments']:
                 ret.append(Environment.json_2_environment(environment))
         elif response.rc != 404:
-            err_msg = 'Problem while getting environments. Reason: ' + str(response.error_message)
+            err_msg = 'EnvironmentService.get_environments - Problem while getting environments. ' \
+                      'Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -3689,6 +3904,7 @@ class Environment(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 Environment object
         """
+        LOGGER.debug("Environment.json_2_environment")
         return Environment(envid=json_obj['environmentID'],
                            name=json_obj['environmentName'],
                            description=json_obj['environmentDescription'],
@@ -3700,6 +3916,7 @@ class Environment(object):
         transform ariane_clip3 environment object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("Environment.environment_2_json")
         json_obj = {
             'environmentID': self.id,
             'environmentName': self.name,
@@ -3714,6 +3931,7 @@ class Environment(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("Environment.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -3725,8 +3943,9 @@ class Environment(object):
             response = EnvironmentService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing environment (name:' + self.name + ', id:' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Environment.sync - Problem while syncing environment (name:' + self.name + ', id:' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -3747,6 +3966,7 @@ class Environment(object):
         :param osi_ids: default None
         :return:
         """
+        LOGGER.debug("Environment.__init__")
         self.id = envid
         self.name = name
         self.description = description
@@ -3775,6 +3995,7 @@ class Environment(object):
         add the OS instance object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Environment.add_os_instance")
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -3789,15 +4010,17 @@ class Environment(object):
                 response = EnvironmentService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating environment ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Environment.add_os_instance - Problem while updating environment ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.environment_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating environment ' + self.name + '. Reason: OS instance ' +
+                    'Environment.add_os_instance - Problem while updating environment ' +
+                    self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3809,6 +4032,7 @@ class Environment(object):
         add the OS instance object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Environment.del_os_instance")
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -3823,15 +4047,17 @@ class Environment(object):
                 response = EnvironmentService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating environment ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Environment.del_os_instance - Problem while updating environment ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.environment_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating environment ' + self.name + '. Reason: OS instance ' +
+                    'Environment.del_os_instance - Problem while updating environment ' + self.name +
+                    '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -3839,6 +4065,7 @@ class Environment(object):
         """
         :return: save this environment on Ariane server (create or update)
         """
+        LOGGER.debug("Environment.save")
         post_payload = {}
         consolidated_osi_id = []
 
@@ -3872,8 +4099,9 @@ class Environment(object):
         response = EnvironmentService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving environment ' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'Environment.save - Problem while saving environment ' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['environmentID']
@@ -3893,6 +4121,7 @@ class Environment(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("Environment.remove")
         if self.id is None:
             return None
         else:
@@ -3903,8 +4132,9 @@ class Environment(object):
             response = EnvironmentService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting environment ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Environment.remove - Problem while deleting environment ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
@@ -3915,6 +4145,7 @@ class TeamService(object):
     requester = None
 
     def __init__(self, directory_driver):
+        LOGGER.debug("TeamService.__init__")
         args = {'repository_path': 'rest/directories/common/organisation/teams/'}
         TeamService.requester = directory_driver.make_requester(args)
 
@@ -3926,11 +4157,12 @@ class TeamService(object):
         :param team_name: the team name
         :return: found team or None if not found
         """
+        LOGGER.debug("TeamService.find_team")
         if (team_id is None or not team_id) and (team_name is None or not team_name):
             raise exceptions.ArianeCallParametersError('id and name')
 
         if (team_id is not None and team_id) and (team_name is not None and team_name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            LOGGER.warn('TeamService.find_team - Both id and name are defined. Will give you search on id.')
             team_name = None
 
         params = None
@@ -3946,8 +4178,10 @@ class TeamService(object):
             if response.rc == 0:
                 ret = Team.json_2_team(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding team (id:' + str(team_id) + ', name:' + str(team_name) + '). ' + \
-                          'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                err_msg = 'TeamService.find_team - Problem while finding team (id:' + str(team_id) + \
+                          ', name:' + str(team_name) + '). ' + \
+                          '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                          " (" + str(response.rc) + ")"
                 LOGGER.warning(
                     err_msg
                 )
@@ -3959,6 +4193,7 @@ class TeamService(object):
         """
         :return: all knows teams
         """
+        LOGGER.debug("TeamService.get_teams")
         args = {'http_operation': 'GET', 'operation_path': ''}
         response = TeamService.requester.call(args)
         ret = None
@@ -3967,8 +4202,9 @@ class TeamService(object):
             for team in response.response_content['teams']:
                 ret.append(Team.json_2_team(team))
         elif response.rc != 404:
-            err_msg = 'Problem while getting teams. ' \
-                      'Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+            err_msg = 'TeamService.get_teams - Problem while getting teams. ' \
+                      '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -3981,6 +4217,7 @@ class Team(object):
         :param json_obj: the JSON obj coming from Ariane
         :return: ariane_clip3 Team object
         """
+        LOGGER.debug("Team.json_2_team")
         return Team(teamid=json_obj['teamID'],
                     name=json_obj['teamName'],
                     description=json_obj['teamDescription'],
@@ -3993,6 +4230,7 @@ class Team(object):
         transform ariane_clip3 team object to Ariane server JSON obj
         :return: Ariane JSON obj
         """
+        LOGGER.debug("Team.team_2_json")
         json_obj = {
             'teamID': self.id,
             'teamName': self.name,
@@ -4008,6 +4246,7 @@ class Team(object):
         synchronize self from Ariane server according its id (prioritary) or name
         :return:
         """
+        LOGGER.debug("Team.sync")
         params = None
         if self.id is not None:
             params = {'id': self.id}
@@ -4019,8 +4258,9 @@ class Team(object):
             response = TeamService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while syncing team (name: ' + self.name + ', id: ' + str(self.id) + '). Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Team.sync - Problem while syncing team (name: ' + self.name + ', id: ' + str(self.id) +
+                    '). Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 json_obj = response.response_content
@@ -4043,6 +4283,7 @@ class Team(object):
         :param osi_ids: default None
         :return:
         """
+        LOGGER.debug("Team.__init__")
         self.id = teamid
         self.name = name
         self.description = description
@@ -4074,6 +4315,7 @@ class Team(object):
         add the OS instance object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Team.add_os_instance")
         if not sync:
             self.osi_2_add.append(os_instance)
         else:
@@ -4088,15 +4330,16 @@ class Team(object):
                 response = TeamService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating team ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Team.add_os_instance - Problem while updating team ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.append(os_instance.id)
                     os_instance.team_ids.append(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating team ' + self.name + '. Reason: OS instance ' +
+                    'Team.add_os_instance - Problem while updating team ' + self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -4108,6 +4351,7 @@ class Team(object):
         add the OS instance object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Team.del_os_instance")
         if not sync:
             self.osi_2_rm.append(os_instance)
         else:
@@ -4122,15 +4366,16 @@ class Team(object):
                 response = TeamService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating team ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Team.del_os_instance - Problem while updating team ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.osi_ids.remove(os_instance.id)
                     os_instance.team_ids.remove(self.id)
             else:
                 LOGGER.warning(
-                    'Problem while updating team ' + self.name + '. Reason: OS instance ' +
+                    'Team.del_os_instance - Problem while updating team ' + self.name + '. Reason: OS instance ' +
                     os_instance.name + ' id is None or self.id is None'
                 )
 
@@ -4142,6 +4387,7 @@ class Team(object):
         add the application object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Team.add_application")
         if not sync:
             self.app_2_add.append(application)
         else:
@@ -4156,15 +4402,16 @@ class Team(object):
                 response = TeamService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating team ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Team.add_application - Problem while updating team ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.app_ids.append(application.id)
                     application.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating team ' + self.name + '. Reason: application ' +
+                    'Team.add_application - Problem while updating team ' + self.name + '. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -4176,6 +4423,7 @@ class Team(object):
         add the application object on list to be removed on next save().
         :return:
         """
+        LOGGER.debug("Team.del_application")
         if not sync:
             self.app_2_rm.append(application)
         else:
@@ -4190,15 +4438,16 @@ class Team(object):
                 response = TeamService.requester.call(args)
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating team ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Team.del_application - Problem while updating team ' + self.name +
+                        '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.app_ids.remove(application.id)
                     application.sync()
             else:
                 LOGGER.warning(
-                    'Problem while updating team ' + self.name + '. Reason: application ' +
+                    'Team.del_application - Problem while updating team ' + self.name + '. Reason: application ' +
                     application.name + ' id is None or self.id is None'
                 )
 
@@ -4206,6 +4455,7 @@ class Team(object):
         """
         :return: save this team on Ariane server (create or update)
         """
+        LOGGER.debug("Team.save")
         post_payload = {}
         consolidated_osi_id = []
         consolidated_app_id = []
@@ -4254,8 +4504,9 @@ class Team(object):
         response = TeamService.requester.call(args)
         if response.rc != 0:
             LOGGER.warning(
-                'Problem while saving team ' + self.name +
-                '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                'Team.save - Problem while saving team ' + self.name +
+                '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                " (" + str(response.rc) + ")"
             )
         else:
             self.id = response.response_content['teamID']
@@ -4283,6 +4534,7 @@ class Team(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("Team.remove")
         if self.id is None:
             return None
         else:
@@ -4293,8 +4545,9 @@ class Team(object):
             response = TeamService.requester.call(args)
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting team ' + self.name +
-                    '. Reason: ' + str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Team.remove - Problem while deleting team ' + self.name +
+                    '. Reason: ' + str(response.response_content) + '-' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
                 return self
             else:
