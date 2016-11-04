@@ -53,6 +53,7 @@ class MappingService(object):
         :param mapping_driver: provided configuration to access Ariane Server Mapping REST endpoints
         :return:
         """
+        LOGGER.debug("MappingService.__init__")
         MappingService.driver_type = mapping_driver['type']
         self.driver = driver_factory.DriverFactory.make(mapping_driver)
         self.driver.start()
@@ -70,6 +71,7 @@ class MappingService(object):
         self.transport_service = TransportService(self.driver)
 
     def stop(self):
+        LOGGER.debug("MappingService.stop")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             self.driver.stop()
         self.session_service = None
@@ -92,6 +94,7 @@ class SessionService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("SessionService.__init__")
         MappingService.driver_type = mapping_driver.type
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_SESSION_SERVICE_Q'}
@@ -103,6 +106,7 @@ class SessionService(object):
 
     @staticmethod
     def open_session(client_id):
+        LOGGER.debug("SessionService.open_session")
         if client_id is None or not client_id:
             raise exceptions.ArianeCallParametersError('client_id')
         thread_id = threading.current_thread().ident
@@ -123,7 +127,8 @@ class SessionService(object):
             session_id = response.response_content['sessionID']
             SessionService.session_registry[thread_id] = session_id
         else:
-            err_msg = 'Problem while opening session (client_id:' + str(client_id) + '). ' + \
+            err_msg = 'SessionService.open_session - Problem while opening session (client_id:' + \
+                      str(client_id) + '). ' + \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
 
@@ -132,6 +137,7 @@ class SessionService(object):
 
     @staticmethod
     def commit():
+        LOGGER.debug("SessionService.commit")
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
             session_id = SessionService.session_registry[thread_id]
@@ -149,17 +155,19 @@ class SessionService(object):
                 response = response.get()
 
             if response.rc != 0:
-                err_msg = 'Problem while committing on session (session_id:' + str(session_id) + '). ' + \
+                err_msg = 'SessionService.commit - Problem while committing on session (session_id:' + \
+                          str(session_id) + '). ' + \
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
         else:
-            err_msg = 'Problem while commiting on session' + \
+            err_msg = 'SessionService.commit - Problem while commiting on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
             LOGGER.warning(err_msg)
 
     @staticmethod
     def rollback():
+        LOGGER.debug("SessionService.rollback")
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
             session_id = SessionService.session_registry[thread_id]
@@ -177,17 +185,19 @@ class SessionService(object):
                 response = response.get()
 
             if response.rc != 0:
-                err_msg = 'Problem while rollbacking on session (session_id:' + str(session_id) + '). ' + \
+                err_msg = 'SessionService.rollback - Problem while rollbacking on session (session_id:' + \
+                          str(session_id) + '). ' + \
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
         else:
-            err_msg = 'Problem while rollbacking on session' + \
+            err_msg = 'SessionService.rollback - Problem while rollbacking on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
             LOGGER.warning(err_msg)
 
     @staticmethod
     def close_session():
+        LOGGER.debug("SessionService.close_session")
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
             session_id = SessionService.session_registry[thread_id]
@@ -205,19 +215,21 @@ class SessionService(object):
                 response = response.get()
 
             if response.rc != 0:
-                err_msg = 'Problem while closing session (session_id:' + str(session_id) + '). ' + \
+                err_msg = 'SessionService.close_session - Problem while closing session (session_id:' + \
+                          str(session_id) + '). ' + \
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
             else:
                 SessionService.session_registry.pop(thread_id)
         else:
-            err_msg = 'Problem while closing session' + \
+            err_msg = 'SessionService.close_session - Problem while closing session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
             LOGGER.warning(err_msg)
 
     @staticmethod
     def complete_transactional_req(args):
+        LOGGER.debug("SessionService.complete_transactional_req")
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
             if args is None:
@@ -235,6 +247,7 @@ class ClusterService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("ClusterService.__init__")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_CLUSTER_SERVICE_Q'}
             ClusterService.requester = mapping_driver.make_requester(args)
@@ -251,12 +264,13 @@ class ClusterService(object):
         :param name: name of cluster to find
         :return: the cluster if found else None
         """
+        LOGGER.debug("ClusterService.find_cluster")
         ret = None
         if (cid is None or not cid) and (name is None or not name):
             raise exceptions.ArianeCallParametersError('id or name')
 
         if (cid is not None and cid) and (name is not None and name):
-            LOGGER.warn('Both id and name are defined. Will give you search on id.')
+            LOGGER.warn('ClusterService.find_cluster - Both id and name are defined. Will give you search on id.')
             name = None
 
         params = None
@@ -282,7 +296,7 @@ class ClusterService(object):
         if response.rc == 0:
             ret = Cluster.json_2_cluster(response.response_content)
         elif response.rc != 404:
-            err_msg = 'Problem while finding cluster (id:' + str(cid) + '). ' + \
+            err_msg = 'ClusterService.find_cluster - Problem while finding cluster (id:' + str(cid) + '). ' + \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -294,6 +308,7 @@ class ClusterService(object):
         get all available cluster from Ariane server
         :return:
         """
+        LOGGER.debug("ClusterService.get_clusters")
         params = SessionService.complete_transactional_req(None)
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if params is None:
@@ -317,7 +332,9 @@ class ClusterService(object):
             for datacenter in response.response_content['clusters']:
                 ret.append(Cluster.json_2_cluster(datacenter))
         elif response.rc != 404:
-            err_msg = 'Problem while getting clusters. Reason: ' + str(response.error_message)
+            err_msg = 'ClusterService.get_clusters - Problem while getting clusters. ' \
+                      'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
+                      " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -331,6 +348,7 @@ class Cluster(object):
         :param json_obj: json from Ariane Server
         :return: transformed cluster
         """
+        LOGGER.debug("Cluster.json_2_cluster")
         return Cluster(
             cid=json_obj['clusterID'],
             name=json_obj['clusterName'],
@@ -343,6 +361,7 @@ class Cluster(object):
         transform this local object ot Ariane server JSON object
         :return: the JSON object
         """
+        LOGGER.debug("Cluster.cluster_2_json")
         json_obj = {
             'clusterID': self.id,
             'clusterName': self.name,
@@ -355,6 +374,7 @@ class Cluster(object):
         synchronize self from Ariane server according its id
         :return:
         """
+        LOGGER.debug("Cluster.sync")
         if json_obj is None:
             params = None
             if self.id is not None:
@@ -375,12 +395,12 @@ class Cluster(object):
                 if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing cluster (id: ' + str(self.id) + '). ' \
+                    err_msg = 'Cluster.sync - Problem while syncing cluster (id: ' + str(self.id) + '). ' \
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
         elif 'clusterID' not in json_obj:
-            err_msg = 'Problem while syncing cluster (id: ' + str(self.id) + '). ' \
+            err_msg = 'Cluster.sync - Problem while syncing cluster (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
             traceback.print_stack()
@@ -398,6 +418,7 @@ class Cluster(object):
         add the container object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Cluster.add_container")
         if not sync or self.id is None:
             self.containers_2_add.append(container)
         else:
@@ -421,15 +442,16 @@ class Cluster(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating cluster ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Cluster.add_container - Problem while updating cluster ' + self.name +
+                        '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.containers_id.append(container.id)
                     container.cluster_id = self.id
             else:
                 LOGGER.warning(
-                    'Problem while updating cluster ' + self.name + '. Reason: container ' +
+                    'Cluster.add_container - Problem while updating cluster ' + self.name + '. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
 
@@ -441,6 +463,7 @@ class Cluster(object):
         add the container object on list to be deleted on next save().
         :return:
         """
+        LOGGER.debug("Cluster.del_container")
         if not sync or self.id is None:
             self.containers_2_rm.append(container)
         else:
@@ -464,15 +487,16 @@ class Cluster(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating cluster ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Cluster.del_container - Problem while updating cluster ' + self.name +
+                        '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     self.containers_id.remove(container.id)
                     container.cluster_id = None
             else:
                 LOGGER.warning(
-                    'Problem while updating cluster ' + self.name + '. Reason: container ' +
+                    'Cluster.del_container - Problem while updating cluster ' + self.name + '. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
 
@@ -485,6 +509,7 @@ class Cluster(object):
         :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
+        LOGGER.debug("Cluster.__init__")
         is_sync = False
         if (cid is not None or name is not None) and not ignore_sync:
             cluster_on_ariane = ClusterService.find_cluster(cid=cid, name=name)
@@ -518,6 +543,7 @@ class Cluster(object):
         save or update this cluster in Ariane Server
         :return:
         """
+        LOGGER.debug("Cluster.save")
         post_payload = {}
         consolidated_containers_id = []
 
@@ -558,7 +584,7 @@ class Cluster(object):
             response = response.get()
 
         if response.rc != 0:
-            LOGGER.warning('Problem while saving cluster' + self.name +
+            LOGGER.warning('Cluster.save - Problem while saving cluster' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
         else:
@@ -578,6 +604,7 @@ class Cluster(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("Cluster.remove")
         if self.id is None:
             return None
         else:
@@ -598,7 +625,7 @@ class Cluster(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting cluster ' + self.name +
+                    'Cluster.remove - Problem while deleting cluster ' + self.name +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -616,6 +643,7 @@ class ContainerService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("ContainerService.__init__")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_CONTAINER_SERVICE_Q'}
             ContainerService.requester = mapping_driver.make_requester(args)
@@ -633,12 +661,14 @@ class ContainerService(object):
         :param primary_admin_gate_url: container primary admin gate url
         :return:
         """
+        LOGGER.debug("ContainerService.find_container")
         ret = None
         if (cid is None or not cid) and (primary_admin_gate_url is None or not primary_admin_gate_url):
             raise exceptions.ArianeCallParametersError('id and primary_admin_gate_url')
 
         if (cid is not None and cid) and (primary_admin_gate_url is not None and primary_admin_gate_url):
-            LOGGER.warn('Both id and primary admin gate url are defined. Will give you search on id.')
+            LOGGER.warn('ContainerService.find_container - Both id and primary admin gate url are defined. '
+                        'Will give you search on id.')
             primary_admin_gate_url = None
 
         params = None
@@ -665,7 +695,8 @@ class ContainerService(object):
             if response.rc == 0:
                 ret = Container.json_2_container(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while finding container (id:' + str(cid) + ', primary admin gate url '\
+                err_msg = 'ContainerService.find_container - Problem while finding container (id:' + \
+                          str(cid) + ', primary admin gate url '\
                           + str(primary_admin_gate_url) + ' ). ' + \
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
@@ -678,6 +709,7 @@ class ContainerService(object):
         get all known containers from Ariane Server
         :return:
         """
+        LOGGER.debug("ContainerService.get_containers")
         params = SessionService.complete_transactional_req(None)
         if params is None:
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
@@ -703,7 +735,7 @@ class ContainerService(object):
             for container in response.response_content['containers']:
                 ret.append(Container.json_2_container(container))
         elif response.rc != 404:
-            err_msg = 'Problem while getting containers. ' \
+            err_msg = 'ContainerService.get_containers - Problem while getting containers. ' \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -745,6 +777,7 @@ class Container(object):
         :param json_obj: json from Ariane Server
         :return: transformed container
         """
+        LOGGER.debug("Container.json_2_container")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'containerProperties' in json_obj:
                 properties = DriverTools.json2properties(json_obj['containerProperties'])
@@ -776,6 +809,7 @@ class Container(object):
         transform this local object ot Ariane server JSON object
         :return: the JSON object
         """
+        LOGGER.debug("Container.container_2_json")
         json_obj = {
             'containerID': self.id,
             'containerName': self.name,
@@ -798,6 +832,7 @@ class Container(object):
         synchronize self from Ariane server according its id
         :return:
         """
+        LOGGER.debug("Container.sync")
         if json_obj is None:
             params = None
             if self.id is not None:
@@ -818,12 +853,12 @@ class Container(object):
                 if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing container (id: ' + str(self.id) + '). ' \
+                    err_msg = 'Container.sync - Problem while syncing container (id: ' + str(self.id) + '). ' \
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
         elif 'containerID' not in json_obj:
-            err_msg = 'Problem while syncing container (id: ' + str(self.id) + '). ' \
+            err_msg = 'Container.sync - Problem while syncing container (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
             traceback.print_stack()
@@ -860,6 +895,7 @@ class Container(object):
         add the property tuple object on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Container.add_property")
         if c_property_tuple[1] is None:
             LOGGER.debug("Property " + c_property_tuple[0] + " has None value. Ignore.")
             return
@@ -887,8 +923,9 @@ class Container(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating container ' + self.name + '. Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Container.add_property - Problem while updating container ' + self.name +
+                    '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -901,6 +938,7 @@ class Container(object):
         add the property name on list to be deleted on next save().
         :return:
         """
+        LOGGER.debug("Container.del_property")
         if not sync or self.id is None:
             self.properties_2_rm.append(c_property_name)
         else:
@@ -922,8 +960,9 @@ class Container(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating container ' + self.name + '. Reason: ' +
-                    str(response.error_message) + " (" + str(response.rc) + ")"
+                    'Container.del_property - Problem while updating container ' + self.name +
+                    '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
                 )
             else:
                 self.sync()
@@ -935,6 +974,7 @@ class Container(object):
         :param sync:
         :return:
         """
+        LOGGER.debug("Container.add_child_container")
         if not sync or self.id is None:
             self.child_containers_2_add.append(child_container)
         else:
@@ -961,8 +1001,9 @@ class Container(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating container ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Container.add_child_container - Problem while updating container ' + self.name +
+                        '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     child_container.sync()
@@ -975,6 +1016,7 @@ class Container(object):
         :param sync:
         :return:
         """
+        LOGGER.debug("Container.del_child_container")
         if not sync or self.id is None:
             self.child_containers_2_rm.append(child_container)
         else:
@@ -1001,8 +1043,9 @@ class Container(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating container ' + self.name + '. Reason: ' +
-                        str(response.error_message) + " (" + str(response.rc) + ")"
+                        'Container.del_child_container - Problem while updating container ' + self.name +
+                        '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
+                        " (" + str(response.rc) + ")"
                     )
                 else:
                     child_container.sync()
@@ -1030,6 +1073,7 @@ class Container(object):
         :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
+        LOGGER.debug("Container.__init__")
         is_sync = False
         if (cid is not None or name is not None) and not ignore_sync:
             container_on_ariane = ContainerService.find_container(cid=cid, primary_admin_gate_url=gate_uri)
@@ -1094,6 +1138,7 @@ class Container(object):
         save or update this container in Ariane Server
         :return:
         """
+        LOGGER.debug("Container.save")
         if self.cluster is not None:
             if self.cluster.id is None:
                 self.cluster.save()
@@ -1218,7 +1263,7 @@ class Container(object):
             response = response.get()
 
         if response.rc != 0:
-            LOGGER.warning('Problem while saving container' + self.name +
+            LOGGER.warning('Container.save - Problem while saving container' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
         else:
@@ -1262,6 +1307,7 @@ class Container(object):
         remove this object from Ariane server
         :return:
         """
+        LOGGER.debug("Container.remove")
         if self.gate_uri is None:
             return None
         else:
@@ -1282,7 +1328,7 @@ class Container(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting container ' + self.gate_uri +
+                    'Container.remove - Problem while deleting container ' + self.gate_uri +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -1300,6 +1346,7 @@ class NodeService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("NodeService.__init__")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_NODE_SERVICE_Q'}
             NodeService.requester = mapping_driver.make_requester(args)
@@ -1321,6 +1368,7 @@ class NodeService(object):
         :param pnid: parent node id
         :return: the found node or None if not found
         """
+        LOGGER.debug("NodeService.find_node")
         ret = None
         if (nid is None or not nid) and (endpoint_url is None or not endpoint_url) and \
                 (selector is None or not selector) and (name is None or not name):
@@ -1329,7 +1377,8 @@ class NodeService(object):
         if (nid is not None and nid) and \
                 ((endpoint_url is not None and endpoint_url) or (selector is not None and selector) or
                  (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid)))):
-            LOGGER.warn('Both id and other search params are defined. Will give you search on id.')
+            LOGGER.warn('NodeService.find_node - Both id and other search params are defined. '
+                        'Will give you search on id.')
             endpoint_url = None
             selector = None
             name = None
@@ -1339,7 +1388,8 @@ class NodeService(object):
         if (endpoint_url is not None and endpoint_url) and \
                 ((selector is not None and selector) or
                  (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid)))):
-            LOGGER.warn('Both endpoint url other search params are defined. Will give you search based on endpoint url')
+            LOGGER.warn('NodeService.find_node - Both endpoint url other search params are defined. '
+                        'Will give you search based on endpoint url')
             selector = None
             name = None
             cid = None
@@ -1347,13 +1397,15 @@ class NodeService(object):
 
         if (selector is not None and selector) and \
                 (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid))):
-            LOGGER.warn('Both selector other search params are defined. Will give you search based on selector')
+            LOGGER.warn('NodeService.find_node - Both selector other search params are defined. '
+                        'Will give you search based on selector')
             name = None
             cid = None
             pnid = None
 
         if (name is not None and name) and ((cid is not None and cid) and (pnid is not None and pnid)):
-            LOGGER.warn('search node by name : both container ID and parent node ID are defined. '
+            LOGGER.warn('NodeService.find_node - search node by name : '
+                        'both container ID and parent node ID are defined. '
                         'Will give you search based on parent node id')
             cid = None
 
@@ -1410,7 +1462,8 @@ class NodeService(object):
                 else:
                     ret = Node.json_2_node(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while searching node (id:' + str(nid) + ', primary admin gate url ' \
+                err_msg = 'NodeService.find_node - Problem while searching node (id:' + str(nid) + \
+                          ', primary admin gate url ' \
                           + str(endpoint_url) + ' ). ' + \
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
@@ -1423,6 +1476,7 @@ class NodeService(object):
         get all nodes known on the Ariane server
         :return:
         """
+        LOGGER.debug("NodeService.get_nodes")
         params = SessionService.complete_transactional_req(None)
         if params is None:
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
@@ -1448,7 +1502,7 @@ class NodeService(object):
             for node in response.response_content['nodes']:
                 ret.append(Node.json_2_node(node))
         elif response.rc != 404:
-            err_msg = 'Problem while getting nodes. ' \
+            err_msg = 'NodeService.get_nodes - Problem while getting nodes. ' \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -1463,6 +1517,7 @@ class Node(object):
         :param json_obj: the json payload coming from Ariane server
         :return: local node object
         """
+        LOGGER.debug("Node.json_2_node")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'nodeProperties' in json_obj:
                 properties = DriverTools.json2properties(json_obj['nodeProperties'])
@@ -1488,6 +1543,7 @@ class Node(object):
         transform local object to JSON
         :return: JSON object
         """
+        LOGGER.debug("Node.node_2_json")
         json_obj = {
             'nodeID': self.id,
             'nodeName': self.name,
@@ -1505,6 +1561,7 @@ class Node(object):
         synchronize this node with the Ariane server node
         :return:
         """
+        LOGGER.debug("Node.sync")
         if json_obj is None:
             params = None
             if self.id is not None:
@@ -1525,12 +1582,12 @@ class Node(object):
                 if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing node (id: ' + str(self.id) + '). ' \
+                    err_msg = 'Node.sync - Problem while syncing node (id: ' + str(self.id) + '). ' \
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
         elif 'nodeID' not in json_obj:
-            err_msg = 'Problem while syncing node (id: ' + str(self.id) + '). ' \
+            err_msg = 'Node.sync - Problem while syncing node (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
             traceback.print_stack()
@@ -1569,6 +1626,7 @@ class Node(object):
         :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
+        LOGGER.debug("Node.__init__")
         is_sync = False
         if (nid is not None or (name is not None and (container_id is not None or parent_node_id is not None))) \
                 and not ignore_sync:
@@ -1624,6 +1682,7 @@ class Node(object):
         add the property tuple on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Node.add_property")
         if n_property_tuple[1] is None:
             LOGGER.debug("Property " + n_property_tuple[0] + " has None value. Ignore.")
             return
@@ -1651,7 +1710,7 @@ class Node(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating node ' + self.name +
+                    'Node.add_property - Problem while updating node ' + self.name +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -1666,6 +1725,7 @@ class Node(object):
         add the property name on list to be deleted on next save().
         :return:
         """
+        LOGGER.debug("Node.del_property")
         if not sync or self.id is None:
             self.properties_2_rm.append(n_property_name)
         else:
@@ -1687,7 +1747,7 @@ class Node(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating node ' + self.name +
+                    'Node.del_property - Problem while updating node ' + self.name +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -1702,6 +1762,7 @@ class Node(object):
         add the node object on list to be added on next save()
         :return:
         """
+        LOGGER.debug("Node.add_twin_node")
         if self.id is None or not sync:
             self.twin_nodes_2_add.append(twin_node)
         else:
@@ -1728,7 +1789,7 @@ class Node(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating node ' + self.name +
+                        'Node.add_twin_node - Problem while updating node ' + self.name +
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
@@ -1744,6 +1805,7 @@ class Node(object):
         the node on list to be deleted on next save()
         :return:
         """
+        LOGGER.debug("Node.del_twin_node")
         if self.id is None or not sync:
             self.twin_nodes_2_rm.append(twin_node)
         else:
@@ -1770,7 +1832,7 @@ class Node(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating node ' + self.name +
+                        'Node.del_twin_node - Problem while updating node ' + self.name +
                         'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
@@ -1783,6 +1845,7 @@ class Node(object):
         save or update this node in Ariane server
         :return:
         """
+        LOGGER.debug("Node.save")
         if self.container is not None:
             if self.container.id is None:
                 self.container.save()
@@ -1859,7 +1922,7 @@ class Node(object):
             response = response.get()
 
         if response.rc != 0:
-            LOGGER.warning('Problem while saving node' + self.name +
+            LOGGER.warning('Node.save - Problem while saving node' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
         else:
@@ -1885,6 +1948,7 @@ class Node(object):
         remove this node from Ariane server
         :return:
         """
+        LOGGER.debug("Node.remove")
         if self.id is None:
             return None
         else:
@@ -1904,7 +1968,7 @@ class Node(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting node ' + self.id +
+                    'Node.remove - Problem while deleting node ' + self.id +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -1926,6 +1990,7 @@ class GateService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("GateService.__init__")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_GATE_SERVICE_Q'}
             GateService.requester = mapping_driver.make_requester(args)
@@ -1941,6 +2006,7 @@ class GateService(object):
         :param nid: node id
         :return: the gate if found or None if not found
         """
+        LOGGER.debug("GateService.find_gate")
         ret = None
         if nid is None or not nid:
             raise exceptions.ArianeCallParametersError('id')
@@ -1960,7 +2026,7 @@ class GateService(object):
         if response.rc == 0:
             ret = Gate.json_2_gate(response.response_content)
         elif response.rc != 404:
-            err_msg = 'Problem while searching gate (id:' + str(nid) + ' ). ' + \
+            err_msg = 'GateService.find_gate - Problem while searching gate (id:' + str(nid) + ' ). ' + \
                       '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -1972,6 +2038,7 @@ class GateService(object):
         get all gates known on the Ariane server
         :return:
         """
+        LOGGER.debug("GateService.get_gates")
         params = SessionService.complete_transactional_req(None)
         if params is None:
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
@@ -1997,7 +2064,7 @@ class GateService(object):
             for gate in response.response_content['gates']:
                 ret.append(Gate.json_2_gate(gate))
         elif response.rc != 404:
-            err_msg = 'Problem while getting nodes. ' \
+            err_msg = 'GateService.get_gates - Problem while getting nodes. ' \
                       '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -2007,11 +2074,13 @@ class GateService(object):
 class Gate(Node):
     @staticmethod
     def json_2_gate(json_obj):
+        LOGGER.debug("Gate.json_2_gate")
         node = Node.json_2_node(json_obj['node'])
         container_gate_primary_admin_endpoint_id = json_obj['containerGatePrimaryAdminEndpointID']
         return Gate(node=node, container_gate_primary_admin_endpoint_id=container_gate_primary_admin_endpoint_id)
 
     def gate_2_json(self):
+        LOGGER.debug("Gate.gate_2_json")
         json_obj = {
             'node': super(Gate, self).node_2_json(),
             'containerGatePrimaryAdminEndpointID': self.primary_admin_endpoint_id
@@ -2019,6 +2088,7 @@ class Gate(Node):
         return json_obj
 
     def sync(self, json_obj=None):
+        LOGGER.debug("Gate.sync")
         if json_obj is None:
             params = None
             if self.id is not None:
@@ -2039,12 +2109,12 @@ class Gate(Node):
                 if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing gate (id: ' + str(self.id) + '). ' \
+                    err_msg = 'Gate.sync - Problem while syncing gate (id: ' + str(self.id) + '). ' \
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
         elif 'node' not in json_obj or 'nodeID' not in json_obj:
-            err_msg = 'Problem while syncing gate (id: ' + str(self.id) + '). ' \
+            err_msg = 'Gate.sync - Problem while syncing gate (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
             traceback.print_stack()
@@ -2067,6 +2137,7 @@ class Gate(Node):
 
     def __init__(self, node=None, container_gate_primary_admin_endpoint_id=None,
                  url=None, name=None, container_id=None, container=None, is_primary_admin=None):
+        LOGGER.debug("Gate.__init__")
         if node is not None:
             super(Gate, self).__init__(nid=node.id, name=node.name, container_id=node.container_id,
                                        child_nodes_id=node.child_nodes_id, twin_nodes_id=node.twin_nodes_id,
@@ -2094,6 +2165,7 @@ class Gate(Node):
         return self.id.__eq__(other.id)
 
     def save(self):
+        LOGGER.debug("Gate.save")
         if self.container is not None:
             if self.container.id is None:
                 self.container.save()
@@ -2119,7 +2191,7 @@ class Gate(Node):
                 response = response.get()
 
             if response.rc != 0:
-                LOGGER.warning('Problem while saving node' + self.name + '. Reason: ' +
+                LOGGER.warning('Gate.save - Problem while saving node' + self.name + '. Reason: ' +
                                '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                                " (" + str(response.rc) + ")")
             else:
@@ -2127,6 +2199,7 @@ class Gate(Node):
         super(Gate, self).save()
 
     def remove(self):
+        LOGGER.debug("Gate.remove")
         super(Gate, self).remove()
 
 
@@ -2139,6 +2212,7 @@ class EndpointService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("EndpointService.__init__")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_ENDPOINT_SERVICE_Q'}
             EndpointService.requester = mapping_driver.make_requester(args)
@@ -2156,17 +2230,20 @@ class EndpointService(object):
         :param selector: endpoint selector like endpointURL =~ '.*tcp.*'
         :return: the endpoint if found or None if not found
         """
+        LOGGER.debug("EndpointService.find_endpoint")
         ret = None
         if (eid is None or not eid) and (url is None or not url) and (selector is None or not selector):
             raise exceptions.ArianeCallParametersError('id, endpoint_url and selector')
 
         if (eid is not None and eid) and ((url is not None and url) or (selector is not None and selector)):
-            LOGGER.warn('Both id and (endpoint url or selector) are defined. Will give you search on id.')
+            LOGGER.warn('EndpointService.find_endpoint - '
+                        'Both id and (endpoint url or selector) are defined. Will give you search on id.')
             url = None
             selector = None
 
         if (url is not None and url) and (selector is not None and selector):
-            LOGGER.warn('Both endpoint url and selector are defined. Will give you search on url.')
+            LOGGER.warn('EndpointService.find_endpoint - '
+                        'Both endpoint url and selector are defined. Will give you search on url.')
             selector = None
 
         params = None
@@ -2205,8 +2282,8 @@ class EndpointService(object):
                 else:
                     ret = Endpoint.json_2_endpoint(response.response_content)
             elif response.rc != 404:
-                err_msg = 'Problem while searching endpoint (id:' + str(eid) + ', primary admin gate url ' \
-                          + str(url) + ' ). ' + \
+                err_msg = 'EndpointService.find_endpoint - Problem while searching endpoint (id:' + \
+                          str(eid) + ', primary admin gate url ' + str(url) + ' ). ' + \
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
@@ -2218,6 +2295,7 @@ class EndpointService(object):
         get all endpoints known on the Ariane server
         :return:
         """
+        LOGGER.debug("EndpointService.get_endpoints")
         params = SessionService.complete_transactional_req(None)
         if params is None:
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
@@ -2243,7 +2321,7 @@ class EndpointService(object):
             for endpoint in response.response_content['endpoints']:
                 ret.append(Endpoint.json_2_endpoint(endpoint))
         elif response.rc != 404:
-            err_msg = 'Problem while getting nodes. ' \
+            err_msg = 'EndpointService.get_endpoints - Problem while getting nodes. ' \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -2258,6 +2336,7 @@ class Endpoint(object):
         :param json_obj: the json payload coming from Ariane server
         :return: local endpoint object
         """
+        LOGGER.debug("Endpoint.json_2_endpoint")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'endpointProperties' in json_obj:
                 properties = DriverTools.json2properties(json_obj['endpointProperties'])
@@ -2280,6 +2359,7 @@ class Endpoint(object):
         transform local object to JSON
         :return: JSON object
         """
+        LOGGER.debug("Endpoint.endpoint_2_json")
         json_obj = {
             "endpointID": self.id,
             "endpointURL": self.url,
@@ -2294,6 +2374,7 @@ class Endpoint(object):
         synchronize this endpoint with the Ariane server endpoint
         :return:
         """
+        LOGGER.debug("Endpoint.sync")
         if json_obj is None:
             params = None
             if self.id is not None:
@@ -2314,12 +2395,12 @@ class Endpoint(object):
                 if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing endpoint (id: ' + str(self.id) + '). ' \
+                    err_msg = 'Endpoint.sync - Problem while syncing endpoint (id: ' + str(self.id) + '). ' \
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
         elif 'endpointID' not in json_obj:
-            err_msg = 'Problem while syncing endpoint (id: ' + str(self.id) + '). ' \
+            err_msg = 'Endpoint.sync - Problem while syncing endpoint (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
             traceback.print_stack()
@@ -2350,6 +2431,7 @@ class Endpoint(object):
         :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
+        LOGGER.debug("Endpoint.__init__")
         is_sync = False
         if (eid is not None or url is not None) and not ignore_sync:
             endpoint_on_ariane = EndpointService.find_endpoint(eid=eid, url=url)
@@ -2396,8 +2478,9 @@ class Endpoint(object):
         add the property tuple on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Endpoint.add_property")
         if e_property_tuple[1] is None:
-            LOGGER.debug("Property " + e_property_tuple[0] + " has None value. Ignore.")
+            LOGGER.debug("Endpoint.add_property - Property " + e_property_tuple[0] + " has None value. Ignore.")
             return
 
         if not sync or self.id is None:
@@ -2423,7 +2506,7 @@ class Endpoint(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating endpoint ' + self.url +
+                    'Endpoint.add_property - Problem while updating endpoint ' + self.url +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -2438,6 +2521,7 @@ class Endpoint(object):
         add the property name on list to be deleted on next save().
         :return:
         """
+        LOGGER.debug("Endpoint.del_property")
         if not sync or self.id is None:
             self.properties_2_rm.append(e_property_name)
         else:
@@ -2459,7 +2543,7 @@ class Endpoint(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating endpoint ' + self.url +
+                    'Endpoint.del_property - Problem while updating endpoint ' + self.url +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -2474,6 +2558,7 @@ class Endpoint(object):
         add the endpoint object on list to be added on next save()
         :return:
         """
+        LOGGER.debug("Endpoint.add_twin_endpoint")
         if self.id is None or not sync:
             self.twin_endpoints_2_add.append(twin_endpoint)
         else:
@@ -2500,7 +2585,7 @@ class Endpoint(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating endpoint ' + self.url +
+                        'Endpoint.add_twin_endpoint - Problem while updating endpoint ' + self.url +
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
@@ -2516,6 +2601,7 @@ class Endpoint(object):
         the endpoint on list to be deleted on next save()
         :return:
         """
+        LOGGER.debug("Endpoint.del_twin_endpoint")
         if self.id is None or not sync:
             self.twin_endpoints_2_rm.append(twin_endpoint)
         else:
@@ -2542,7 +2628,7 @@ class Endpoint(object):
 
                 if response.rc != 0:
                     LOGGER.warning(
-                        'Problem while updating endpoint ' + self.url +
+                        'Endpoint.del_twin_endpoint - Problem while updating endpoint ' + self.url +
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
@@ -2555,6 +2641,7 @@ class Endpoint(object):
         save or update endpoint to Ariane server
         :return:
         """
+        LOGGER.debug("Endpoint.save")
         if self.parent_node is not None:
             if self.parent_node.id is None:
                 self.parent_node.save()
@@ -2617,7 +2704,7 @@ class Endpoint(object):
             response = response.get()
 
         if response.rc != 0:
-            LOGGER.warning('Problem while saving endpoint ' + self.url +
+            LOGGER.warning('Endpoint.save - Problem while saving endpoint ' + self.url +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
         else:
@@ -2641,6 +2728,7 @@ class Endpoint(object):
         remove this endpoint from Ariane server
         :return:
         """
+        LOGGER.debug("Endpoint.remove")
         if self.id is None:
             return None
         else:
@@ -2661,7 +2749,7 @@ class Endpoint(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting endpoint ' + str(self.id) +
+                    'Endpoint.remove - Problem while deleting endpoint ' + str(self.id) +
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -2681,6 +2769,7 @@ class LinkService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("LinkService.__init__")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_LINK_SERVICE_Q'}
             LinkService.requester = mapping_driver.make_requester(args)
@@ -2696,12 +2785,14 @@ class LinkService(object):
         :param lid: link id
         :return: the link if found or None if not found
         """
+        LOGGER.debug("LinkService.find_link")
         ret = None
         if (lid is None or not lid) and (sep_id is None or not sep_id) and (tep_id is None or not tep_id):
             raise exceptions.ArianeCallParametersError('id, source endpoint ID, target endpoint ID')
 
         if (lid is not None and lid) and ((sep_id is not None and sep_id) or (tep_id is not None and tep_id)):
-            LOGGER.warn('Both lid and sep_id and tep_id are defined. Will give you search on id.')
+            LOGGER.warn('LinkService.find_link - Both lid and sep_id and tep_id are defined. '
+                        'Will give you search on id.')
             sep_id = None
             tep_id = None
 
@@ -2746,7 +2837,7 @@ class LinkService(object):
                 for link in response.response_content['links']:
                     ret.append(Link.json_2_link(link))
         elif response.rc != 404:
-            err_msg = 'Problem while searching link (id:' + str(lid) + '). ' + \
+            err_msg = 'LinkService.find_link - Problem while searching link (id:' + str(lid) + '). ' + \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -2758,6 +2849,7 @@ class LinkService(object):
         get all known links from Ariane Server
         :return:
         """
+        LOGGER.debug("LinkService.get_links")
         params = SessionService.complete_transactional_req(None)
         if params is None:
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
@@ -2783,7 +2875,7 @@ class LinkService(object):
             for link in response.response_content['links']:
                 ret.append(Link.json_2_link(link))
         elif response.rc != 404:
-            err_msg = 'Problem while getting links. ' \
+            err_msg = 'LinkService.get_links - Problem while getting links. ' \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -2794,6 +2886,7 @@ class Link(object):
 
     @staticmethod
     def json_2_link(json_obj):
+        LOGGER.debug("Link.json_2_link")
         return Link(
             lid=json_obj['linkID'],
             source_endpoint_id=json_obj['linkSEPID'],
@@ -2803,6 +2896,7 @@ class Link(object):
         )
 
     def link_2_json(self):
+        LOGGER.debug("Link.link_2_json")
         json_obj = {
             'linkID': self.id,
             'linkSEPID': self.sep_id,
@@ -2816,6 +2910,7 @@ class Link(object):
         synchronize this link with the Ariane server link
         :return:
         """
+        LOGGER.debug("Link.sync")
         if json_obj is None:
             params = None
             if self.id is not None:
@@ -2836,12 +2931,12 @@ class Link(object):
                 if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing link (id: ' + str(id) + '). ' \
+                    err_msg = 'Link.sync - Problem while syncing link (id: ' + str(id) + '). ' \
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
         elif 'linkID' not in json_obj:
-            err_msg = 'Problem while syncing link (id: ' + str(self.id) + '). ' \
+            err_msg = 'Link.sync - Problem while syncing link (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
             traceback.print_stack()
@@ -2865,6 +2960,7 @@ class Link(object):
         :param ignore_sync: ignore ariane server synchronisation if false. (default true)
         :return:
         """
+        LOGGER.debug("Link.__init__")
         is_sync = False
         if (lid is not None or (source_endpoint_id is not None and target_endpoint_id is not None)) and not ignore_sync:
             link_on_ariane = LinkService.find_link(lid=lid, sep_id=source_endpoint_id, tep_id=target_endpoint_id)
@@ -2898,6 +2994,7 @@ class Link(object):
         return self.id.__eq__(other.id)
 
     def save(self):
+        LOGGER.debug("Link.save")
         if self.sep is not None:
             if self.sep.id is None:
                 self.sep.save()
@@ -2940,7 +3037,7 @@ class Link(object):
             response = response.get()
 
         if response.rc != 0:
-            LOGGER.warning('Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
+            LOGGER.warning('Link.save - Problem while saving link {' + str(self.sep_id) + ',' + str(self.tep_id) + ','
                            + str(self.trp_id) + ' }' +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
@@ -2960,6 +3057,7 @@ class Link(object):
         remove this link from Ariane server
         :return:
         """
+        LOGGER.debug("Link.remove")
         if self.id is None:
             return None
         else:
@@ -2980,7 +3078,7 @@ class Link(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting link ' + str(self.id) + '. ' +
+                    'Link.remove - Problem while deleting link ' + str(self.id) + '. ' +
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -2998,6 +3096,7 @@ class TransportService(object):
         :param mapping_driver: the driver coming from MappingService
         :return:
         """
+        LOGGER.debug("TransportService.__init__")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             args = {'request_q': 'ARIANE_MAPPING_TRANSPORT_SERVICE_Q'}
             TransportService.requester = mapping_driver.make_requester(args)
@@ -3013,6 +3112,7 @@ class TransportService(object):
         :param tid: transport id
         :return: the transport if found or None if not found
         """
+        LOGGER.debug("TransportService.find_transport")
         ret = None
         if tid is None or not tid:
             raise exceptions.ArianeCallParametersError('id')
@@ -3035,7 +3135,7 @@ class TransportService(object):
         if response.rc == 0:
             ret = Transport.json_2_transport(response.response_content)
         elif response.rc != 404:
-            err_msg = 'Problem while searching transport (id:' + str(tid) + '). ' + \
+            err_msg = 'TransportService.find_transport - Problem while searching transport (id:' + str(tid) + '). ' + \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -3047,6 +3147,7 @@ class TransportService(object):
         get all known transports from Ariane Server
         :return:
         """
+        LOGGER.debug("TransportService.get_transports")
         params = SessionService.complete_transactional_req(None)
         if params is None:
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
@@ -3072,7 +3173,7 @@ class TransportService(object):
             for transport in response.response_content['transports']:
                 ret.append(Transport.json_2_transport(transport))
         elif response.rc != 404:
-            err_msg = 'Problem while getting transports. ' \
+            err_msg = 'TransportService.get_transports - Problem while getting transports. ' \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
@@ -3087,6 +3188,7 @@ class Transport(object):
         :param json_obj:
         :return:
         """
+        LOGGER.debug("Transport.json_2_transport")
         if MappingService.driver_type != DriverFactory.DRIVER_REST:
             if 'transportProperties' in json_obj:
                 properties = DriverTools.json2properties(json_obj['transportProperties'])
@@ -3105,6 +3207,7 @@ class Transport(object):
 
         :return:
         """
+        LOGGER.debug("Transport.transport_2_json")
         json_obj = {
             'transportID': self.id,
             'transportName': self.name,
@@ -3117,6 +3220,7 @@ class Transport(object):
         synchronize this transport with the Ariane server transport
         :return:
         """
+        LOGGER.debug("Transport.sync")
         if json_obj is None:
             params = None
             if self.id is not None:
@@ -3137,12 +3241,12 @@ class Transport(object):
                 if response.rc == 0:
                     json_obj = response.response_content
                 else:
-                    err_msg = 'Problem while syncing transport (id: ' + str(self.id) + '). ' \
+                    err_msg = 'Transport.sync - Problem while syncing transport (id: ' + str(self.id) + '). ' \
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
         elif 'transportID' not in json_obj:
-            err_msg = 'Problem while syncing transport (id: ' + str(self.id) + '). ' \
+            err_msg = 'Transport.sync - Problem while syncing transport (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
             traceback.print_stack()
@@ -3168,6 +3272,7 @@ class Transport(object):
         add the property tuple on list to be added on next save().
         :return:
         """
+        LOGGER.debug("Transport.add_property")
         if t_property_tuple[1] is None:
             LOGGER.debug("Property " + t_property_tuple[0] + " has None value. Ignore.")
             return
@@ -3195,7 +3300,7 @@ class Transport(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating transport ' + self.name + ' properties. ' +
+                    'Transport.add_property - Problem while updating transport ' + self.name + ' properties. ' +
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -3210,6 +3315,7 @@ class Transport(object):
         add the property name on list to be deleted on next save().
         :return:
         """
+        LOGGER.debug("Transport.del_property")
         if not sync or self.id is None:
             self.properties_2_rm.append(t_property_name)
         else:
@@ -3231,7 +3337,7 @@ class Transport(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while updating transport ' + self.name + ' properties. ' +
+                    'Transport.del_property - Problem while updating transport ' + self.name + ' properties. ' +
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
@@ -3246,6 +3352,7 @@ class Transport(object):
         :param properties:
         :return:
         """
+        LOGGER.debug("Transport.__init__")
         self.id = tid
         self.name = name
         self.properties = properties
@@ -3266,6 +3373,7 @@ class Transport(object):
         return self.id.__eq__(other.id)
 
     def save(self):
+        LOGGER.debug("Transport.save")
         consolidated_properties = {}
         consolidated_transport_properties = []
 
@@ -3304,7 +3412,7 @@ class Transport(object):
             response = response.get()
 
         if response.rc != 0:
-            LOGGER.warning('Problem while saving transport {' + self.name + '}' +
+            LOGGER.warning('Transport.save - Problem while saving transport {' + self.name + '}' +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
         else:
@@ -3318,6 +3426,7 @@ class Transport(object):
         remove this transport from Ariane server
         :return:
         """
+        LOGGER.debug("Transport.remove")
         if self.id is None:
             return None
         else:
@@ -3338,7 +3447,7 @@ class Transport(object):
 
             if response.rc != 0:
                 LOGGER.warning(
-                    'Problem while deleting transport ' + str(self.id) +
+                    'Transport.remove - Problem while deleting transport ' + str(self.id) +
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
