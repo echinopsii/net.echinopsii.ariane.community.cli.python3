@@ -53,6 +53,7 @@ class InjectorService(object):
          Ariane UI and use it for you sniff algorithms
         :return:
         """
+        LOGGER.debug("InjectorService.__init__")
         self.driver = driver_factory.DriverFactory.make(driver_args)
         self.driver.start()
         self.ui_tree_service = InjectorUITreeService(self.driver)
@@ -80,6 +81,7 @@ class InjectorService(object):
         stop the injector service. By the way stoping all Pykka actors if not cleanly closed.
         :return:
         """
+        LOGGER.debug("InjectorService.stop")
         self.driver.stop()
         InjectorUITreeService.requester = None
         InjectorCachedRegistryFactoryService.requester = None
@@ -96,6 +98,7 @@ class InjectorUITreeService(object):
         :param injector_driver: the rabbitmq driver coming from InjectorService
         :return:
         """
+        LOGGER.debug("InjectorUITreeService.__init__")
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_TREE_Q'}
         if InjectorUITreeService.requester is None:
             InjectorUITreeService.requester = injector_driver.make_requester(args)
@@ -109,6 +112,7 @@ class InjectorUITreeService(object):
         :param entity_ca: the Ariane UI tree menu context address to search
         :return:
         """
+        LOGGER.debug("InjectorUITreeService.find_ui_tree_entity")
         operation = None
         search_criteria = None
         criteria_value = None
@@ -133,9 +137,11 @@ class InjectorUITreeService(object):
             if result.rc == 0:
                 ret = InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity(result.response_content)
             elif result.rc != 404:
-                err_msg = 'Problem while finding injector UI Tree Menu Entity ('+search_criteria+':' + \
+                err_msg = 'InjectorUITreeService.find_ui_tree_entity - Problem while finding ' \
+                          'injector UI Tree Menu Entity ('+search_criteria+':' + \
                           str(criteria_value) + '). ' + \
-                          'Reason: ' + str(result.error_message)
+                          'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                          " (" + str(result.rc) + ")"
                 LOGGER.warning(err_msg)
 
         return ret
@@ -152,6 +158,7 @@ class InjectorUITreeEntity(object):
         :param json_obj: the retrieved Ariane Menu entity to transform
         :return: the local object InjectorUITreeEntity
         """
+        LOGGER.debug("InjectorUITreeEntity.json_2_injector_ui_tree_menu_entity")
         return InjectorUITreeEntity(
             uitid=json_obj['id'],
             value=json_obj['value'],
@@ -179,6 +186,7 @@ class InjectorUITreeEntity(object):
         :param ignore_genealogy: ignore the genealogy of this object if true (awaited format for Ariane server)
         :return: the resulting JSON of transformation
         """
+        LOGGER.debug("InjectorUITreeEntity.injector_ui_tree_menu_entity_2_json")
         if ignore_genealogy:
             json_obj = {
                 'id': self.id,
@@ -290,6 +298,7 @@ class InjectorUITreeEntity(object):
         save or update this entity on Ariane server
         :return:
         """
+        LOGGER.debug("InjectorUITreeEntity.save")
         if self.id and self.value and self.type:
             ok = True
 
@@ -298,8 +307,10 @@ class InjectorUITreeEntity(object):
                 args = {'properties': {'OPERATION': 'REGISTER', 'TREE_MENU_ENTITY': self_string}}
                 result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
-                    err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
-                              'Reason: ' + str(result.error_message)
+                    err_msg = 'InjectorUITreeEntity.save - Problem while saving injector UI Tree Menu Entity (id:' + \
+                              self.id + '). ' + \
+                              'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                              " (" + str(result.rc) + ")"
                     LOGGER.warning(err_msg)
                     ok = False
 
@@ -308,8 +319,10 @@ class InjectorUITreeEntity(object):
                 args = {'properties': {'OPERATION': 'UPDATE', 'TREE_MENU_ENTITY': self_string}}
                 result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
-                    err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
-                              'Reason: ' + str(result.error_message)
+                    err_msg = 'InjectorUITreeEntity.save - Problem while saving injector UI Tree Menu Entity (id:' + \
+                              self.id + '). ' + \
+                              'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                              " (" + str(result.rc) + ")"
                     LOGGER.warning(err_msg)
                     ok = False
 
@@ -318,11 +331,14 @@ class InjectorUITreeEntity(object):
                                        'TREE_MENU_ENTITY_PARENT_ID': self.parent_id}}
                 result = InjectorUITreeService.requester.call(args).get()
                 if result.rc != 0:
-                    err_msg = 'Problem while updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
-                              'Reason: ' + str(result.error_message)
+                    err_msg = 'InjectorUITreeEntity.save - Problem while updating injector UI Tree Menu Entity (id:' + \
+                              self.id + '). ' + \
+                              'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                              " (" + str(result.rc) + ")"
                     LOGGER.warning(err_msg)
         else:
-            err_msg = 'Problem while saving or updating injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+            err_msg = 'InjectorUITreeEntity.save - Problem while saving or updating ' \
+                      'injector UI Tree Menu Entity (id:' + self.id + '). ' + \
                       'Reason: id and/or value and/or type is/are not defined !'
             LOGGER.debug(err_msg)
 
@@ -331,15 +347,19 @@ class InjectorUITreeEntity(object):
         remove the entity from the Ariane server
         :return:
         """
+        LOGGER.debug("InjectorUITreeEntity.remove")
         if self.id and InjectorUITreeService.find_ui_tree_entity(self.id) is not None:
             args = {'properties': {'OPERATION': 'UNREGISTER', 'TREE_MENU_ENTITY_ID': self.id}}
             result = InjectorUITreeService.requester.call(args).get()
             if result.rc != 0:
-                err_msg = 'Problem while saving injector UI Tree Menu Entity (id:' + self.id + '). ' + \
-                          'Reason: ' + str(result.error_message)
+                err_msg = 'InjectorUITreeEntity.remove - Problem while saving injector UI Tree Menu Entity (id:' + \
+                          self.id + '). ' + \
+                          'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                          " (" + str(result.rc) + ")"
                 LOGGER.warning(err_msg)
         else:
-            err_msg = 'Problem while removing injector UI Tree Menu Entity (id:' + self.id + '). ' + \
+            err_msg = 'InjectorUITreeEntity.remove - Problem while removing injector UI Tree Menu Entity (id:' + \
+                      self.id + '). ' + \
                       'Reason: id is null or injector UI Tree Menu Entity not found'
             LOGGER.warning(err_msg)
 
@@ -353,6 +373,7 @@ class InjectorCachedRegistryFactoryService(object):
         :param injector_driver: the injector service rabbitmq driver
         :return:
         """
+        LOGGER.debug("InjectorCachedRegistryFactoryService.__init__")
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_CACHEFACTORY_Q'}
         if InjectorCachedRegistryFactoryService.requester is None:
             InjectorCachedRegistryFactoryService.requester = injector_driver.make_requester(args)
@@ -365,13 +386,14 @@ class InjectorCachedRegistryFactoryService(object):
         :param args: the cache parameters - look to the tests to know more
         :return: remote procedure call return - look to the tests to know more
         """
+        LOGGER.debug("InjectorCachedRegistryFactoryService.make_gears_cache_registry")
         if args is None:
-            err_msg = 'not args defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_gears_cache_registry - not args defined !'
             LOGGER.debug(err_msg)
             return None
 
         if 'registry.name' not in args or args['registry.name'] is None or not args['registry.name']:
-            err_msg = 'registry.name is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_gears_cache_registry - registry.name is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -379,7 +401,8 @@ class InjectorCachedRegistryFactoryService(object):
             args.pop('registry.name', None)
 
         if 'registry.cache.id' not in args or args['registry.cache.id'] is None or not args['registry.cache.id']:
-            err_msg = 'registry.cache.id is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_gears_cache_registry - ' \
+                      'registry.cache.id is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -387,7 +410,8 @@ class InjectorCachedRegistryFactoryService(object):
             args.pop('registry.cache.id', None)
 
         if 'registry.cache.name' not in args or args['registry.cache.name'] is None or not args['registry.cache.name']:
-            err_msg = 'registry.cache.name is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_gears_cache_registry - ' \
+                      'registry.cache.name is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -395,7 +419,7 @@ class InjectorCachedRegistryFactoryService(object):
             args.pop('registry.cache.name', None)
 
         if 'cache.mgr.name' not in args or args['cache.mgr.name'] is None or not args['cache.mgr.name']:
-            err_msg = 'cache.mgr.name is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_gears_cache_registry - cache.mgr.name is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -413,13 +437,15 @@ class InjectorCachedRegistryFactoryService(object):
         :param args: the cache parameter - look to the tests to know more
         :return: remote procedure call return - look to the tests to know more
         """
+        LOGGER.debug("InjectorCachedRegistryFactoryService.make_components_cache_registry")
         if args is None:
-            err_msg = 'not args defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_components_cache_registry - not args defined !'
             LOGGER.debug(err_msg)
             return None
 
         if 'registry.name' not in args or args['registry.name'] is None or not args['registry.name']:
-            err_msg = 'registry.name is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_components_cache_registry - ' \
+                      'registry.name is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -427,7 +453,8 @@ class InjectorCachedRegistryFactoryService(object):
             args.pop('registry.name', None)
 
         if 'registry.cache.id' not in args or args['registry.cache.id'] is None or not args['registry.cache.id']:
-            err_msg = 'registry.cache.id is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_components_cache_registry - ' \
+                      'registry.cache.id is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -435,7 +462,8 @@ class InjectorCachedRegistryFactoryService(object):
             args.pop('registry.cache.id', None)
 
         if 'registry.cache.name' not in args or args['registry.cache.name'] is None or not args['registry.cache.name']:
-            err_msg = 'registry.cache.name is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_components_cache_registry - ' \
+                      'registry.cache.name is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -443,7 +471,8 @@ class InjectorCachedRegistryFactoryService(object):
             args.pop('registry.cache.name', None)
 
         if 'cache.mgr.name' not in args or args['cache.mgr.name'] is None or not args['cache.mgr.name']:
-            err_msg = 'cache.mgr.name is not defined !'
+            err_msg = 'InjectorCachedRegistryFactoryService.make_components_cache_registry - ' \
+                      'cache.mgr.name is not defined !'
             LOGGER.debug(err_msg)
             return None
         else:
@@ -468,6 +497,7 @@ class InjectorCachedComponentService(object):
         :param cache_id: the cache id of the Ariane server where to search and create/update components
         :return:
         """
+        LOGGER.debug("InjectorCachedComponentService.__init__")
         InjectorCachedComponentService.driver = injector_driver
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_COMP_Q'}
         if InjectorCachedComponentService.requester is None:
@@ -481,6 +511,7 @@ class InjectorCachedComponentService(object):
         :param co_id: the component id to find
         :return: the component if found and None if not
         """
+        LOGGER.debug("InjectorCachedComponentService.find_component")
         ret = None
         if co_id is not None:
             args = {'properties': {'OPERATION': 'PULL_COMPONENT_FROM_CACHE',
@@ -492,8 +523,10 @@ class InjectorCachedComponentService(object):
                 ret = InjectorCachedComponent.json_2_injector_component(result.response_properties)
                 ret.blob = result.response_content
             elif result.rc != 404:
-                err_msg = 'Problem while finding component ( id : ' + co_id + \
-                          'Reason: ' + str(result.error_message)
+                err_msg = 'InjectorCachedComponentService.find_component - Problem while finding component ( id : ' + \
+                          co_id + \
+                          'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                          " (" + str(result.rc) + ")"
                 LOGGER.warning(err_msg)
         return ret
 
@@ -502,6 +535,7 @@ class InjectorCachedComponentService(object):
         """
         :return: the Ariane components cache size defined by InjectorCachedComponentService.cache_id
         """
+        LOGGER.debug("InjectorCachedComponentService.get_components_cache_size")
         ret = None
         args = {'properties': {'OPERATION': 'COUNT_COMPONENTS_CACHE',
                                'CACHE_ID': InjectorCachedComponentService.cache_id}}
@@ -510,8 +544,10 @@ class InjectorCachedComponentService(object):
         if result.rc == 0:
             ret = int(result.response_content)
         else:
-            err_msg = 'Problem while getting components cache size' +\
-                      'Reason: ' + str(result.error_message)
+            err_msg = 'InjectorCachedComponentService.get_components_cache_size - ' \
+                      'Problem while getting components cache size' + \
+                      'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                      " (" + str(result.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -522,6 +558,7 @@ class InjectorCachedComponentService(object):
         :param injector_component: the injector_component to bind with the new refresh on demande service
         :return: the created service
         """
+        LOGGER.debug("InjectorCachedComponentService.make_refresh_on_demand_service")
         args = {
             'service_q': injector_component.id,
             'treatment_callback': injector_component.refresh,
@@ -543,6 +580,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         :param json_obj: the JSON returned by Ariane server
         :return: a new InjectorCachedComponent
         """
+        LOGGER.debug("InjectorCachedComponent.json_2_injector_component")
         return InjectorCachedComponent(
             component_id=json_obj['componentId'],
             component_name=json_obj['componentName'],
@@ -560,6 +598,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         :param properties_only: true or false
         :return: the JSON from this local object
         """
+        LOGGER.debug("InjectorCachedComponent.injector_component_2_json")
         if properties_only:
             json_obj = {
                 'componentId': self.id,
@@ -602,6 +641,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         :param parent_actor_ref: the parent actor ref which defines the sniff method of the component
         :return:
         """
+        LOGGER.debug("InjectorCachedComponent.__init__")
         super(InjectorCachedComponent, self).__init__()
         self.id = component_id
         self.name = component_name
@@ -627,6 +667,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         :param data_blob: the new data blob of this component - default None and ignored
         :return:
         """
+        LOGGER.debug("InjectorCachedComponent.save")
         ret = True
 
         if refreshing is not None:
@@ -654,8 +695,9 @@ class InjectorCachedComponent(pykka.ThreadingActor):
 
         result = InjectorCachedComponentService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Problem while saving component ( id : ' + self.id + \
-                      'Reason: ' + str(result.error_message)
+            err_msg = 'InjectorCachedComponent.save - Problem while saving component ( id : ' + self.id + \
+                      'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                      " (" + str(result.rc) + ")"
             LOGGER.warning(err_msg)
             ret = False
 
@@ -666,6 +708,7 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         remove this component from Ariane server cache, stop the on demand refresh and actor linked to this component
         :return:
         """
+        LOGGER.debug("InjectorCachedComponent.remove")
         ret = True
         args = {'properties': {'OPERATION': 'DEL_COMPONENT_FROM_CACHE',
                                'REMOTE_COMPONENT':
@@ -674,8 +717,9 @@ class InjectorCachedComponent(pykka.ThreadingActor):
 
         result = InjectorCachedComponentService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Problem while saving component ( id : ' + self.id + \
-                      'Reason: ' + str(result.error_message)
+            err_msg = 'InjectorCachedComponent.remove - Problem while saving component ( id : ' + self.id + \
+                      'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                      " (" + str(result.rc) + ")"
             LOGGER.warning(err_msg)
             ret = False
 
@@ -695,13 +739,14 @@ class InjectorCachedComponent(pykka.ThreadingActor):
         :param body: the message body
         :return:
         """
+        LOGGER.debug("InjectorCachedComponent.refresh")
         operation = props['OPERATION']
         if operation == "REFRESH":
             if self.parent_actor_ref is not None:
                 parent_actor = self.parent_actor_ref.proxy()
                 parent_actor.sniff().get()
         else:
-            print("Unsupported operation " + str(operation))
+            LOGGER.error("InjectorCachedComponent.refresh - Unsupported operation " + str(operation))
 
 
 class InjectorComponentSkeleton(pykka.ThreadingActor):
@@ -733,6 +778,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         :param data_blob: the data blob...
         :return:
         """
+        LOGGER.debug("InjectorComponentSkeleton.__init__")
         super(InjectorComponentSkeleton, self).__init__()
         retrieved_component_cache = InjectorCachedComponentService.find_component(component_id)
         self.component_cache_actor = \
@@ -765,6 +811,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         :param json_last_refresh: the new json last refresh value - if None the date of this call
         :return:
         """
+        LOGGER.debug("InjectorComponentSkeleton.cache")
         if json_last_refresh is None:
             json_last_refresh = datetime.datetime.now()
         return self.component_cache_actor.save(refreshing=refreshing, next_action=next_action,
@@ -775,6 +822,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         remove this component from cache and stop the actor
         :return:
         """
+        LOGGER.debug("InjectorComponentSkeleton.remove")
         ret = self.component_cache_actor.remove().get()
         if self.actor_ref is not None:
             self.stop()
@@ -785,6 +833,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
 
         :return: the cache id of this component
         """
+        LOGGER.debug("InjectorComponentSkeleton.cache_id")
         return self.component_cache_actor.id.get()
 
     def data_blob(self):
@@ -792,6 +841,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         to be overrided to feat your need
         :return:
         """
+        LOGGER.debug("InjectorComponentSkeleton.data_blob")
         pass
 
     def sniff(self):
@@ -799,6 +849,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         to be overrided to feat your need
         :return:
         """
+        LOGGER.debug("InjectorComponentSkeleton.sniff")
         pass
 
 
@@ -814,6 +865,7 @@ class InjectorCachedGearService(object):
         :param cache_id: the cache id of the Ariane server where to create/update gears
         :return:
         """
+        LOGGER.debug("InjectorCachedGearService.__init__")
         args = {'request_q': 'ARIANE_INJECTOR_REMOTE_GEAR_Q'}
         if InjectorCachedGearService.requester is None:
             InjectorCachedGearService.requester = injector_driver.make_requester(args)
@@ -825,6 +877,7 @@ class InjectorCachedGearService(object):
         """
         :return: the Ariane gears cache size defined by InjectorCachedGearService.cache_id
         """
+        LOGGER.debug("InjectorCachedGearService.get_gears_cache_size")
         ret = None
         args = {'properties': {'OPERATION': 'COUNT_GEARS_CACHE',
                                'CACHE_ID': InjectorCachedGearService.cache_id}}
@@ -833,8 +886,9 @@ class InjectorCachedGearService(object):
         if result.rc == 0:
             ret = int(result.response_content)
         else:
-            err_msg = 'Problem while getting gears cache size' + \
-                      'Reason: ' + str(result.error_message)
+            err_msg = 'InjectorCachedGearService.get_gears_cache_size - Problem while getting gears cache size' + \
+                      'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                      " (" + str(result.rc) + ")"
             LOGGER.warning(err_msg)
         return ret
 
@@ -845,6 +899,7 @@ class InjectorCachedGearService(object):
         :param injector_gear: the gear to be linked to this admin service
         :return: the service created
         """
+        LOGGER.debug("InjectorCachedGearService.make_admin_on_demand_service")
         args = {
             'service_q': injector_gear.id,
             'treatment_callback': injector_gear.admin,
@@ -861,6 +916,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         :param json_obj: the JSON returned by Ariane server
         :return: a new InjectorCachedGear
         """
+        LOGGER.debug("InjectorCachedGear.json_2_injector_gear")
         return InjectorCachedGear(
             gear_id=json_obj['gearId'],
             gear_name=json_obj['gearName'],
@@ -874,6 +930,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         transform this local object to JSON.
         :return: the JSON from this local object
         """
+        LOGGER.debug("InjectorCachedGear.injector_gear_2_json")
         json_obj = {
             'gearId': self.id,
             'gearName': self.name,
@@ -895,6 +952,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         :param parent_actor_ref: the parent actor ref handling gear start / stop method
         :return:
         """
+        LOGGER.debug("InjectorCachedGear.__init__")
         super(InjectorCachedGear, self).__init__()
         self.id = gear_id
         self.name = gear_name
@@ -910,6 +968,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         :param running: the new running value. if None ignored
         :return:
         """
+        LOGGER.debug("InjectorCachedGear.save")
         ret = True
 
         if running is not None:
@@ -927,8 +986,9 @@ class InjectorCachedGear(pykka.ThreadingActor):
 
         result = InjectorCachedGearService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Problem while saving gear ( id : ' + self.id + \
-                      'Reason: ' + str(result.error_message)
+            err_msg = 'InjectorCachedGear.save - Problem while saving gear ( id : ' + self.id + \
+                      'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                      " (" + str(result.rc) + ")"
             LOGGER.warning(err_msg)
             ret = False
 
@@ -939,6 +999,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         remove this gear from the cache and stop the service
         :return:
         """
+        LOGGER.debug("InjectorCachedGear.remove")
         ret = True
         args = {'properties': {'OPERATION': 'DEL_GEAR_FROM_CACHE',
                                'REMOTE_GEAR': str(self.injector_gear_2_json()).replace("'", '"'),
@@ -946,8 +1007,9 @@ class InjectorCachedGear(pykka.ThreadingActor):
 
         result = InjectorCachedGearService.requester.call(args).get()
         if result.rc != 0:
-            err_msg = 'Problem while deleting gear ( id : ' + self.id + \
-                      'Reason: ' + str(result.error_message)
+            err_msg = 'InjectorCachedGear.remove - Problem while deleting gear ( id : ' + self.id + \
+                      'Reason: ' + str(result.response_content) + '-' + str(result.error_message) + \
+                      " (" + str(result.rc) + ")"
             LOGGER.warning(err_msg)
             ret = False
 
@@ -960,6 +1022,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
         return ret
 
     def admin(self, props, body):
+        LOGGER.debug("InjectorCachedGear.admin")
         operation = props['OPERATION']
         if operation == "START":
             if self.parent_actor_ref is not None:
@@ -970,7 +1033,7 @@ class InjectorCachedGear(pykka.ThreadingActor):
                 parent_actor = self.parent_actor_ref.proxy()
                 parent_actor.gear_stop().get()
         else:
-            print("Unsupported operation " + str(operation))
+            LOGGER.error("InjectorCachedGear.admin - Unsupported operation " + str(operation))
 
 
 class InjectorGearSkeleton(pykka.ThreadingActor):
@@ -995,6 +1058,7 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
         :param running:
         :return:
         """
+        LOGGER.debug("InjectorGearSkeleton.__init__")
         super(InjectorGearSkeleton, self).__init__()
         self.cached_gear_actor = InjectorCachedGear.start(gear_id=gear_id,
                                                           gear_name=gear_name,
@@ -1010,6 +1074,7 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
         :param running: the new running value (True or False)
         :return:
         """
+        LOGGER.debug("InjectorGearSkeleton.cache")
         self.running = running if running is not None else False
         return self.cached_gear_actor.save(running).get()
 
@@ -1018,6 +1083,7 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
         remove the gear from the cache and stop this actor
         :return:
         """
+        LOGGER.debug("InjectorGearSkeleton.remove")
         ret = self.cached_gear_actor.remove().get()
         if self.actor_ref:
             self.stop()
@@ -1027,6 +1093,7 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
         """
         :return: the gear cache id
         """
+        LOGGER.debug("InjectorGearSkeleton.gear_id")
         return self.cached_gear_actor.id.get()
 
     def gear_stop(self):
@@ -1034,6 +1101,7 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
         to be overrided to feat your need
         :return:
         """
+        LOGGER.debug("InjectorGearSkeleton.gear_stop")
         pass
 
     def gear_start(self):
@@ -1041,4 +1109,5 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
         to be overrided to feat your need
         :return:
         """
+        LOGGER.debug("InjectorGearSkeleton.gear_start")
         pass
