@@ -26,6 +26,7 @@ LOGGER = logging.getLogger(__name__)
 class DriverTools(object):
     @staticmethod
     def property_array(value):
+        LOGGER.debug("DriverTools.property_array")
         typed_array = []
         if isinstance(value[0], str):
             typed_array.append('string')
@@ -56,6 +57,7 @@ class DriverTools(object):
 
     @staticmethod
     def property_map(value):
+        LOGGER.debug("DriverTools.property_map")
         ret = []
         if isinstance(value, str):
             ret.append('string')
@@ -85,6 +87,7 @@ class DriverTools(object):
 
     @staticmethod
     def property_params(name, value):
+        LOGGER.debug("DriverTools.property_params")
         p_type = None
         if isinstance(value, str):
             p_type = 'string'
@@ -127,6 +130,7 @@ class DriverTools(object):
 
     @staticmethod
     def json2properties(json_props):
+        LOGGER.debug("DriverTools.json2properties")
         properties = {}
         if isinstance(json_props, list):
             for prop in json_props:
@@ -138,14 +142,16 @@ class DriverTools(object):
                         if prop_value.__len__() > 1:
                             map_property[prop_key] = prop_value[1]
                         else:
-                            LOGGER.warn(prop_key + " will be ignored as its definition is incomplete...")
+                            LOGGER.warn("DriverTools.json2properties - " + prop_key +
+                                        " will be ignored as its definition is incomplete...")
                     properties[prop['propertyName']] = map_property
                 elif prop['propertyType'] == 'array':
                     j_data = json.loads(prop['propertyValue'])
                     if j_data.__len__() > 1:
                         properties[prop['propertyName']] = j_data[1]
                     else:
-                        LOGGER.warn(prop['propertyName'] + " will be ignored as its definition is incomplete...")
+                        LOGGER.warn("DriverTools.json2properties - " + prop['propertyName'] +
+                                    " will be ignored as its definition is incomplete...")
                 elif prop['propertyType'] == 'map':
                     j_data = json.loads(prop['propertyValue'])
                     map_property = {}
@@ -161,6 +167,7 @@ class DriverTools(object):
 
 class DriverResponse(object):
     def __init__(self, rc=None, error_message=None, response_properties=None, response_content=None):
+        LOGGER.debug("DriverResponse.__init__")
         self.rc = rc
         self.error_message = error_message
         self.response_properties = response_properties
@@ -171,4 +178,5 @@ class DriverResponse(object):
         mimic pykka future get method
         :return:
         """
+        LOGGER.debug("DriverResponse.get")
         return self

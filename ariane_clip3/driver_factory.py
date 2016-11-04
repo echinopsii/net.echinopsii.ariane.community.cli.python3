@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import logging
 from ariane_clip3 import exceptions
 from ariane_clip3.rabbitmq import driver as rabbitmqd
 from ariane_clip3.rest import driver as restd
@@ -23,6 +24,7 @@ from ariane_clip3.natsd import driver as natsd
 
 __author__ = 'mffrench'
 
+LOGGER = logging.getLogger(__name__)
 
 class DriverFactory(object):
 
@@ -33,6 +35,7 @@ class DriverFactory(object):
 
     @staticmethod
     def make(my_args):
+        LOGGER.debug("DriverFactory.make")
         if my_args is None:
             raise exceptions.ArianeConfError('driver factory  make arguments')
         if 'type' not in my_args or my_args['type'] is None or not my_args['type']:
