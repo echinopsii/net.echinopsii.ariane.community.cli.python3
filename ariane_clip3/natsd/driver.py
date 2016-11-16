@@ -69,6 +69,13 @@ class Requester(pykka.ThreadingActor):
         else:
             self.rpc_timeout = connection_args['rpc_timeout']
 
+        if 'rpc_retry' not in connection_args or connection_args['rpc_retry'] is None or \
+                not connection_args['rpc_retry']:
+            # default retry = no retry
+            self.rpc_retry = 0
+        else:
+            self.rpc_retry = connection_args['rpc_retry']
+
         Driver.validate_driver_conf(connection_args)
 
         super(Requester, self).__init__()
@@ -287,15 +294,32 @@ class Requester(pykka.ThreadingActor):
             if self.response is None:
                 LOGGER.warn("natsd.Requester.call - No response returned on " + self.responseQ + " queue after (" +
                             str(self.rpc_timeout) + " sec) !")
-                LOGGER.warn("natsd.Requester.call - Ignoring request " + str(typed_properties) + " on service queue " +
-                            self.requestQ + " response")
+                LOGGER.warn("natsd.Requester.call - Will Ignore response from request on service queue " +
+                            self.requestQ + ": " + str(typed_properties))
                 self.corr_id = 0
                 self.trace = True
-                return DriverResponse(
-                    rc=524,
-                    error_message='Request timeout (' + str(self.rpc_timeout) + ' sec) occured',
-                    response_content='Request timeout (' + str(self.rpc_timeout) + ' sec) occured : '
-                )
+                if self.rpc_retry > 0:
+                    LOGGER.warn("Retry")
+                    if 'retry_count' not in my_args:
+                        my_args['retry_count'] = 1
+                        LOGGER.warn("Retry : " + my_args['retry_count'])
+                        self.call(my_args)
+                    elif 'retry_count' in my_args and (self.rpc_retry - my_args['retry_count']) > 0:
+                        my_args['retry_count'] += 1
+                        LOGGER.warn("Retry : " + my_args['retry_count'])
+                        self.call(my_args)
+                    else:
+                        return DriverResponse(
+                            rc=524,
+                            error_message='Request timeout (' + str(self.rpc_timeout) + ' sec) occured',
+                            response_content='Request timeout (' + str(self.rpc_timeout) + ' sec) occured : '
+                        )
+                else:
+                    return DriverResponse(
+                        rc=524,
+                        error_message='Request timeout (' + str(self.rpc_timeout) + ' sec) occured',
+                        response_content='Request timeout (' + str(self.rpc_timeout) + ' sec) occured : '
+                    )
 
             sync_proc_time = timeit.default_timer()-start_time
             LOGGER.debug('natsd.Requester.call - RPC time : ' + str(sync_proc_time))
