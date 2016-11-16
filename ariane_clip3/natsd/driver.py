@@ -20,6 +20,7 @@ import base64
 import copy
 import json
 import socket
+import timeit
 import uuid
 import logging
 import threading
@@ -61,6 +62,12 @@ class Requester(pykka.ThreadingActor):
             self.fire_and_forget = False
         else:
             self.fire_and_forget = True
+        if 'rpc_timeout' not in connection_args or connection_args['rpc_timeout'] is None or \
+                not connection_args['rpc_timeout']:
+            # default timeout = no timeout
+            self.rpc_timeout = 0
+        else:
+            self.rpc_timeout = connection_args['rpc_timeout']
 
         Driver.validate_driver_conf(connection_args)
 
@@ -70,7 +77,8 @@ class Requester(pykka.ThreadingActor):
             "nats://" + connection_args['user'] + ":" + connection_args['password'] + "@" +
             connection_args['host']+":"+str(connection_args['port'])
         ]
-        self.name = self.connection_args['client_properties']['ariane.app'] + " - requestor on " + my_args['request_q']
+        self.name = self.connection_args['client_properties']['ariane.app'] + "@" + socket.gethostname() + \
+            " - requestor on " + my_args['request_q']
         self.loop = None
         self.options = None
         self.service = None
@@ -80,6 +88,7 @@ class Requester(pykka.ThreadingActor):
         self.responseQS = None
         self.response = None
         self.is_started = False
+        self.trace = False
 
         if not self.fire_and_forget:
             self.responseQ = new_inbox()
@@ -226,6 +235,9 @@ class Requester(pykka.ThreadingActor):
         else:
             properties = my_args['properties']
 
+        if self.trace:
+            properties['MSG_TRACE'] = True
+
         typed_properties = []
         for key, value in properties.items():
             typed_properties.append(DriverTools.property_params(key, value))
@@ -240,6 +252,7 @@ class Requester(pykka.ThreadingActor):
         })
         msgb = b''+bytes(msg_data, 'utf8')
 
+        start_time = timeit.default_timer()
         if not self.fire_and_forget:
             try:
                 LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) +
@@ -261,27 +274,37 @@ class Requester(pykka.ThreadingActor):
             pass
 
         if not self.fire_and_forget:
-            log_count = 0
             # Wait 10sec before raising error
-            exit_count = 10000
+            if self.rpc_timeout > 0:
+                exit_count = self.rpc_timeout * 100
+            else:
+                exit_count = 1
             while self.response is None and exit_count > 0:
-                time.sleep(0.001)
-                log_count += 1
-                exit_count -= 1
-                if log_count == 100:
-                    log_count = 0
-                    LOGGER.debug("natsd.Requester.call - waiting response from " + self.responseQ)
+                time.sleep(0.01)
+                if self.rpc_timeout > 0:
+                    exit_count -= 1
 
             if self.response is None:
-                LOGGER.warn("natsd.Requester.call - No response returned after 10sec !")
-                LOGGER.warn("natsd.Requester.call - Ignoring request : " + str(typed_properties) + " response")
+                LOGGER.warn("natsd.Requester.call - No response returned on " + self.responseQ + " queue after (" +
+                            str(self.rpc_timeout) + " sec) !")
+                LOGGER.warn("natsd.Requester.call - Ignoring request " + str(typed_properties) + " on service queue " +
+                            self.requestQ + " response")
                 self.corr_id = 0
+                self.trace = True
                 return DriverResponse(
                     rc=524,
-                    error_message='Request timeout (30 second) occured',
-                    response_content='Request timeout (30 second) occured'
+                    error_message='Request timeout (' + str(self.rpc_timeout) + ' sec) occured',
+                    response_content='Request timeout (' + str(self.rpc_timeout) + ' sec) occured : '
                 )
 
+            sync_proc_time = timeit.default_timer()-start_time
+            LOGGER.debug('natsd.Requester.call - RPC time : ' + str(sync_proc_time))
+            if sync_proc_time > 3:
+                self.trace = True
+                LOGGER.warning('natsd.Requester.call - slow RPC time (' + str(sync_proc_time) + ') on request ' +
+                               str(typed_properties))
+            else:
+                self.trace = False
             rc_ = int(self.response['properties']['RC'])
             if rc_ != 0:
                 try:
@@ -350,7 +373,8 @@ class Service(pykka.ThreadingActor):
             "nats://" + connection_args['user'] + ":" + connection_args['password'] + "@" +
             connection_args['host']+":"+str(connection_args['port'])
         ]
-        self.name = self.connection_args['client_properties']['ariane.app'] + " - requestor on " + my_args['service_q']
+        self.name = self.connection_args['client_properties']['ariane.app'] + "@" + socket.gethostname() + \
+            " - service on " + my_args['service_q']
         self.loop = None
         self.options = None
         self.nc = Client()
