@@ -242,6 +242,11 @@ class Requester(pykka.ThreadingActor):
         else:
             properties = my_args['properties']
 
+        if 'sessionID' in properties and properties['sessionID'] is not None and properties['sessionID']:
+            request_q = str(properties['sessionID']) + '-' + self.requestQ
+        else:
+            request_q = self.requestQ
+
         if self.trace:
             properties['MSG_TRACE'] = True
 
@@ -263,15 +268,15 @@ class Requester(pykka.ThreadingActor):
         if not self.fire_and_forget:
             try:
                 LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) +
-                             " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + self.requestQ)
-                next(self.nc.publish_request(self.requestQ, self.responseQ, msgb))
+                             " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + request_q)
+                next(self.nc.publish_request(request_q, self.responseQ, msgb))
                 LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
             except StopIteration as e:
                 pass
         else:
             try:
-                LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) + " on " + self.requestQ)
-                next(self.nc.publish(self.requestQ, b''+bytes(msg_data, 'utf8')))
+                LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) + " on " + request_q)
+                next(self.nc.publish(request_q, b''+bytes(msg_data, 'utf8')))
             except StopIteration as e:
                 pass
 
@@ -292,22 +297,21 @@ class Requester(pykka.ThreadingActor):
                     exit_count -= 1
 
             if self.response is None:
-                LOGGER.warn("natsd.Requester.call - No response returned on " + self.responseQ + " queue after (" +
+                LOGGER.warn("natsd.Requester.call - No response returned on " + request_q + " queue after (" +
                             str(self.rpc_timeout) + " sec) !")
                 LOGGER.warn("natsd.Requester.call - Will Ignore response from request on service queue " +
-                            self.requestQ + ": " + str(typed_properties))
+                            request_q + ": " + str(typed_properties))
                 self.corr_id = 0
                 self.trace = True
                 if self.rpc_retry > 0:
-                    LOGGER.warn("Retry")
                     if 'retry_count' not in my_args:
                         my_args['retry_count'] = 1
-                        LOGGER.warn("Retry : " + my_args['retry_count'])
-                        self.call(my_args)
+                        LOGGER.warn("Retry : " + str(my_args['retry_count']))
+                        return self.call(my_args)
                     elif 'retry_count' in my_args and (self.rpc_retry - my_args['retry_count']) > 0:
                         my_args['retry_count'] += 1
-                        LOGGER.warn("Retry : " + my_args['retry_count'])
-                        self.call(my_args)
+                        LOGGER.warn("Retry : " + str(my_args['retry_count']))
+                        return self.call(my_args)
                     else:
                         return DriverResponse(
                             rc=524,

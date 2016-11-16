@@ -138,9 +138,15 @@ class Requester(pykka.ThreadingActor):
         self.response = None
         self.corr_id = str(uuid.uuid4())
 
+        props = my_args['properties']
+        if 'sessionID' in props and props['sessionID'] is not None and props['sessionID']:
+            request_q = str(props['sessionID']) + '-' + self.requestQ
+        else:
+            request_q = self.requestQ
+
         if not self.fire_and_forget:
             properties = pika.BasicProperties(content_type=None, content_encoding=None,
-                                              headers=my_args['properties'], delivery_mode=None,
+                                              headers=props, delivery_mode=None,
                                               priority=None, correlation_id=self.corr_id,
                                               reply_to=self.callback_queue, expiration=None,
                                               message_id=None, timestamp=None,
@@ -148,14 +154,14 @@ class Requester(pykka.ThreadingActor):
                                               app_id=None, cluster_id=None)
         else:
             properties = pika.BasicProperties(content_type=None, content_encoding=None,
-                                              headers=my_args['properties'], delivery_mode=None,
+                                              headers=props, delivery_mode=None,
                                               priority=None, expiration=None,
                                               message_id=None, timestamp=None,
                                               type=None, user_id=None,
                                               app_id=None, cluster_id=None)
 
         self.channel.basic_publish(exchange='',
-                                   routing_key=self.requestQ,
+                                   routing_key=request_q,
                                    properties=properties,
                                    body=str(my_args['body']))
 
