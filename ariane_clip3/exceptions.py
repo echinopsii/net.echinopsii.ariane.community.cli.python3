@@ -23,7 +23,6 @@ class ArianeError(Exception):
     def __repr__(self):
         return "Unspecified Ariane Client Error has occurred"
 
-
 class ArianeConfError(ArianeError):
     def __repr__(self):
         return self.args[0] + " is not defined !"
@@ -37,3 +36,8 @@ class ArianeNotImplemented(ArianeError):
 class ArianeCallParametersError(ArianeError):
     def __repr__(self):
         return self.args[0] + " are not defined !"
+
+class ArianeMessagingTimeoutError(ArianeError):
+    def __init__(self, expression, message):
+        self.expression = expression
+        self.message = message

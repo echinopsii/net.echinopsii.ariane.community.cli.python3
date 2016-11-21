@@ -34,6 +34,7 @@ import sys
 
 from ariane_clip3 import exceptions
 from ariane_clip3.driver_common import DriverTools, DriverResponse
+from ariane_clip3.exceptions import ArianeMessagingTimeoutError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -313,21 +314,15 @@ class Requester(pykka.ThreadingActor):
                         LOGGER.warn("Retry : " + str(my_args['retry_count']))
                         return self.call(my_args)
                     else:
-                        return DriverResponse(
-                            rc=524,
-                            error_message='Request timeout (' + str(self.rpc_timeout) + ' sec) occured',
-                            response_content='Request timeout (' + str(self.rpc_timeout) + ' sec) occured : '
-                        )
+                        raise ArianeMessagingTimeoutError('natsd.Requester.call',
+                                                          'Request timeout (' + str(self.rpc_timeout) + ' sec) occured')
                 else:
-                    return DriverResponse(
-                        rc=524,
-                        error_message='Request timeout (' + str(self.rpc_timeout) + ' sec) occured',
-                        response_content='Request timeout (' + str(self.rpc_timeout) + ' sec) occured : '
-                    )
+                    raise ArianeMessagingTimeoutError('natsd.Requester.call',
+                                                      'Request timeout (' + str(self.rpc_timeout) + ' sec) occured')
 
             sync_proc_time = timeit.default_timer()-start_time
             LOGGER.debug('natsd.Requester.call - RPC time : ' + str(sync_proc_time))
-            if sync_proc_time > 3:
+            if sync_proc_time > self.rpc_timeout*3/5:
                 self.trace = True
                 LOGGER.warning('natsd.Requester.call - slow RPC time (' + str(sync_proc_time) + ') on request ' +
                                str(typed_properties))
