@@ -781,6 +781,10 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         LOGGER.debug("InjectorComponentSkeleton.__init__")
         super(InjectorComponentSkeleton, self).__init__()
         retrieved_component_cache = InjectorCachedComponentService.find_component(component_id)
+        self.rollback_point_refreshing = None
+        self.rollback_point_next_action = None
+        self.rollback_point_data_blob = None
+        self.rollback_point_last_refresh = None
         self.component_cache_actor = \
             InjectorCachedComponent.start(component_id=component_id,
                                           component_name=retrieved_component_cache.name
@@ -801,7 +805,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
                                           if retrieved_component_cache is not None else data_blob,
                                           parent_actor_ref=self.actor_ref).proxy()
 
-    def cache(self, refreshing=None, next_action=None, data_blob=None, json_last_refresh=None):
+    def cache(self, refreshing=None, next_action=None, data_blob=None, json_last_refresh=None, rollback_point=False):
         """
         push this component into the cache
 
@@ -809,13 +813,31 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
         :param next_action: the new next action value
         :param data_blob: the new data blob value
         :param json_last_refresh: the new json last refresh value - if None the date of this call
+        :param rollback_point: define the rollback point with provided values (refreshing, next_action, data_blob and
+        json_last_refresh)
         :return:
         """
         LOGGER.debug("InjectorComponentSkeleton.cache")
         if json_last_refresh is None:
             json_last_refresh = datetime.datetime.now()
+        if rollback_point:
+            self.rollback_point_refreshing = refreshing
+            self.rollback_point_next_action = next_action
+            self.rollback_point_data_blob = data_blob
+            self.rollback_point_refreshing = refreshing
         return self.component_cache_actor.save(refreshing=refreshing, next_action=next_action,
                                                json_last_refresh=json_last_refresh, data_blob=data_blob).get()
+
+    def rollback(self):
+        """
+        push back last rollbackpoint into the cache
+
+        :return:
+        """
+        return self.component_cache_actor.save(refreshing=self.rollback_point_refreshing,
+                                               next_action=self.rollback_point_next_action,
+                                               json_last_refresh=self.rollback_point_last_refresh,
+                                               data_blob=self.rollback_point_data_blob).get()
 
     def remove(self):
         """
@@ -838,7 +860,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
 
     def data_blob(self):
         """
-        to be overrided to feat your need
+        to be overrided to fit your need
         :return:
         """
         LOGGER.debug("InjectorComponentSkeleton.data_blob")
@@ -846,7 +868,7 @@ class InjectorComponentSkeleton(pykka.ThreadingActor):
 
     def sniff(self):
         """
-        to be overrided to feat your need
+        to be overrided to fit your need
         :return:
         """
         LOGGER.debug("InjectorComponentSkeleton.sniff")
@@ -1098,7 +1120,7 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
 
     def gear_stop(self):
         """
-        to be overrided to feat your need
+        to be overrided to fit your need
         :return:
         """
         LOGGER.debug("InjectorGearSkeleton.gear_stop")
@@ -1106,7 +1128,7 @@ class InjectorGearSkeleton(pykka.ThreadingActor):
 
     def gear_start(self):
         """
-        to be overrided to feat your need
+        to be overrided to fit your need
         :return:
         """
         LOGGER.debug("InjectorGearSkeleton.gear_start")
