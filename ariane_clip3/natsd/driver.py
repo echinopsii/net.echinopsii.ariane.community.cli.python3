@@ -300,20 +300,19 @@ class Requester(pykka.ThreadingActor):
                     exit_count -= 1
 
             if self.response is None:
-                LOGGER.warn("natsd.Requester.call - No response returned on " + request_q + " queue after (" +
-                            str(self.rpc_timeout) + " sec) ...")
-                LOGGER.debug("natsd.Requester.call - Will Ignore response from request on service queue " +
-                            request_q + ": " + str(typed_properties))
+                LOGGER.warn("natsd.Requester.call - No response returned from request on " + request_q +
+                            " queue after " + str(self.rpc_timeout) + " sec ...")
+                LOGGER.debug("natsd.Requester.call - Will Ignore response from request : " + str(typed_properties))
                 self.corr_id = 0
                 self.trace = True
                 if self.rpc_retry > 0:
                     if 'retry_count' not in my_args:
                         my_args['retry_count'] = 1
-                        LOGGER.warn("natsd.Requester.call - Retry : " + str(my_args['retry_count']))
+                        LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count'] + ")"))
                         return self.call(my_args)
                     elif 'retry_count' in my_args and (self.rpc_retry - my_args['retry_count']) > 0:
                         my_args['retry_count'] += 1
-                        LOGGER.warn("natsd.Requester.call - Retry : " + str(my_args['retry_count']))
+                        LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count'] + ")"))
                         return self.call(my_args)
                     else:
                         raise ArianeMessagingTimeoutError('natsd.Requester.call',
