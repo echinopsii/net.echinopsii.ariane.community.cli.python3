@@ -316,18 +316,20 @@ class Requester(pykka.ThreadingActor):
                         return self.call(my_args)
                     else:
                         raise ArianeMessagingTimeoutError('natsd.Requester.call',
-                                                          'Request timeout (' + str(self.rpc_timeout) + ' sec) occured')
+                                                          'Request timeout (' + str(self.rpc_timeout) + '*' +
+                                                          str(self.rpc_retry) + ' sec) occured')
                 else:
                     raise ArianeMessagingTimeoutError('natsd.Requester.call',
-                                                      'Request timeout (' + str(self.rpc_timeout) + ' sec) occured')
+                                                      'Request timeout (' + str(self.rpc_timeout) + '*' +
+                                                      str(self.rpc_retry) + ' sec) occured')
 
-            sync_proc_time = timeit.default_timer()-start_time
-            LOGGER.debug('natsd.Requester.call - RPC time : ' + str(sync_proc_time))
-            if sync_proc_time > self.rpc_timeout*3/5:
+            rpc_time = timeit.default_timer()-start_time
+            LOGGER.debug('natsd.Requester.call - RPC time : ' + str(rpc_time))
+            if rpc_time > self.rpc_timeout*3/5:
                 self.trace = True
-                LOGGER.warn("natsd.Requester.call - slow RPC time (" + str(sync_proc_time) + ") on request to " +
+                LOGGER.warn("natsd.Requester.call - slow RPC time (" + str(rpc_time) + ") on request to " +
                             request_q + " queue ...")
-                LOGGER.debug('natsd.Requester.call - slow RPC time (' + str(sync_proc_time) + ') on request ' +
+                LOGGER.debug('natsd.Requester.call - slow RPC time (' + str(rpc_time) + ') on request ' +
                              str(typed_properties))
             else:
                 self.trace = False
