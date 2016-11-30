@@ -325,7 +325,7 @@ class Requester(pykka.ThreadingActor):
 
             rpc_time = timeit.default_timer()-start_time
             LOGGER.debug('natsd.Requester.call - RPC time : ' + str(rpc_time))
-            if rpc_time > self.rpc_timeout*3/5:
+            if self.rpc_timeout > 0 and rpc_time > self.rpc_timeout*3/5:
                 self.trace = True
                 LOGGER.warn("natsd.Requester.call - slow RPC time (" + str(rpc_time) + ") on request to " +
                             request_q + " queue ...")
