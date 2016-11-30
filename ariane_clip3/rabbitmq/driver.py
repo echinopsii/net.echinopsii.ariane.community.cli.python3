@@ -19,8 +19,10 @@ import copy
 import json
 import socket
 import threading
+import timeit
 import uuid
 import logging
+from ariane_clip3.exceptions import ArianeMessagingTimeoutError
 
 import pika
 import pykka
@@ -56,7 +58,21 @@ class Requester(pykka.ThreadingActor):
             self.fire_and_forget = False
         else:
             self.fire_and_forget = True
+        if 'rpc_timeout' not in connection_args or connection_args['rpc_timeout'] is None or \
+                not connection_args['rpc_timeout']:
+            # default timeout = no timeout
+            self.rpc_timeout = 0
+        else:
+            self.rpc_timeout = connection_args['rpc_timeout']
 
+        if 'rpc_retry' not in connection_args or connection_args['rpc_retry'] is None or \
+                not connection_args['rpc_retry']:
+            # default retry = no retry
+            self.rpc_retry = 0
+        else:
+            self.rpc_retry = connection_args['rpc_retry']
+
+        self.trace = False
         Driver.validate_driver_conf(connection_args)
 
         super(Requester, self).__init__()
@@ -120,6 +136,13 @@ class Requester(pykka.ThreadingActor):
         LOGGER.debug("rabbitmq.Requester.on_response")
         if self.corr_id == props.correlation_id:
             self.response = {'props': props, 'body': body}
+        else:
+            LOGGER.warn("rabbitmq.Requester.on_response - discarded response : " +
+                        str(props.correlation_id))
+            LOGGER.debug("natsd.Requester.on_response - discarded response : " + str({
+                'properties': props,
+                'body': body
+            }))
 
     def call(self, my_args=None):
         """
@@ -143,6 +166,9 @@ class Requester(pykka.ThreadingActor):
             request_q = str(props['sessionID']) + '-' + self.requestQ
         else:
             request_q = self.requestQ
+
+        if self.trace:
+            props['MSG_TRACE'] = True
 
         if not self.fire_and_forget:
             properties = pika.BasicProperties(content_type=None, content_encoding=None,
@@ -168,41 +194,83 @@ class Requester(pykka.ThreadingActor):
         LOGGER.debug("rabbitmq.Requester.call - published msg {"+str(my_args['body'])+","+str(properties)+"}")
 
         if not self.fire_and_forget:
-            while self.response is None:
+            start_time = timeit.default_timer()
+            timeout = self.rpc_timeout if self.rpc_timeout > 0 else 0
+            while self.response is None and timeout >= 0:
+                timeout_id = None
+                if timeout > 0:
+                    timeout_id = self.connection.add_timeout(timeout, self.on_response)
                 self.connection.process_data_events()
+                if timeout_id is not None:
+                    self.connection.remove_timeout(timeout_id)
+                timeout = round(self.rpc_timeout - (timeit.default_timer() - start_time))
+            rpc_time = timeit.default_timer() - start_time
 
-            rc_ = self.response['props'].headers['RC']
-            if rc_ != 0:
-                try:
-                    content = json.loads(self.response['body'].decode("UTF-8"))
-                except ValueError:
-                    content = self.response['body'].decode("UTF-8")
-                return DriverResponse(
-                    rc=rc_,
-                    error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE']
-                    if 'SERVER_ERROR_MESSAGE' in self.response['props'].headers else '',
-                    response_content=content
-                )
+            if self.response is None:
+                LOGGER.warn("rabbitmq.Requester.call - No response returned from request on " + request_q +
+                            " queue after " + str(self.rpc_timeout) + " sec ...")
+                LOGGER.debug("rabbitmq.Requester.call - Will Ignore response from request : " + str(properties))
+                self.corr_id = 0
+                self.trace = True
+                if self.rpc_retry > 0:
+                    if 'retry_count' not in my_args:
+                        my_args['retry_count'] = 1
+                        LOGGER.warn("rabbitmq.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
+                        return self.call(my_args)
+                    elif 'retry_count' in my_args and (self.rpc_retry - my_args['retry_count']) > 0:
+                        my_args['retry_count'] += 1
+                        LOGGER.warn("rabbitmq.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
+                        return self.call(my_args)
+                    else:
+                        raise ArianeMessagingTimeoutError('rabbitmq.Requester.call',
+                                                          'Request timeout (' + str(self.rpc_timeout) + '*' +
+                                                          str(self.rpc_retry) + ' sec) occured')
+                else:
+                    raise ArianeMessagingTimeoutError('rabbitmq.Requester.call',
+                                                      'Request timeout (' + str(self.rpc_timeout) + '*' +
+                                                      str(self.rpc_retry) + ' sec) occured')
             else:
-                try:
-                    if 'MSG_PROPERTIES' in self.response['props'].headers:
-                        props = json.loads(self.response['props'].headers['MSG_PROPERTIES'])
-                    else:
-                        props = None
-                except ValueError:
-                    if 'MSG_PROPERTIES' in self.response['props'].headers:
-                        props = self.response['props'].headers['MSG_PROPERTIES']
-                    else:
-                        props = None
-                try:
-                    content = json.loads(self.response['body'].decode("UTF-8"))
-                except ValueError:
-                    content = self.response['body'].decode("UTF-8")
-                return DriverResponse(
-                    rc=rc_,
-                    response_properties=props,
-                    response_content=content
-                )
+                if rpc_time > self.rpc_timeout*3/5:
+                    self.trace = True
+                    LOGGER.warn("rabbitmq.Requester.call - slow RPC time (" + str(rpc_time) + ") on request to " +
+                                request_q + " queue ...")
+                    LOGGER.debug('rabbitmq.Requester.call - slow RPC time (' + str(rpc_time) + ') on request ' +
+                                 str(properties))
+                else:
+                    self.trace = False
+
+                rc_ = self.response['props'].headers['RC']
+                if rc_ != 0:
+                    try:
+                        content = json.loads(self.response['body'].decode("UTF-8"))
+                    except ValueError:
+                        content = self.response['body'].decode("UTF-8")
+                    return DriverResponse(
+                        rc=rc_,
+                        error_message=self.response['props'].headers['SERVER_ERROR_MESSAGE']
+                        if 'SERVER_ERROR_MESSAGE' in self.response['props'].headers else '',
+                        response_content=content
+                    )
+                else:
+                    try:
+                        if 'MSG_PROPERTIES' in self.response['props'].headers:
+                            props = json.loads(self.response['props'].headers['MSG_PROPERTIES'])
+                        else:
+                            props = None
+                    except ValueError:
+                        if 'MSG_PROPERTIES' in self.response['props'].headers:
+                            props = self.response['props'].headers['MSG_PROPERTIES']
+                        else:
+                            props = None
+                    try:
+                        content = json.loads(self.response['body'].decode("UTF-8"))
+                    except ValueError:
+                        content = self.response['body'].decode("UTF-8")
+                    return DriverResponse(
+                        rc=rc_,
+                        response_properties=props,
+                        response_content=content
+                    )
 
 
 class Service(pykka.ThreadingActor):
