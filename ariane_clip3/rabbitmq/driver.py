@@ -230,7 +230,7 @@ class Requester(pykka.ThreadingActor):
                                                       'Request timeout (' + str(self.rpc_timeout) + '*' +
                                                       str(self.rpc_retry) + ' sec) occured')
             else:
-                if rpc_time > self.rpc_timeout*3/5:
+                if self.rpc_timeout > 0 and rpc_time > self.rpc_timeout*3/5:
                     self.trace = True
                     LOGGER.warn("rabbitmq.Requester.call - slow RPC time (" + str(rpc_time) + ") on request to " +
                                 request_q + " queue ...")
