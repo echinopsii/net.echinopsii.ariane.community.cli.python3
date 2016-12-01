@@ -308,11 +308,11 @@ class Requester(pykka.ThreadingActor):
                 if self.rpc_retry > 0:
                     if 'retry_count' not in my_args:
                         my_args['retry_count'] = 1
-                        LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count'] + ")"))
+                        LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
                         return self.call(my_args)
                     elif 'retry_count' in my_args and (self.rpc_retry - my_args['retry_count']) > 0:
                         my_args['retry_count'] += 1
-                        LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count'] + ")"))
+                        LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
                         return self.call(my_args)
                     else:
                         raise ArianeMessagingTimeoutError('natsd.Requester.call',
