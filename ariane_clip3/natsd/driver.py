@@ -239,9 +239,13 @@ class Requester(pykka.ThreadingActor):
         self.response = None
 
         if not self.fire_and_forget:
-            self.corr_id = str(uuid.uuid4())
-            properties = my_args['properties']
-            properties['MSG_CORRELATION_ID'] = self.corr_id
+            if 'MSG_CORRELATION_ID' not in my_args['properties']:
+                self.corr_id = str(uuid.uuid4())
+                properties = my_args['properties']
+                properties['MSG_CORRELATION_ID'] = self.corr_id
+            else:
+                properties = my_args['properties']
+                self.corr_id = properties['MSG_CORRELATION_ID']
         else:
             properties = my_args['properties']
 
@@ -267,7 +271,6 @@ class Requester(pykka.ThreadingActor):
         })
         msgb = b''+bytes(msg_data, 'utf8')
 
-        start_time = timeit.default_timer()
         if not self.fire_and_forget:
             try:
                 LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) +
@@ -288,8 +291,9 @@ class Requester(pykka.ThreadingActor):
         except StopIteration as e:
             pass
 
+        start_time = timeit.default_timer()
         if not self.fire_and_forget:
-            # Wait 10sec before raising error
+            # Wait rpc_timeout sec before raising error
             if self.rpc_timeout > 0:
                 exit_count = self.rpc_timeout * 100
             else:
@@ -300,17 +304,16 @@ class Requester(pykka.ThreadingActor):
                     exit_count -= 1
 
             if self.response is None:
-                LOGGER.warn("natsd.Requester.call - No response returned from request on " + request_q +
-                            " queue after " + str(self.rpc_timeout) + " sec ...")
-                LOGGER.debug("natsd.Requester.call - Will Ignore response from request : " + str(typed_properties))
-                self.corr_id = 0
-                self.trace = True
                 if self.rpc_retry > 0:
                     if 'retry_count' not in my_args:
                         my_args['retry_count'] = 1
-                        LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
+                        LOGGER.debug("natsd.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
                         return self.call(my_args)
                     elif 'retry_count' in my_args and (self.rpc_retry - my_args['retry_count']) > 0:
+                        LOGGER.warn("natsd.Requester.call - No response returned from request on " + request_q +
+                                    " queue after " + str(self.rpc_timeout) + '*' +
+                                    str(self.rpc_retry) + " sec ...")
+                        self.trace = True
                         my_args['retry_count'] += 1
                         LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
                         return self.call(my_args)
@@ -326,13 +329,9 @@ class Requester(pykka.ThreadingActor):
             rpc_time = timeit.default_timer()-start_time
             LOGGER.debug('natsd.Requester.call - RPC time : ' + str(rpc_time))
             if self.rpc_timeout > 0 and rpc_time > self.rpc_timeout*3/5:
-                self.trace = True
-                LOGGER.warn("natsd.Requester.call - slow RPC time (" + str(rpc_time) + ") on request to " +
-                            request_q + " queue ...")
                 LOGGER.debug('natsd.Requester.call - slow RPC time (' + str(rpc_time) + ') on request ' +
                              str(typed_properties))
-            else:
-                self.trace = False
+            self.trace = False
             rc_ = int(self.response['properties']['RC'])
             if rc_ != 0:
                 try:
