@@ -157,6 +157,11 @@ class Requester(pykka.ThreadingActor):
             raise exceptions.ArianeConfError('requestor call properties')
         if 'body' not in my_args or my_args['body'] is None:
             my_args['body'] = ''
+        if 'MSG_CORRELATION_ID' not in my_args['properties']:
+            self.corr_id = str(uuid.uuid4())
+            my_args['properties']['MSG_CORRELATION_ID'] = self.corr_id
+        else:
+            self.corr_id = my_args['properties']['MSG_CORRELATION_ID']
 
         self.response = None
         self.corr_id = str(uuid.uuid4())
@@ -207,17 +212,16 @@ class Requester(pykka.ThreadingActor):
             rpc_time = timeit.default_timer() - start_time
 
             if self.response is None:
-                LOGGER.warn("rabbitmq.Requester.call - No response returned from request on " + request_q +
-                            " queue after " + str(self.rpc_timeout) + " sec ...")
-                LOGGER.debug("rabbitmq.Requester.call - Will Ignore response from request : " + str(properties))
-                self.corr_id = 0
-                self.trace = True
                 if self.rpc_retry > 0:
                     if 'retry_count' not in my_args:
                         my_args['retry_count'] = 1
-                        LOGGER.warn("rabbitmq.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
+                        LOGGER.debug("rabbitmq.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
                         return self.call(my_args)
                     elif 'retry_count' in my_args and (self.rpc_retry - my_args['retry_count']) > 0:
+                        LOGGER.warn("rabbitmq.Requester.call - No response returned from request on " + request_q +
+                                    " queue after " + str(self.rpc_timeout) + '*' +
+                                    str(self.rpc_retry) + " sec ...")
+                        self.trace = True
                         my_args['retry_count'] += 1
                         LOGGER.warn("rabbitmq.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
                         return self.call(my_args)
@@ -231,13 +235,9 @@ class Requester(pykka.ThreadingActor):
                                                       str(self.rpc_retry) + ' sec) occured')
             else:
                 if self.rpc_timeout > 0 and rpc_time > self.rpc_timeout*3/5:
-                    self.trace = True
-                    LOGGER.warn("rabbitmq.Requester.call - slow RPC time (" + str(rpc_time) + ") on request to " +
-                                request_q + " queue ...")
                     LOGGER.debug('rabbitmq.Requester.call - slow RPC time (' + str(rpc_time) + ') on request ' +
                                  str(properties))
-                else:
-                    self.trace = False
+                self.trace = False
 
                 rc_ = self.response['props'].headers['RC']
                 if rc_ != 0:
