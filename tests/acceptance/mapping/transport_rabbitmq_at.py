@@ -38,7 +38,7 @@ class TransportTest(unittest.TestCase):
             'ariane.cmp': 'echinopsii'
         }
         args = {'type': DriverFactory.DRIVER_RBMQ, 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
+                'port': 5672, 'vhost': '/ariane', 'rpc_timeout': 10, 'rpc_retry': 2, 'client_properties': client_properties}
         cls.mapping_service = MappingService(args)
 
     @classmethod
@@ -110,7 +110,7 @@ class TransportTest(unittest.TestCase):
         transport.remove()
 
     def test_transac_create_remove_transport(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_transport")
         transport = Transport(name="test_transac_create_remove_transport")
         transport.save()
         SessionService.commit()
@@ -120,7 +120,7 @@ class TransportTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_get_transports(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_get_transports")
         transport = Transport(name="test_transac_get_transports")
         transport.save()
         SessionService.commit()
@@ -132,7 +132,7 @@ class TransportTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_transport_properties(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_transport_properties")
         transport = Transport(name="test_transac_transport_properties")
         transport.add_property(('int_prop', 10), sync=False)
         transport.add_property(('long_prop', 10000000), sync=False)

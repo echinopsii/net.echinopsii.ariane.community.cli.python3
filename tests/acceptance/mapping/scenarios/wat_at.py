@@ -13,7 +13,8 @@ class WatTest(unittest.TestCase):
     def test_mapping_wat(self):
         user = "yoda"
         password = "secret"
-        srvurl = "http://localhost:6969/"
+        srvurl = "http://env-mffrench.lab01.dev:6969/"
+        # srvurl = "http://localhost:6969/"
         s = requests.Session()
         s.auth = (user, password)
         print("import sagittarius RVDs into mapping")

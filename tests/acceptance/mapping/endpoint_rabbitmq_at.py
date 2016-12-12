@@ -40,7 +40,7 @@ class EndpointTest(unittest.TestCase):
             'ariane.cmp': 'echinopsii'
         }
         args = {'type': DriverFactory.DRIVER_RBMQ, 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
+                'port': 5672, 'vhost': '/ariane', 'rpc_timeout': 10, 'rpc_retry': 2, 'client_properties': client_properties}
         cls.mapping_service = MappingService(args)
         cls.container1 = Container(name="test_node_container1", gate_uri="ssh://my_host/docker/test_node_container1",
                                    primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -184,9 +184,10 @@ class EndpointTest(unittest.TestCase):
         endpoint1.remove()
         endpoint2.remove()
         node2.remove()
+        container2.remove()
 
     def test_transac_create_remove_endpoint_basic(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_endpoint_basic")
         endpoint = Endpoint(url="mysql://test_transac_create_remove_endpoint_basic_container1:4385",
                             parent_node_id=self.node1.id)
         endpoint.save()
@@ -201,7 +202,7 @@ class EndpointTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_create_remove_endpoint_parent_node(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_endpoint_parent_node")
         container2 = Container(name="test_transac_create_remove_endpoint_parent_node_container2",
                                gate_uri="ssh://my_host/docker/test_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -223,7 +224,7 @@ class EndpointTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_get_endpoints(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_get_endpoints")
         endpoint = Endpoint(url="mysql://test_transac_get_endpoints_container1:4385",
                             parent_node_id=self.node1.id)
         endpoint.save()
@@ -235,7 +236,7 @@ class EndpointTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_endpoint_properties(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_endpoint_properties")
         endpoint = Endpoint(url="mysql://test_transac_endpoint_properties_container1:4385",
                             parent_node_id=self.node1.id)
         endpoint.add_property(('int_prop', 10), sync=False)
@@ -285,7 +286,7 @@ class EndpointTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_twin_endpoints_link(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_twin_endpoints_link")
         container2 = Container(name="test_transac_twin_endpoints_link_container2",
                                gate_uri="ssh://my_host/docker/test_transac_twin_endpoints_link_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -320,5 +321,6 @@ class EndpointTest(unittest.TestCase):
         endpoint1.remove()
         endpoint2.remove()
         node2.remove()
+        container2.remove()
         SessionService.commit()
         SessionService.close_session()

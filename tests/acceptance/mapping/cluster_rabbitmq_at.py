@@ -38,7 +38,7 @@ class ClusterTest(unittest.TestCase):
             'ariane.cmp': 'echinopsii'
         }
         args = {'type': DriverFactory.DRIVER_RBMQ, 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 5672, 'vhost': '/ariane', 'client_properties': client_properties}
+                'port': 5672, 'vhost': '/ariane', 'rpc_timeout': 10, 'rpc_retry': 2, 'client_properties': client_properties}
         cls.mapping_service = MappingService(args)
 
     @classmethod
@@ -99,7 +99,7 @@ class ClusterTest(unittest.TestCase):
         cluster.remove()
 
     def test_transac_get_clusters(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_get_clusters")
         new_cluster = Cluster(name="test_transac_get_clusters")
         new_cluster.save()
         self.assertTrue(new_cluster in ClusterService.get_clusters())
@@ -112,7 +112,7 @@ class ClusterTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_cluster_link_to_container(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_cluster_link_to_container")
 
         cluster = Cluster(name="test_transac_cluster_link_to_container")
         container = Container(name="test_transac_cluster_link_to_container_container",
@@ -157,3 +157,4 @@ class ClusterTest(unittest.TestCase):
         self.assertFalse(cluster in ClusterService.get_clusters())
         self.assertFalse(container in ContainerService.get_containers())
         SessionService.close_session()
+

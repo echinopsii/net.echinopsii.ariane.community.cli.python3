@@ -39,7 +39,7 @@ class NodeTest(unittest.TestCase):
             'ariane.cmp': 'echinopsii'
         }
         args = {'type': 'NATS', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 4222, 'client_properties': client_properties}
+                'port': 4222, 'rpc_timeout': 10, 'rpc_retry': 2, 'client_properties': client_properties}
         cls.mapping_service = MappingService(args)
         cls.container1 = Container(name="test_node_container1", gate_uri="ssh://my_host/docker/test_node_container1",
                                    primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -120,6 +120,7 @@ class NodeTest(unittest.TestCase):
         self.assertFalse(node_mysql1.id in node_mysql2.twin_nodes_id)
         node_mysql1.remove()
         node_mysql2.remove()
+        container2.remove()
 
     def test_node_properties(self):
         node = Node(name="mysqld1", container=self.container1)
@@ -207,7 +208,7 @@ class NodeTest(unittest.TestCase):
         self.assertFalse(node in NodeService.get_nodes())
 
     def test_transac_create_remove_node_basic(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_node_basic")
         node = Node(name="mysqld", container_id=self.container1.id)
         node.save()
         SessionService.commit()
@@ -222,7 +223,7 @@ class NodeTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_create_remove_node_parent_container(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_node_parent_container")
         container2 = Container(name="test_transac_create_remove_node_parent_container_container2",
                                gate_uri="ssh://my_host/docker/test_transac_create_remove_node_parent_container_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -239,7 +240,7 @@ class NodeTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_create_remove_node_parent_node(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_node_parent_node")
         container2 = Container(name="test_transac_create_remove_node_parent_node_container2",
                                gate_uri="ssh://my_host/docker/test_transac_create_remove_node_parent_node_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -261,7 +262,7 @@ class NodeTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_twin_nodes_link(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_twin_nodes_link")
         container2 = Container(name="test_transac_twin_nodes_link_container2",
                                gate_uri="ssh://my_host/docker/test_transac_twin_nodes_link_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -295,11 +296,12 @@ class NodeTest(unittest.TestCase):
         self.assertFalse(node_mysql1.id in node_mysql2.twin_nodes_id)
         node_mysql1.remove()
         node_mysql2.remove()
+        container2.remove()
         SessionService.commit()
         SessionService.close_session()
 
     def test_transac_node_properties(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_node_properties")
         node = Node(name="mysqld1", container=self.container1)
         node.add_property(('int_prop', 10), sync=False)
         node.add_property(('long_prop', 10000000), sync=False)

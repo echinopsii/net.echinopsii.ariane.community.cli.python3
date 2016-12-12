@@ -32,6 +32,7 @@ class LinkTest(unittest.TestCase):
     node2 = None
     endpoint1 = None
     endpoint2 = None
+    transport = None
 
     @classmethod
     def setUp(cls):
@@ -45,7 +46,7 @@ class LinkTest(unittest.TestCase):
             'ariane.cmp': 'echinopsii'
         }
         args = {'type': 'NATS', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 4222, 'client_properties': client_properties}
+                'port': 4222, 'rpc_timeout': 10, 'rpc_retry': 2, 'client_properties': client_properties}
         cls.mapping_service = MappingService(args)
         cls.container1 = Container(name="test_link_container1", gate_uri="ssh://my_host/docker/test_link_container1",
                                    primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -68,6 +69,7 @@ class LinkTest(unittest.TestCase):
 
     @classmethod
     def tearDown(cls):
+        cls.transport.remove()
         cls.endpoint1.remove()
         cls.endpoint2.remove()
         cls.node1.remove()
@@ -124,7 +126,7 @@ class LinkTest(unittest.TestCase):
         self.assertFalse(link in LinkService.get_links())
 
     def test_transac_create_remove_link_basic(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_link_basic")
         link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
                     transport_id=self.transport.id)
         link.save()
@@ -135,7 +137,7 @@ class LinkTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_get_links(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_get_links")
         link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,
                     transport_id=self.transport.id)
         link.save()

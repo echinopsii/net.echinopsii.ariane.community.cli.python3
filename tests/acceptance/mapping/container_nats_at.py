@@ -38,7 +38,7 @@ class ContainerTest(unittest.TestCase):
             'ariane.cmp': 'echinopsii'
         }
         args = {'type': 'NATS', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 4222, 'client_properties': client_properties}
+                'port': 4222, 'rpc_timeout': 10, 'rpc_retry': 2, 'client_properties': client_properties}
         cls.mapping_service = MappingService(args)
 
     @classmethod
@@ -159,7 +159,7 @@ class ContainerTest(unittest.TestCase):
         container.remove()
 
     def test_transac_get_containers(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_get_containers")
 
         new_container = Container(name="test_transac_get_containers",
                                   gate_uri="ssh://my_host/docker/test_transac_get_containers",
@@ -176,7 +176,7 @@ class ContainerTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_container_properties(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_container_properties")
         container = Container(name="test_transac_container_properties",
                               gate_uri="ssh://my_host/docker/test_transac_container_properties",
                               primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -212,7 +212,7 @@ class ContainerTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_child_containers(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_child_containers")
 
         container = Container(name="test_transac_child_containers",
                               gate_uri="ssh://my_host/docker/test_transac_child_containers",

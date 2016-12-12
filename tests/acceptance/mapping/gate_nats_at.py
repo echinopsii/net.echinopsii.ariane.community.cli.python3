@@ -39,7 +39,7 @@ class GateTest(unittest.TestCase):
             'ariane.cmp': 'echinopsii'
         }
         args = {'type': 'NATS', 'user': 'ariane', 'password': 'password', 'host': 'localhost',
-                'port': 4222, 'client_properties': client_properties}
+                'port': 4222, 'rpc_timeout': 10, 'rpc_retry': 2, 'client_properties': client_properties}
         cls.mapping_service = MappingService(args)
         cls.container1 = Container(name="test_node_container1", gate_uri="ssh://my_host/docker/test_node_container1",
                                    primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -51,27 +51,30 @@ class GateTest(unittest.TestCase):
         cls.container1.remove()
         cls.mapping_service.stop()
 
-    def test_create_remove_gate_basic(self):
-        gate = Gate(name="sshd", url="ssh://test_create_remove_gate_basic_ugly_docker_admin_endpoint",
-                    is_primary_admin=True,
-                    container_id=self.container1.id)
-        gate.save()
-        self.assertIsNotNone(gate.id)
-        self.container1.sync()
-        self.assertTrue(gate.id in self.container1.nodes_id)
-        self.assertTrue(gate.id in self.container1.gates_id)
-        self.assertIsNone(gate.remove())
-        self.container1.sync()
-        self.assertFalse(gate.id in self.container1.nodes_id)
-        self.assertFalse(gate.id in self.container1.gates_id)
-
-    def test_create_remove_node_parent_container(self):
+    def test_create_remove_node_parent_container_1(self):
         container2 = Container(name="test_create_remove_node_parent_container_container2",
-                               gate_uri="ssh://my_host/docker/test_create_remove_node_parent_container_container2",
+                               gate_uri="ssh://my_host/docker/test_create_remove_node_parent_container_1_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
-        gate = Gate(name="sshd", url="ssh://test_create_remove_node_parent_container_ugly_docker_admin_endpoint2",
+        gate = Gate(name="sshd", url="ssh://test_create_remove_node_parent_container_1_ugly_docker_admin_endpoint2",
                     is_primary_admin=True,
+                    container=container2)
+        gate.save()
+        self.assertIsNotNone(gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        self.assertIsNotNone(gate.remove())
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        container2.remove()
+
+    def test_create_remove_node_parent_container_2(self):
+        container2 = Container(name="test_create_remove_node_parent_container_container2",
+                               gate_uri="ssh://my_host/docker/test_create_remove_node_parent_container_2_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        gate = Gate(name="sshd", url="ssh://test_create_remove_node_parent_container_2_ugly_docker_admin_endpoint2",
+                    is_primary_admin=False,
                     container=container2)
         gate.save()
         self.assertIsNotNone(gate.id)
@@ -80,6 +83,67 @@ class GateTest(unittest.TestCase):
         self.assertIsNone(gate.remove())
         self.assertFalse(gate.id in container2.nodes_id)
         self.assertFalse(gate.id in container2.gates_id)
+        container2.remove()
+
+    def test_change_container_gate_1(self):
+        container2 = Container(name="test_change_container_gate_1",
+                               gate_uri="ssh://my_host/docker/test_change_container_gate_1_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        container2.save()
+        gate = Gate(name="sshd", url="ssh://test_change_container_gate_1_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container_id=container2.id)
+        gate.save()
+        self.assertIsNotNone(gate.id)
+        container2.sync()
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.is_primary_admin = True
+        gate.save()
+        container2.sync()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
+        container2.remove()
+
+    def test_change_container_gate_2(self):
+        container2 = Container(name="test_change_container_gate_2",
+                               gate_uri="ssh://my_host/docker/test_change_container_gate_2_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        gate = Gate(name="sshd", url="ssh://test_change_container_gate_2_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container=container2)
+        gate.save()
+        self.assertIsNotNone(gate.id)
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.is_primary_admin = True
+        gate.save()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
+        container2.remove()
+
+    def test_change_container_gate_3(self):
+        container2 = Container(name="test_change_container_gate_3",
+                               gate_uri="ssh://my_host/docker/test_change_container_gate_3_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        gate = Gate(name="sshd", url="ssh://test_change_container_gate_3_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container=container2)
+        gate.save()
+        self.assertIsNotNone(gate.id)
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.url = "ssh://test_change_container_gate_3_another_ugly_docker_admin_endpoint"
+        gate.is_primary_admin = True
+        gate.save()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
         container2.remove()
 
     def test_twin_nodes_link(self):
@@ -111,8 +175,6 @@ class GateTest(unittest.TestCase):
         gate2.del_twin_node(gate1)
         self.assertFalse(gate2.id in gate1.twin_nodes_id)
         self.assertFalse(gate1.id in gate2.twin_nodes_id)
-        gate1.remove()
-        gate2.remove()
         container2.remove()
 
     def test_node_properties(self):
@@ -161,7 +223,7 @@ class GateTest(unittest.TestCase):
         gate.remove()
 
     def test_find_node_by_id(self):
-        gate = Gate(name="sshd", url="ssh://test_find_node_by_id_ugly_docker_admin_endpoint", is_primary_admin=True,
+        gate = Gate(name="sshd", url="ssh://test_find_node_by_id_ugly_docker_admin_endpoint", is_primary_admin=False,
                     container=self.container1)
         gate.save()
         self.assertIsNotNone(GateService.find_gate(nid=gate.id))
@@ -169,33 +231,15 @@ class GateTest(unittest.TestCase):
         self.assertIsNone(GateService.find_gate(nid=gate.id))
 
     def test_get_nodes(self):
-        gate = Gate(name="sshd", url="ssh://test_get_nodes_ugly_docker_admin_endpoint", is_primary_admin=True,
+        gate = Gate(name="sshd", url="ssh://test_get_nodes_ugly_docker_admin_endpoint", is_primary_admin=False,
                     container=self.container1)
         gate.save()
         self.assertTrue(gate in GateService.get_gates())
         gate.remove()
         self.assertFalse(gate in GateService.get_gates())
 
-    def test_transac_create_remove_gate_basic(self):
-        SessionService.open_session("test")
-        gate = Gate(name="sshd", url="ssh://test_transac_create_remove_gate_basic_ugly_docker_admin_endpoint",
-                    is_primary_admin=True,
-                    container_id=self.container1.id)
-        gate.save()
-        SessionService.commit()
-        self.assertIsNotNone(gate.id)
-        self.container1.sync()
-        self.assertTrue(gate.id in self.container1.nodes_id)
-        self.assertTrue(gate.id in self.container1.gates_id)
-        self.assertIsNone(gate.remove())
-        self.container1.sync()
-        self.assertFalse(gate.id in self.container1.nodes_id)
-        self.assertFalse(gate.id in self.container1.gates_id)
-        SessionService.commit()
-        SessionService.close_session()
-
     def test_transac_create_remove_node_parent_container_1(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_node_parent_container_1")
         container2 = Container(name="test_transac_create_remove_node_parent_container_1_container2",
                                gate_uri="ssh://my_host/docker/test_transac_create_remove_node_parent_container_1_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -208,15 +252,15 @@ class GateTest(unittest.TestCase):
         self.assertIsNotNone(gate.id)
         self.assertTrue(gate.id in container2.nodes_id)
         self.assertTrue(gate.id in container2.gates_id)
-        self.assertIsNone(gate.remove())
-        self.assertFalse(gate.id in container2.nodes_id)
-        self.assertFalse(gate.id in container2.gates_id)
+        self.assertIsNotNone(gate.remove())
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
         container2.remove()
         SessionService.commit()
         SessionService.close_session()
 
     def test_transac_create_remove_node_parent_container_2(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_create_remove_node_parent_container_2")
         container2 = Container(name="test_transac_create_remove_node_parent_container_2_container2",
                                gate_uri="ssh://my_host/docker/test_transac_create_remove_node_parent_container_2_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
@@ -224,7 +268,7 @@ class GateTest(unittest.TestCase):
         container2.save()
         SessionService.commit()
         gate = Gate(name="sshd", url="ssh://test_transac_create_remove_node_parent_container_2_ugly_docker_admin_endpoint2",
-                    is_primary_admin=True,
+                    is_primary_admin=False,
                     container=container2)
         gate.save()
         SessionService.commit()
@@ -239,16 +283,16 @@ class GateTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_twin_nodes_link(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_twin_nodes_link")
         container2 = Container(name="test_transac_twin_nodes_link_container2",
                                gate_uri="ssh://my_host/docker/test_transac_twin_nodes_link_container2",
                                primary_admin_gate_name="container name space (pid)", company="Docker",
                                product="Docker", c_type="container")
         gate1 = Gate(name="sshd", url="ssh://test_transac_twin_nodes_link_ugly_docker_admin_endpoint",
-                     is_primary_admin=True,
+                     is_primary_admin=False,
                      container=self.container1)
         gate2 = Gate(name="sshd", url="ssh://test_transac_twin_nodes_link_ugly_docker_admin_endpoint2",
-                     is_primary_admin=True,
+                     is_primary_admin=False,
                      container=container2)
         gate1.add_twin_node(gate2, sync=False)
         self.assertTrue(gate2 in gate1.twin_nodes_2_add)
@@ -281,9 +325,9 @@ class GateTest(unittest.TestCase):
         SessionService.close_session()
 
     def test_transac_node_properties(self):
-        SessionService.open_session("test")
+        SessionService.open_session("test_transac_node_properties")
         gate = Gate(name="sshd", url="ssh://test_transac_node_properties_ugly_docker_admin_endpoint",
-                    is_primary_admin=True,
+                    is_primary_admin=False,
                     container=self.container1)
         gate.add_property(('int_prop', 10), sync=False)
         gate.add_property(('long_prop', 10000000), sync=False)
