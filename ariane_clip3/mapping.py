@@ -506,7 +506,7 @@ class Cluster(object):
         :param cid: cluster id
         :param name: name
         :param containers_id: containers id table
-        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
+        :param ignore_sync: ignore ariane server synchronisation if false. (default false)
         :return:
         """
         LOGGER.debug("Cluster.__init__")
@@ -602,7 +602,7 @@ class Cluster(object):
     def remove(self):
         """
         remove this object from Ariane server
-        :return:
+        :return: null if successfully removed else self
         """
         LOGGER.debug("Cluster.remove")
         if self.id is None:
@@ -1070,7 +1070,7 @@ class Container(object):
         :param product: product launched by this container
         :param c_type: specify the type in the product spectrum type - optional
         :param properties: the container properties
-        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
+        :param ignore_sync: ignore ariane server synchronisation if false. (default false)
         :return:
         """
         LOGGER.debug("Container.__init__")
@@ -1305,7 +1305,7 @@ class Container(object):
     def remove(self):
         """
         remove this object from Ariane server
-        :return:
+        :return: null if successfully removed else self
         """
         LOGGER.debug("Container.remove")
         if self.gate_uri is None:
@@ -1623,7 +1623,7 @@ class Node(object):
         :param twin_nodes_id: twin nodes id list
         :param endpoints_id: endpoints id list
         :param properties: node properties
-        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
+        :param ignore_sync: ignore ariane server synchronisation if false. (default false)
         :return:
         """
         LOGGER.debug("Node.__init__")
@@ -1946,7 +1946,7 @@ class Node(object):
     def remove(self):
         """
         remove this node from Ariane server
-        :return:
+        :return: null if successfully removed else self
         """
         LOGGER.debug("Node.remove")
         if self.id is None:
@@ -2076,14 +2076,27 @@ class Gate(Node):
     def json_2_gate(json_obj):
         LOGGER.debug("Gate.json_2_gate")
         node = Node.json_2_node(json_obj['node'])
-        container_gate_primary_admin_endpoint_id = json_obj['containerGatePrimaryAdminEndpointID']
-        return Gate(node=node, container_gate_primary_admin_endpoint_id=container_gate_primary_admin_endpoint_id)
+        is_admin_primary = None
+        if 'gateIsAdminPrimary' in json_obj:
+            is_admin_primary = json_obj['gateIsAdminPrimary']
+        url = None
+        if 'gateURL' in json_obj:
+            url = json_obj['gateURL']
+        primary_admin_endpoint_id = None
+        if 'gatePrimaryAdminEndpointID' in json_obj:
+            primary_admin_endpoint_id = json_obj['gatePrimaryAdminEndpointID']
+        return Gate(node=node,
+                    url=url,
+                    is_primary_admin=is_admin_primary,
+                    primary_admin_endpoint_id=primary_admin_endpoint_id)
 
     def gate_2_json(self):
         LOGGER.debug("Gate.gate_2_json")
         json_obj = {
             'node': super(Gate, self).node_2_json(),
-            'containerGatePrimaryAdminEndpointID': self.primary_admin_endpoint_id
+            'gateIsAdminPrimary': self.is_primary_admin,
+            'gateURL': self.url,
+            'gatePrimaryAdminEndpointID': self.primary_admin_endpoint_id
         }
         return json_obj
 
@@ -2113,7 +2126,8 @@ class Gate(Node):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
-        elif 'node' not in json_obj or 'nodeID' not in json_obj:
+        elif ('node' not in json_obj and 'nodeID' not in json_obj) or \
+             ('node' in json_obj and 'nodeID' not in json_obj['node']):
             err_msg = 'Gate.sync - Problem while syncing gate (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
@@ -2132,24 +2146,28 @@ class Gate(Node):
             self.twin_nodes_id = node['nodeTwinNodesID']
             self.endpoints_id = node['nodeEndpointsID']
             self.properties = node['nodeProperties'] if 'nodeProperties' in node else None
-            if 'containerGatePrimaryAdminEndpointID' in json_obj:
-                self.primary_admin_endpoint_id = json_obj['containerGatePrimaryAdminEndpointID']
+            if 'gateIsAdminPrimary' in json_obj:
+                self.is_primary_admin = json_obj['gateIsAdminPrimary']
+            if 'gateURL' in json_obj:
+                self.url = json_obj['gateURL']
+            if 'gatePrimaryAdminEndpointID' in json_obj:
+                self.primary_admin_endpoint_id = json_obj['gatePrimaryAdminEndpointID']
 
-    def __init__(self, node=None, container_gate_primary_admin_endpoint_id=None,
+    def __init__(self, node=None, primary_admin_endpoint_id=None,
                  url=None, name=None, container_id=None, container=None, is_primary_admin=None):
         LOGGER.debug("Gate.__init__")
         if node is not None:
             super(Gate, self).__init__(nid=node.id, name=node.name, container_id=node.container_id,
                                        child_nodes_id=node.child_nodes_id, twin_nodes_id=node.twin_nodes_id,
                                        endpoints_id=node.endpoints_id, properties=node.properties)
-            self.primary_admin_endpoint_id = container_gate_primary_admin_endpoint_id
         else:
             super(Gate, self).__init__()
-            self.url = url
             self.name = name
             self.container_id = container_id
             self.container = container
-            self.is_primary_admin = is_primary_admin
+        self.is_primary_admin = is_primary_admin
+        self.url = url
+        self.primary_admin_endpoint_id = primary_admin_endpoint_id
 
     def __str__(self):
         """
@@ -2171,19 +2189,108 @@ class Gate(Node):
                 self.container.save()
             self.container_id = self.container.id
 
-        if self.id is None:
-            params = SessionService.complete_transactional_req({
-                'URL': self.url,
-                'name': self.name,
-                'containerID': self.container_id,
-                'isPrimaryAdmin': self.is_primary_admin
-            })
+        post_payload = {'node': {}}
+        consolidated_twin_nodes_id = []
+        consolidated_properties = {}
+        consolidated_node_properties = []
 
+        if self.id is not None:
+            post_payload['node']['nodeID'] = self.id
+
+        if self.name is not None:
+            post_payload['node']['nodeName'] = self.name
+
+        if self.container_id is not None:
+            post_payload['node']['nodeContainerID'] = self.container_id
+
+        if self.child_nodes_id is not None:
+            post_payload['node']['nodeChildNodesID'] = self.child_nodes_id
+
+        if self.twin_nodes_id is not None:
+            consolidated_twin_nodes_id = copy.deepcopy(self.twin_nodes_id)
+        if self.twin_nodes_2_rm is not None:
+            for twin_node_2_rm in self.twin_nodes_2_rm:
+                if twin_node_2_rm.id is None:
+                    twin_node_2_rm.sync()
+                consolidated_twin_nodes_id.remove(twin_node_2_rm.id)
+        if self.twin_nodes_2_add is not None:
+            for twin_node_2_add in self.twin_nodes_2_add:
+                if twin_node_2_add.id is None:
+                    twin_node_2_add.save()
+                consolidated_twin_nodes_id.append(twin_node_2_add.id)
+        post_payload['node']['nodeTwinNodesID'] = consolidated_twin_nodes_id
+
+        if self.endpoints_id is not None:
+            post_payload['node']['nodeEndpointsID'] = self.endpoints_id
+
+        if self.properties is not None:
+            consolidated_properties = copy.deepcopy(self.properties)
+        if self.properties_2_rm is not None:
+            for n_property_name in self.properties_2_rm:
+                consolidated_properties.pop(n_property_name, 0)
+        if self.properties_2_add is not None:
+            for n_property_tuple in self.properties_2_add:
+                consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
+        for key, value in consolidated_properties.items():
+            consolidated_node_properties.append(DriverTools.property_params(key, value))
+        post_payload['node']['nodeProperties'] = consolidated_node_properties
+
+        post_payload['gateIsPrimaryAdmin'] = self.is_primary_admin
+        post_payload['gatePrimaryAdminEndpointURL'] = self.url
+
+        params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            params['OPERATION'] = 'createGate'
+            args = {'properties': params}
+        else:
+            args = {
+                'http_operation': 'POST',
+                'operation_path': '',
+                'parameters': params
+            }
+
+        response = GateService.requester.call(args)
+
+        if MappingService.driver_type != DriverFactory.DRIVER_REST:
+            response = response.get()
+
+        if response.rc != 0:
+            LOGGER.warning('Gate.save - Problem while saving node' + self.name +
+                           '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
+                           " (" + str(response.rc) + ")")
+        else:
+            self.id = response.response_content['node']['nodeID']
+            if self.twin_nodes_2_add is not None:
+                for twin_node_2_add in self.twin_nodes_2_add:
+                    twin_node_2_add.sync()
+            if self.twin_nodes_2_rm is not None:
+                for twin_node_2_rm in self.twin_nodes_2_rm:
+                    twin_node_2_rm.sync()
+            if self.container is not None:
+                self.container.sync()
+            self.sync(json_obj=response.response_content)
+        self.twin_nodes_2_add.clear()
+        self.twin_nodes_2_rm.clear()
+        self.properties_2_add.clear()
+        self.properties_2_rm.clear()
+
+    def remove(self):
+        """
+        remove this gate from Ariane server
+        :return: null if successfully removed else self
+        """
+        LOGGER.debug("Gate.remove")
+        if self.id is None:
+            return None
+        else:
+            params = SessionService.complete_transactional_req({
+                'ID': self.id
+            })
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                params['OPERATION'] = 'createGate'
+                params['OPERATION'] = 'deleteGate'
                 args = {'properties': params}
             else:
-                args = {'http_operation': 'GET', 'operation_path': 'create', 'parameters': params}
+                args = {'http_operation': 'GET', 'operation_path': 'delete', 'parameters': params}
 
             response = GateService.requester.call(args)
 
@@ -2191,16 +2298,18 @@ class Gate(Node):
                 response = response.get()
 
             if response.rc != 0:
-                LOGGER.warning('Gate.save - Problem while saving node' + self.name + '. Reason: ' +
-                               '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
-                               " (" + str(response.rc) + ")")
+                LOGGER.warning(
+                    'Gate.remove - Problem while deleting node ' + self.id +
+                    '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
+                    " (" + str(response.rc) + ")"
+                )
+                return self
             else:
-                self.sync(json_obj=response.response_content)
-        super(Gate, self).save()
-
-    def remove(self):
-        LOGGER.debug("Gate.remove")
-        super(Gate, self).remove()
+                if self.container is not None:
+                    self.container.sync()
+                if self.parent_node is not None:
+                    self.parent_node.sync()
+                return None
 
 
 class EndpointService(object):
@@ -2428,7 +2537,7 @@ class Endpoint(object):
         :param parent_node: endpoint parent node
         :param twin_endpoints_id: twin endpoint ids
         :param properties: endpoint properties
-        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
+        :param ignore_sync: ignore ariane server synchronisation if false. (default false)
         :return:
         """
         LOGGER.debug("Endpoint.__init__")
@@ -2957,7 +3066,7 @@ class Link(object):
         :param target_endpoint_id:
         :param transport:
         :param transport_id:
-        :param ignore_sync: ignore ariane server synchronisation if false. (default true)
+        :param ignore_sync: ignore ariane server synchronisation if false. (default false)
         :return:
         """
         LOGGER.debug("Link.__init__")
