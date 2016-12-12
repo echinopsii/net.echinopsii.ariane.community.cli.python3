@@ -53,6 +53,7 @@ class LinkTest(unittest.TestCase):
         self.node2.remove()
         self.container1.remove()
         self.container2.remove()
+        self.transport.remove()
 
     def test_create_remove_link_basic(self):
         link = Link(source_endpoint_id=self.endpoint1.id, target_endpoint_id=self.endpoint2.id,

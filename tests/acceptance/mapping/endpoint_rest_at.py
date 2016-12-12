@@ -167,6 +167,7 @@ class EndpointTest(unittest.TestCase):
         endpoint1.remove()
         endpoint2.remove()
         node2.remove()
+        container2.remove()
 
     def test_transac_create_remove_endpoint_basic(self):
         SessionService.open_session("test")
@@ -303,5 +304,6 @@ class EndpointTest(unittest.TestCase):
         endpoint1.remove()
         endpoint2.remove()
         node2.remove()
+        container2.remove()
         SessionService.commit()
         SessionService.close_session()

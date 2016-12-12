@@ -103,6 +103,7 @@ class NodeTest(unittest.TestCase):
         self.assertFalse(node_mysql1.id in node_mysql2.twin_nodes_id)
         node_mysql1.remove()
         node_mysql2.remove()
+        container2.remove()
 
     def test_node_properties(self):
         node = Node(name="mysqld1", container=self.container1)
@@ -278,6 +279,7 @@ class NodeTest(unittest.TestCase):
         self.assertFalse(node_mysql1.id in node_mysql2.twin_nodes_id)
         node_mysql1.remove()
         node_mysql2.remove()
+        container2.remove()
         SessionService.commit()
         SessionService.close_session()
 
