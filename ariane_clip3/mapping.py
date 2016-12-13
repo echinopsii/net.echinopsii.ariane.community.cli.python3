@@ -30,7 +30,6 @@ __author__ = 'mffrench'
 
 LOGGER = logging.getLogger(__name__)
 
-
 class MappingService(object):
     requester = None
     driver_type = None
@@ -133,6 +132,7 @@ class SessionService(object):
                       " (" + str(response.rc) + ")"
 
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return session_id
 
     @staticmethod
@@ -160,10 +160,12 @@ class SessionService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                # traceback.print_stack()
         else:
             err_msg = 'SessionService.commit - Problem while commiting on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
 
     @staticmethod
     def rollback():
@@ -190,10 +192,12 @@ class SessionService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                # traceback.print_stack()
         else:
             err_msg = 'SessionService.rollback - Problem while rollbacking on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
 
     @staticmethod
     def close_session():
@@ -220,12 +224,14 @@ class SessionService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                # traceback.print_stack()
             else:
                 SessionService.session_registry.pop(thread_id)
         else:
             err_msg = 'SessionService.close_session - Problem while closing session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
 
     @staticmethod
     def complete_transactional_req(args):
@@ -270,7 +276,8 @@ class ClusterService(object):
             raise exceptions.ArianeCallParametersError('id or name')
 
         if (cid is not None and cid) and (name is not None and name):
-            LOGGER.warn('ClusterService.find_cluster - Both id and name are defined. Will give you search on id.')
+            LOGGER.debug('ClusterService.find_cluster - Both id and name are defined. Will give you search on id.')
+            # traceback.print_stack()
             name = None
 
         params = None
@@ -300,6 +307,7 @@ class ClusterService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
     @staticmethod
@@ -336,6 +344,7 @@ class ClusterService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
 
@@ -399,11 +408,12 @@ class Cluster(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    # traceback.print_stack()
         elif 'clusterID' not in json_obj:
             err_msg = 'Cluster.sync - Problem while syncing cluster (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
-            traceback.print_stack()
+            # traceback.print_stack()
 
         if json_obj is not None:
             self.id = json_obj['clusterID']
@@ -446,6 +456,7 @@ class Cluster(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     self.containers_id.append(container.id)
                     container.cluster_id = self.id
@@ -454,6 +465,7 @@ class Cluster(object):
                     'Cluster.add_container - Problem while updating cluster ' + self.name + '. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
+                # traceback.print_stack()
 
     def del_container(self, container, sync=True):
         """
@@ -491,6 +503,7 @@ class Cluster(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     self.containers_id.remove(container.id)
                     container.cluster_id = None
@@ -499,6 +512,7 @@ class Cluster(object):
                     'Cluster.del_container - Problem while updating cluster ' + self.name + '. Reason: container ' +
                     container.gate_uri + ' id is None'
                 )
+                # traceback.print_stack()
 
     def __init__(self, cid=None, name=None, containers_id=None, ignore_sync=False):
         """
@@ -587,6 +601,7 @@ class Cluster(object):
             LOGGER.warning('Cluster.save - Problem while saving cluster' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            # traceback.print_stack()
         else:
             self.id = response.response_content['clusterID']
             if self.containers_2_add is not None:
@@ -629,6 +644,7 @@ class Cluster(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
                 return self
             else:
                 return None
@@ -667,8 +683,9 @@ class ContainerService(object):
             raise exceptions.ArianeCallParametersError('id and primary_admin_gate_url')
 
         if (cid is not None and cid) and (primary_admin_gate_url is not None and primary_admin_gate_url):
-            LOGGER.warn('ContainerService.find_container - Both id and primary admin gate url are defined. '
-                        'Will give you search on id.')
+            LOGGER.debug('ContainerService.find_container - Both id and primary admin gate url are defined. '
+                         'Will give you search on id.')
+            # traceback.print_stack()
             primary_admin_gate_url = None
 
         params = None
@@ -701,6 +718,7 @@ class ContainerService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                # traceback.print_stack()
         return ret
 
     @staticmethod
@@ -739,6 +757,7 @@ class ContainerService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
 
@@ -857,11 +876,12 @@ class Container(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    # traceback.print_stack()
         elif 'containerID' not in json_obj:
             err_msg = 'Container.sync - Problem while syncing container (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
-            traceback.print_stack()
+            # traceback.print_stack()
 
         if json_obj is not None:
             self.id = json_obj['containerID']
@@ -924,9 +944,10 @@ class Container(object):
             if response.rc != 0:
                 LOGGER.warning(
                     'Container.add_property - Problem while updating container ' + self.name +
-                    '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
+                    '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -964,6 +985,7 @@ class Container(object):
                     '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -1005,6 +1027,7 @@ class Container(object):
                         '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     child_container.sync()
                     self.sync()
@@ -1047,6 +1070,7 @@ class Container(object):
                         '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     child_container.sync()
                     self.sync()
@@ -1241,8 +1265,9 @@ class Container(object):
         if self.properties_2_add is not None:
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
-        for key, value in consolidated_properties.items():
-            consolidated_container_properties.append(DriverTools.property_params(key, value))
+        if consolidated_properties.__len__() > 0:
+            for key, value in consolidated_properties.items():
+                consolidated_container_properties.append(DriverTools.property_params(key, value))
         post_payload['containerProperties'] = consolidated_container_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
@@ -1266,6 +1291,7 @@ class Container(object):
             LOGGER.warning('Container.save - Problem while saving container' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            # traceback.print_stack()
         else:
             self.id = response.response_content['containerID']
             if self.child_containers_2_add is not None:
@@ -1332,6 +1358,7 @@ class Container(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
                 return self
             else:
                 return None
@@ -1377,8 +1404,9 @@ class NodeService(object):
         if (nid is not None and nid) and \
                 ((endpoint_url is not None and endpoint_url) or (selector is not None and selector) or
                  (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid)))):
-            LOGGER.warn('NodeService.find_node - Both id and other search params are defined. '
-                        'Will give you search on id.')
+            LOGGER.debug('NodeService.find_node - Both id and other search params are defined. '
+                         'Will give you search on id.')
+            # traceback.print_stack()
             endpoint_url = None
             selector = None
             name = None
@@ -1388,8 +1416,9 @@ class NodeService(object):
         if (endpoint_url is not None and endpoint_url) and \
                 ((selector is not None and selector) or
                  (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid)))):
-            LOGGER.warn('NodeService.find_node - Both endpoint url other search params are defined. '
-                        'Will give you search based on endpoint url')
+            LOGGER.warning('NodeService.find_node - Both endpoint url other search params are defined. '
+                           'Will give you search based on endpoint url')
+            # traceback.print_stack()
             selector = None
             name = None
             cid = None
@@ -1397,16 +1426,18 @@ class NodeService(object):
 
         if (selector is not None and selector) and \
                 (name is not None and name and ((cid is not None and cid) or (pnid is not None and pnid))):
-            LOGGER.warn('NodeService.find_node - Both selector other search params are defined. '
-                        'Will give you search based on selector')
+            LOGGER.warning('NodeService.find_node - Both selector other search params are defined. '
+                           'Will give you search based on selector')
+            # traceback.print_stack()
             name = None
             cid = None
             pnid = None
 
         if (name is not None and name) and ((cid is not None and cid) and (pnid is not None and pnid)):
-            LOGGER.warn('NodeService.find_node - search node by name : '
-                        'both container ID and parent node ID are defined. '
-                        'Will give you search based on parent node id')
+            LOGGER.warning('NodeService.find_node - search node by name : '
+                           'both container ID and parent node ID are defined. '
+                           'Will give you search based on parent node id')
+            # traceback.print_stack()
             cid = None
 
         if (name is not None and name) and ((cid is None or not cid) and (pnid is None or not pnid)):
@@ -1468,6 +1499,7 @@ class NodeService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                # traceback.print_stack()
         return ret
 
     @staticmethod
@@ -1506,6 +1538,7 @@ class NodeService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
 
@@ -1586,11 +1619,12 @@ class Node(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    # traceback.print_stack()
         elif 'nodeID' not in json_obj:
             err_msg = 'Node.sync - Problem while syncing node (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
-            traceback.print_stack()
+            # traceback.print_stack()
 
         if json_obj is not None:
             self.id = json_obj['nodeID']
@@ -1714,6 +1748,7 @@ class Node(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -1751,6 +1786,7 @@ class Node(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -1793,6 +1829,7 @@ class Node(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     twin_node.sync()
                     self.sync()
@@ -1836,6 +1873,7 @@ class Node(object):
                         'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     twin_node.sync()
                     self.sync()
@@ -1901,8 +1939,9 @@ class Node(object):
         if self.properties_2_add is not None:
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
-        for key, value in consolidated_properties.items():
-                consolidated_node_properties.append(DriverTools.property_params(key, value))
+        if consolidated_properties.__len__() > 0:
+            for key, value in consolidated_properties.items():
+                    consolidated_node_properties.append(DriverTools.property_params(key, value))
         post_payload['nodeProperties'] = consolidated_node_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
@@ -1925,6 +1964,7 @@ class Node(object):
             LOGGER.warning('Node.save - Problem while saving node' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            # traceback.print_stack()
         else:
             self.id = response.response_content['nodeID']
             if self.twin_nodes_2_add is not None:
@@ -1972,6 +2012,7 @@ class Node(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
                 return self
             else:
                 if self.container is not None:
@@ -2030,6 +2071,7 @@ class GateService(object):
                       '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
     @staticmethod
@@ -2068,6 +2110,7 @@ class GateService(object):
                       '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
 
@@ -2126,12 +2169,13 @@ class Gate(Node):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    # traceback.print_stack()
         elif ('node' not in json_obj and 'nodeID' not in json_obj) or \
              ('node' in json_obj and 'nodeID' not in json_obj['node']):
             err_msg = 'Gate.sync - Problem while syncing gate (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
-            traceback.print_stack()
+            # traceback.print_stack()
 
         if json_obj is not None:
             if 'node' in json_obj:
@@ -2145,7 +2189,13 @@ class Gate(Node):
             self.child_nodes_id = node['nodeChildNodesID']
             self.twin_nodes_id = node['nodeTwinNodesID']
             self.endpoints_id = node['nodeEndpointsID']
-            self.properties = node['nodeProperties'] if 'nodeProperties' in node else None
+            if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                if 'nodeProperties' in node:
+                    self.properties = DriverTools.json2properties(node['nodeProperties'])
+                else:
+                    self.properties = None
+            else:
+                self.properties = node['nodeProperties'] if 'nodeProperties' in node else None
             if 'gateIsAdminPrimary' in json_obj:
                 self.is_primary_admin = json_obj['gateIsAdminPrimary']
             if 'gateURL' in json_obj:
@@ -2231,8 +2281,9 @@ class Gate(Node):
         if self.properties_2_add is not None:
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
-        for key, value in consolidated_properties.items():
-            consolidated_node_properties.append(DriverTools.property_params(key, value))
+        if consolidated_properties.__len__() > 0:
+            for key, value in consolidated_properties.items():
+                consolidated_node_properties.append(DriverTools.property_params(key, value))
         post_payload['node']['nodeProperties'] = consolidated_node_properties
 
         post_payload['gateIsPrimaryAdmin'] = self.is_primary_admin
@@ -2258,6 +2309,7 @@ class Gate(Node):
             LOGGER.warning('Gate.save - Problem while saving node' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            # traceback.print_stack()
         else:
             self.id = response.response_content['node']['nodeID']
             if self.twin_nodes_2_add is not None:
@@ -2303,6 +2355,7 @@ class Gate(Node):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
                 return self
             else:
                 if self.container is not None:
@@ -2345,14 +2398,16 @@ class EndpointService(object):
             raise exceptions.ArianeCallParametersError('id, endpoint_url and selector')
 
         if (eid is not None and eid) and ((url is not None and url) or (selector is not None and selector)):
-            LOGGER.warn('EndpointService.find_endpoint - '
-                        'Both id and (endpoint url or selector) are defined. Will give you search on id.')
+            LOGGER.debug('EndpointService.find_endpoint - '
+                         'Both id and (endpoint url or selector) are defined. Will give you search on id.')
+            # traceback.print_stack()
             url = None
             selector = None
 
         if (url is not None and url) and (selector is not None and selector):
-            LOGGER.warn('EndpointService.find_endpoint - '
-                        'Both endpoint url and selector are defined. Will give you search on url.')
+            LOGGER.warning('EndpointService.find_endpoint - '
+                           'Both endpoint url and selector are defined. Will give you search on url.')
+            # traceback.print_stack()
             selector = None
 
         params = None
@@ -2396,6 +2451,7 @@ class EndpointService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                # traceback.print_stack()
         return ret
 
     @staticmethod
@@ -2434,6 +2490,7 @@ class EndpointService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
 
@@ -2508,11 +2565,12 @@ class Endpoint(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    # traceback.print_stack()
         elif 'endpointID' not in json_obj:
             err_msg = 'Endpoint.sync - Problem while syncing endpoint (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
-            traceback.print_stack()
+            # traceback.print_stack()
 
         if json_obj is not None:
             self.id = json_obj['endpointID']
@@ -2619,6 +2677,7 @@ class Endpoint(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -2656,6 +2715,7 @@ class Endpoint(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -2698,6 +2758,7 @@ class Endpoint(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     twin_endpoint.sync()
                     self.sync()
@@ -2741,6 +2802,7 @@ class Endpoint(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    # traceback.print_stack()
                 else:
                     twin_endpoint.sync()
                     self.sync()
@@ -2792,8 +2854,9 @@ class Endpoint(object):
         if self.properties_2_add is not None:
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
-        for key, value in consolidated_properties.items():
-            consolidated_endpoint_properties.append(DriverTools.property_params(key, value))
+        if consolidated_properties.__len__() > 0:
+            for key, value in consolidated_properties.items():
+                consolidated_endpoint_properties.append(DriverTools.property_params(key, value))
         post_payload['endpointProperties'] = consolidated_endpoint_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
@@ -2816,6 +2879,7 @@ class Endpoint(object):
             LOGGER.warning('Endpoint.save - Problem while saving endpoint ' + self.url +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            # traceback.print_stack()
         else:
             self.id = response.response_content['endpointID']
             if self.twin_endpoints_2_add is not None:
@@ -2862,6 +2926,7 @@ class Endpoint(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
                 return self
             else:
                 if self.parent_node is not None:
@@ -2900,8 +2965,9 @@ class LinkService(object):
             raise exceptions.ArianeCallParametersError('id, source endpoint ID, target endpoint ID')
 
         if (lid is not None and lid) and ((sep_id is not None and sep_id) or (tep_id is not None and tep_id)):
-            LOGGER.warn('LinkService.find_link - Both lid and sep_id and tep_id are defined. '
-                        'Will give you search on id.')
+            LOGGER.warning('LinkService.find_link - Both lid and sep_id and tep_id are defined. '
+                           'Will give you search on id.')
+            # traceback.print_stack()
             sep_id = None
             tep_id = None
 
@@ -2950,6 +3016,7 @@ class LinkService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
     @staticmethod
@@ -2988,6 +3055,7 @@ class LinkService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
 
@@ -3044,11 +3112,12 @@ class Link(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    # traceback.print_stack()
         elif 'linkID' not in json_obj:
             err_msg = 'Link.sync - Problem while syncing link (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
-            traceback.print_stack()
+            # traceback.print_stack()
 
         if json_obj is not None:
             self.id = json_obj['linkID']
@@ -3150,6 +3219,7 @@ class Link(object):
                            + str(self.trp_id) + ' }' +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            # traceback.print_stack()
 
         else:
             self.id = response.response_content['linkID']
@@ -3191,6 +3261,7 @@ class Link(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
                 return self
             else:
                 return None
@@ -3248,6 +3319,7 @@ class TransportService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
     @staticmethod
@@ -3286,6 +3358,7 @@ class TransportService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            # traceback.print_stack()
         return ret
 
 
@@ -3354,11 +3427,12 @@ class Transport(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    # traceback.print_stack()
         elif 'transportID' not in json_obj:
             err_msg = 'Transport.sync - Problem while syncing transport (id: ' + str(self.id) + '). ' \
                       'Reason: inconsistent json_obj' + str(json_obj) + " from : \n"
             LOGGER.warning(err_msg)
-            traceback.print_stack()
+            # traceback.print_stack()
 
         if json_obj is not None:
             self.id = json_obj['transportID']
@@ -3413,6 +3487,7 @@ class Transport(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -3450,6 +3525,7 @@ class Transport(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
             else:
                 self.sync()
 
@@ -3500,8 +3576,9 @@ class Transport(object):
         if self.properties_2_add is not None:
             for n_property_tuple in self.properties_2_add:
                 consolidated_properties[n_property_tuple[0]] = n_property_tuple[1]
-        for key, value in consolidated_properties.items():
-            consolidated_transport_properties.append(DriverTools.property_params(key, value))
+        if consolidated_properties.__len__() > 0:
+            for key, value in consolidated_properties.items():
+                consolidated_transport_properties.append(DriverTools.property_params(key, value))
         post_payload['transportProperties'] = consolidated_transport_properties
 
         params = SessionService.complete_transactional_req({'payload': json.dumps(post_payload)})
@@ -3524,6 +3601,7 @@ class Transport(object):
             LOGGER.warning('Transport.save - Problem while saving transport {' + self.name + '}' +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            # traceback.print_stack()
         else:
             self.id = response.response_content['transportID']
             self.sync(json_obj=response.response_content)
@@ -3560,6 +3638,7 @@ class Transport(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                # traceback.print_stack()
                 return self
             else:
                 return None
