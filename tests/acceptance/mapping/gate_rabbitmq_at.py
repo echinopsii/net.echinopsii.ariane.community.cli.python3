@@ -18,7 +18,8 @@
 import socket
 import unittest
 from ariane_clip3.driver_factory import DriverFactory
-from ariane_clip3.mapping import MappingService, Node, Container, NodeService, Gate, GateService, SessionService
+from ariane_clip3.mapping import MappingService, Node, Container, NodeService, Gate, GateService, SessionService, \
+    EndpointService
 
 __author__ = 'mffrench'
 
@@ -142,6 +143,34 @@ class GateTest(unittest.TestCase):
         gate.url = "ssh://test_change_container_gate_3_another_ugly_docker_admin_endpoint"
         gate.is_primary_admin = True
         gate.save()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
+        container2.remove()
+
+    def test_replace_container_gate_1(self):
+        container2 = Container(name="test_replace_container_gate_1",
+                               gate_uri="ssh://my_host/docker/test_replace_container_gate_1_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        container2.save()
+        gate = Gate(name="sshd", url="ssh://test_replace_container_gate_1_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container=container2)
+        prim_adm_ep = EndpointService.find_endpoint(
+            url="ssh://my_host/docker/test_replace_container_gate_1_container2"
+        )
+        previous_prim_gate = GateService.find_gate(
+            nid=prim_adm_ep.parent_node_id
+        )
+        gate.save()
+        self.assertIsNotNone(gate.id)
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.url = "ssh://my_host/docker/test_replace_container_gate_1_container2"
+        gate.is_primary_admin = True
+        gate.save()
+        previous_prim_gate.remove()
         self.assertEqual(container2.primary_admin_gate_id, gate.id)
         self.assertEqual(container2.gate_uri, gate.url)
         container2.remove()
@@ -278,6 +307,115 @@ class GateTest(unittest.TestCase):
         self.assertIsNone(gate.remove())
         self.assertFalse(gate.id in container2.nodes_id)
         self.assertFalse(gate.id in container2.gates_id)
+        container2.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_change_container_gate_1(self):
+        SessionService.open_session("test_transac_change_container_gate_1")
+        container2 = Container(name="test_transac_change_container_gate_1",
+                               gate_uri="ssh://my_host/docker/test_transac_change_container_gate_1_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        container2.save()
+        gate = Gate(name="sshd", url="ssh://test_transac_change_container_gate_1_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container_id=container2.id)
+        gate.save()
+        container2.sync()
+        SessionService.commit()
+        self.assertIsNotNone(gate.id)
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.is_primary_admin = True
+        gate.save()
+        container2.sync()
+        SessionService.commit()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
+        container2.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_change_container_gate_2(self):
+        SessionService.open_session("test_transac_change_container_gate_2")
+        container2 = Container(name="test_transac_change_container_gate_2",
+                               gate_uri="ssh://my_host/docker/test_transac_change_container_gate_2_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        gate = Gate(name="sshd", url="ssh://test_transac_change_container_gate_2_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container=container2)
+        gate.save()
+        SessionService.commit()
+        self.assertIsNotNone(gate.id)
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.is_primary_admin = True
+        gate.save()
+        SessionService.commit()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
+        container2.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_change_container_gate_3(self):
+        SessionService.open_session("test_transac_change_container_gate_3")
+        container2 = Container(name="test_transac_change_container_gate_3",
+                               gate_uri="ssh://my_host/docker/test_transac_change_container_gate_3_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        gate = Gate(name="sshd", url="ssh://test_transac_change_container_gate_3_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container=container2)
+        gate.save()
+        SessionService.commit()
+        self.assertIsNotNone(gate.id)
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.url = "ssh://test_transac_change_container_gate_3_another_ugly_docker_admin_endpoint"
+        gate.is_primary_admin = True
+        gate.save()
+        SessionService.commit()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
+        container2.remove()
+        SessionService.commit()
+        SessionService.close_session()
+
+    def test_transac_replace_container_gate_1(self):
+        SessionService.open_session("test_transac_replace_container_gate_1")
+        container2 = Container(name="test_transac_replace_container_gate_1",
+                               gate_uri="ssh://my_host/docker/test_transac_replace_container_gate_1_container2",
+                               primary_admin_gate_name="container name space (pid)", company="Docker",
+                               product="Docker", c_type="container")
+        container2.save()
+        gate = Gate(name="sshd", url="ssh://test_transac_replace_container_gate_1_ugly_docker_admin_endpoint",
+                    is_primary_admin=False,
+                    container=container2)
+        prim_adm_ep = EndpointService.find_endpoint(
+            url="ssh://my_host/docker/test_transac_replace_container_gate_1_container2"
+        )
+        previous_prim_gate = GateService.find_gate(
+            nid=prim_adm_ep.parent_node_id
+        )
+        gate.save()
+        SessionService.commit()
+        self.assertIsNotNone(gate.id)
+        self.assertNotEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertTrue(gate.id in container2.nodes_id)
+        self.assertTrue(gate.id in container2.gates_id)
+        gate.url = "ssh://my_host/docker/test_transac_replace_container_gate_1_container2"
+        gate.is_primary_admin = True
+        gate.save()
+        previous_prim_gate.remove()
+        SessionService.commit()
+        self.assertEqual(container2.primary_admin_gate_id, gate.id)
+        self.assertEqual(container2.gate_uri, gate.url)
         container2.remove()
         SessionService.commit()
         SessionService.close_session()
