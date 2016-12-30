@@ -23,6 +23,7 @@ __author__ = 'mffrench'
 
 
 class InjectorUITreeTest(unittest.TestCase):
+    injector_service = None
 
     @classmethod
     def setUpClass(cls):

@@ -100,6 +100,8 @@ class DockerInjectorGearComponent(InjectorGearSkeleton):
 
 
 class InjectorGearTest(unittest.TestCase):
+    injector_service = None
+    admin_requestor = None
 
     @classmethod
     def setUpClass(cls):

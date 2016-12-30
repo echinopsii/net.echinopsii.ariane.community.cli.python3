@@ -53,6 +53,9 @@ class DockerInjectorComponent(InjectorComponentSkeleton):
 
 
 class InjectorComponentTest(unittest.TestCase):
+    injector_service = None
+    gear = None
+    refresh_requestor = None
 
     @classmethod
     def setUpClass(cls):

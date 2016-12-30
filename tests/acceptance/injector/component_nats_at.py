@@ -25,6 +25,33 @@ from ariane_clip3.injector import InjectorService, InjectorCachedComponent, Inje
 __author__ = 'mffrench'
 
 
+class DockerInjectorHPComponent(InjectorComponentSkeleton):
+
+    def __init__(self, attached_gear_id=None):
+        super(DockerInjectorHPComponent, self).__init__(
+            component_id=
+            'ariane.community.plugin.procos.components.cache.localhost',
+            component_name='procos@localhost',
+            component_admin_queue=
+            'ariane.community.plugin.procos.components.cache.localhost',
+            refreshing=False, next_action=InjectorCachedComponent.action_create,
+            json_last_refresh=datetime.datetime.now(),
+            attached_gear_id=attached_gear_id,
+            data_blob='{"my_object_field": "my_object_field_value"}'
+        )
+        self.my_big_object_field = "my_object_field_value"
+
+    def data_blob(self):
+        json_obj = {
+            'my_object_field': self.my_object_field
+        }
+        return str(json_obj).replace("'", '"')
+
+    def sniff(self):
+        self.my_big_object_field = "my_object_field_value_remotely_refreshed"
+        self.cache(data_blob=self.data_blob())
+
+
 class DockerInjectorComponent(InjectorComponentSkeleton):
 
     def __init__(self, attached_gear_id=None):
@@ -53,6 +80,9 @@ class DockerInjectorComponent(InjectorComponentSkeleton):
 
 
 class InjectorComponentTest(unittest.TestCase):
+    injector_service = None
+    gear = None
+    refresh_requestor = None
 
     @classmethod
     def setUpClass(cls):
@@ -82,9 +112,9 @@ class InjectorComponentTest(unittest.TestCase):
 
         cls.injector_service = InjectorService(driver_args=driver_args, gears_registry_args=gr_args,
                                                components_registry_args=co_args)
-        refresh_requestor = {'request_q': 'ariane.community.plugin.docker.components.cache.localhost',
+        refresh_requestor_conf = {'request_q': 'ariane.community.plugin.docker.components.cache.localhost',
                              'fire_and_forget': True}
-        cls.refresh_requestor = cls.injector_service.driver.make_requester(refresh_requestor)
+        cls.refresh_requestor = cls.injector_service.driver.make_requester(refresh_requestor_conf)
 
         cls.gear = InjectorCachedGear(gear_id='ariane.community.plugin.docker.gears.cache.localhost',
                                       gear_name='docker@localhost',
@@ -99,6 +129,17 @@ class InjectorComponentTest(unittest.TestCase):
         cls.injector_service.stop()
 
     def test_save_and_remove_component(self):
+        component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
+        self.assertTrue(component.cache().get())
+        retrieved_component = InjectorCachedComponentService.find_component(
+            component.cache_id().get())
+        self.assertIsNotNone(retrieved_component)
+        self.assertTrue(InjectorCachedComponentService.get_components_cache_size() == 1)
+        retrieved_component_object = retrieved_component.blob
+        self.assertTrue(retrieved_component_object['my_object_field'] == 'my_object_field_value')
+        self.assertTrue(component.remove().get())
+
+    def test_save_and_remove_hp_component(self):
         component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
         self.assertTrue(component.cache().get())
         retrieved_component = InjectorCachedComponentService.find_component(
