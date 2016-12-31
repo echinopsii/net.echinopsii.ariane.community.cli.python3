@@ -97,6 +97,7 @@ class Requester(pykka.ThreadingActor):
         self.response = None
         self.is_started = False
         self.trace = False
+        self.max_payload = 0
 
         if not self.fire_and_forget:
             self.responseQ = new_inbox()
@@ -126,6 +127,7 @@ class Requester(pykka.ThreadingActor):
             yield from self.nc.connect(**self.options)
             if not self.fire_and_forget:
                 self.responseQS = yield from self.nc.subscribe(self.responseQ, cb=self.on_response)
+            self.max_payload = self.nc._max_payload
             self.is_started = True
         except ErrNoServers as e:
             print(e)
@@ -209,18 +211,131 @@ class Requester(pykka.ThreadingActor):
         working_body = b''+bytes(working_response['body'], 'utf8') if 'body' in working_response else None
         working_body_decoded = base64.b64decode(working_body) if working_body is not None else \
             bytes(json.dumps({}), 'utf8')
-        if self.corr_id == working_properties['MSG_CORRELATION_ID']:
+        if self.corr_id == working_properties[DriverTools.MSG_CORRELATION_ID]:
             self.response = {
                 'properties': working_properties,
                 'body': working_body_decoded
             }
         else:
             LOGGER.warn("natsd.Requester.on_response - discarded response : " +
-                        str(working_properties['MSG_CORRELATION_ID']))
+                        str(working_properties[DriverTools.MSG_CORRELATION_ID]))
             LOGGER.debug("natsd.Requester.on_response - discarded response : " + str({
                 'properties': working_properties,
                 'body': working_body_decoded
             }))
+
+    def _split_msg(self, split_mid, properties, body):
+        messages = []
+        in_progress_messages = []
+        msg_counter = 0
+
+        in_progress_properties_field = copy.deepcopy(properties)
+        in_progress_properties_field.pop(DriverTools.MSG_MESSAGE_ID)
+        in_progress_properties_field.pop(DriverTools.MSG_CORRELATION_ID)
+        in_progress_properties_field.pop(DriverTools.MSG_TRACE)
+        in_progress_properties_field.pop(DriverTools.MSG_REPLY_TO)
+
+        wip_body = base64.b64encode(b''+bytes(body, 'utf8')).decode("utf-8")
+        wip_body_len = sys.getsizeof(wip_body)
+        consumed_body_offset = 0
+
+        while (wip_body_len - consumed_body_offset) > 0 or in_progress_properties_field.__len__() > 0:
+            # consume properties first :
+            splitted_msg_size = 0
+            splitted_properties = {DriverTools.MSG_MESSAGE_ID: properties[DriverTools.MSG_MESSAGE_ID],
+                                   DriverTools.MSG_CORRELATION_ID: properties[DriverTools.MSG_CORRELATION_ID],
+                                   DriverTools.MSG_TRACE: properties[DriverTools.MSG_TRACE],
+                                   DriverTools.MSG_REPLY_TO: properties[DriverTools.MSG_REPLY_TO],
+                                   DriverTools.MSG_SPLIT_MID: split_mid, DriverTools.MSG_SPLIT_COUNT: sys.maxsize,
+                                   DriverTools.MSG_SPLIT_OID: msg_counter}
+            splitted_typed_properties = None
+            for key, value in properties.items():
+                if key in in_progress_properties_field.keys():
+                    splitted_properties[key] = value
+                    tmp_splitted_typed_properties = []
+                    for skey, svalue in splitted_properties.items():
+                        tmp_splitted_typed_properties.append(DriverTools.property_params(skey, svalue))
+                    msg_data = json.dumps({
+                        'properties': tmp_splitted_typed_properties
+                    })
+                    msgb = b''+bytes(msg_data, 'utf8')
+                    tmp_splitted_msg_size = sys.getsizeof(msgb)
+                    if tmp_splitted_msg_size < self.max_payload:
+                        splitted_typed_properties = tmp_splitted_typed_properties
+                        splitted_msg_size = tmp_splitted_msg_size
+                        in_progress_properties_field.pop(key)
+                    else:
+                        splitted_properties.pop(key)
+
+            # then body
+            splitted_body = None
+            if wip_body_len > 0:
+                chunk_size = self.max_payload - splitted_msg_size
+                if chunk_size > wip_body_len - consumed_body_offset:
+                    chunk_size = wip_body_len - consumed_body_offset
+                splitted_body = wip_body[consumed_body_offset:chunk_size]
+                msg_data = json.dumps({
+                    'properties': splitted_typed_properties,
+                    'body': splitted_body
+                })
+                msgb = b''+bytes(msg_data, 'utf8')
+                tmp_splitted_msg_size = sys.getsizeof(msgb)
+                while tmp_splitted_msg_size > self.max_payload:
+                    chunk_size -= (tmp_splitted_msg_size - self.max_payload + 1)
+                    splitted_body = wip_body[consumed_body_offset:chunk_size]
+                    msg_data = json.dumps({
+                        'properties': splitted_typed_properties,
+                        'body': splitted_body
+                    })
+                    msgb = b''+bytes(msg_data, 'utf8')
+                    tmp_splitted_msg_size = sys.getsizeof(msgb)
+                consumed_body_offset += chunk_size
+
+            # add splitted message into in_progress_messages
+            if splitted_body is not None:
+                in_progress_messages.append({
+                    'properties': splitted_properties,
+                    'body': splitted_body
+                })
+            else:
+                in_progress_messages.append({
+                    'properties': splitted_properties,
+                })
+            msg_counter += 1
+
+        for message in in_progress_messages:
+            message['properties']['DriverTools.MSG_SPLIT_COUNT'] = msg_counter + 1
+            msg_data = json.dumps({
+                'properties': message['properties'],
+                'body': message['body']
+            })
+            msgb = b''+bytes(msg_data, 'utf8')
+            messages.append(msgb)
+
+        return messages
+
+    def _init_split_msg_group(self, split_mid, msg_split_dest):
+        args = {'properties': {DriverTools.OPERATION_FDN: DriverTools.OP_MSG_SPLIT_FEED_INIT,
+                               DriverTools.PARAM_MSG_SPLIT_MID: split_mid,
+                               DriverTools.PARAM_MSG_SPLIT_FEED_DEST: msg_split_dest}}
+        fire_and_forget_changed = False
+        if self.fire_and_forget:
+            fire_and_forget_changed = True
+            self.fire_and_forget = False
+        self.call(my_args=args)
+        if fire_and_forget_changed:
+            self.fire_and_forget = True
+
+    def _end_split_msg_group(self, split_mid):
+        args = {'properties': {DriverTools.OPERATION_FDN: DriverTools.OP_MSG_SPLIT_FEED_END,
+                               DriverTools.PARAM_MSG_SPLIT_MID: split_mid}}
+        fire_and_forget_changed = False
+        if self.fire_and_forget:
+            fire_and_forget_changed = True
+            self.fire_and_forget = False
+        self.call(my_args=args)
+        if fire_and_forget_changed:
+            self.fire_and_forget = True
 
     def call(self, my_args=None):
         """
@@ -239,13 +354,13 @@ class Requester(pykka.ThreadingActor):
         self.response = None
 
         if not self.fire_and_forget:
-            if 'MSG_CORRELATION_ID' not in my_args['properties']:
+            if DriverTools.MSG_CORRELATION_ID not in my_args['properties']:
                 self.corr_id = str(uuid.uuid4())
                 properties = my_args['properties']
-                properties['MSG_CORRELATION_ID'] = self.corr_id
+                properties[DriverTools.MSG_CORRELATION_ID] = self.corr_id
             else:
                 properties = my_args['properties']
-                self.corr_id = properties['MSG_CORRELATION_ID']
+                self.corr_id = properties[DriverTools.MSG_CORRELATION_ID]
         else:
             properties = my_args['properties']
 
@@ -255,7 +370,7 @@ class Requester(pykka.ThreadingActor):
             request_q = self.requestQ
 
         if self.trace:
-            properties['MSG_TRACE'] = True
+            properties[DriverTools.MSG_TRACE] = True
 
         typed_properties = []
         for key, value in properties.items():
@@ -271,12 +386,32 @@ class Requester(pykka.ThreadingActor):
         })
         msgb = b''+bytes(msg_data, 'utf8')
 
+        split_mid = None
+        messages = []
+        if sys.getsizeof(msgb) > self.max_payload:
+            split_mid = str(uuid.uuid4())
+            messages = self._split_msg(split_mid, properties, my_args['body'])
+        else:
+            messages.append(msgb)
+
         if not self.fire_and_forget:
             try:
-                LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) +
-                             " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + request_q)
-                next(self.nc.publish_request(request_q, self.responseQ, msgb))
-                LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
+                if split_mid is not None and 'sessionID' in properties and properties['sessionID'] is not None and \
+                        properties['sessionID']:
+                    request_q += "_" + split_mid
+                    self._init_split_msg_group(split_mid, request_q)
+
+                for msgb in messages:
+                    LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) +
+                                 " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + request_q)
+                    next(self.nc.publish_request(request_q, self.responseQ, msgb))
+                    LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
+
+                if split_mid is not None and 'sessionID' in properties and properties['sessionID'] is not None and \
+                        properties['sessionID']:
+                    self._end_split_msg_group(split_mid)
+                    request_q = request_q.split("_" + split_mid)[0]
+
             except StopIteration as e:
                 pass
         else:
@@ -346,13 +481,13 @@ class Requester(pykka.ThreadingActor):
                 )
             else:
                 try:
-                    if 'MSG_PROPERTIES' in self.response['properties']:
-                        props = json.loads(self.response['properties']['MSG_PROPERTIES'])
+                    if DriverTools.MSG_PROPERTIES in self.response['properties']:
+                        props = json.loads(self.response['properties'][DriverTools.MSG_PROPERTIES])
                     else:
                         props = None
                 except ValueError:
-                    if 'MSG_PROPERTIES' in self.response['properties']:
-                        props = self.response['props']['MSG_PROPERTIES']
+                    if DriverTools.MSG_PROPERTIES in self.response['properties']:
+                        props = self.response['props'][DriverTools.MSG_PROPERTIES]
                     else:
                         props = None
                 try:
