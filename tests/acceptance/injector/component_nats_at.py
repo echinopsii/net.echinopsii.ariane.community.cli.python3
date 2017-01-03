@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import base64
 import datetime
 import time
 import socket
@@ -28,12 +29,14 @@ __author__ = 'mffrench'
 
 class DockerInjectorHPComponent(InjectorComponentSkeleton):
 
-    def __init__(self, attached_gear_id=None):
-        self.my_big_object_field = b""
+    def __init__(self, size, attached_gear_id=None):
+        self.size = size
+        self.my_big_object_field = b''
         index = 0
-        while sys.getsizeof(self.my_big_object_field) < 2000000:
+        while sys.getsizeof(self.my_big_object_field) < self.size:
             self.my_big_object_field += str(index).encode()
             index += 1
+        self.my_big_object_field = base64.b64encode(self.my_big_object_field).decode("utf-8")
         data_blob = str({
             'my_object_field': self.my_big_object_field
         }).replace("'", '"')
@@ -57,10 +60,11 @@ class DockerInjectorHPComponent(InjectorComponentSkeleton):
 
     def sniff(self):
         index = 10
-        self.my_big_object_field = b""
-        while sys.getsizeof(self.my_big_object_field) < 2000000:
+        self.my_big_object_field = b''
+        while sys.getsizeof(self.my_big_object_field) < self.size:
             self.my_big_object_field += str(index).encode()
             index += 1
+        self.my_big_object_field = base64.b64encode(self.my_big_object_field).decode("utf-8")
         self.cache(data_blob=self.data_blob())
 
 
@@ -180,16 +184,17 @@ class InjectorComponentTest(unittest.TestCase):
         self.assertTrue(retrieved_component_object['my_object_field'] == 'my_object_field_value')
         self.assertTrue(component.remove().get())
 
-    # def test_save_and_remove_hp_component(self):
-    #     component = DockerInjectorHPComponent.start(attached_gear_id=self.hp_gear.id).proxy()
-    #     self.assertTrue(component.cache().get())
-    #     retrieved_component = InjectorCachedComponentService.find_component(
-    #         component.cache_id().get())
-    #     self.assertIsNotNone(retrieved_component)
-    #     self.assertTrue(InjectorCachedComponentService.get_components_cache_size() == 1)
-    #     retrieved_component_object = retrieved_component.blob
-    #     self.assertTrue(retrieved_component_object['my_object_field'] == 'my_object_field_value')
-    #     self.assertTrue(component.remove().get())
+    def test_save_and_remove_component_2(self):
+        component = DockerInjectorHPComponent.start(2000, attached_gear_id=self.hp_gear.id).proxy()
+        my_big_object_field = component.my_big_object_field.get()
+        self.assertTrue(component.cache().get())
+        retrieved_component = InjectorCachedComponentService.find_component(
+            component.cache_id().get())
+        self.assertIsNotNone(retrieved_component)
+        self.assertTrue(InjectorCachedComponentService.get_components_cache_size() == 1)
+        retrieved_component_object = retrieved_component.blob
+        self.assertTrue(retrieved_component_object['my_object_field'] == my_big_object_field)
+        self.assertTrue(component.remove().get())
 
     def test_update_component(self):
         component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
