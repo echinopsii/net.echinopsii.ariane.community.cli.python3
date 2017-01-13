@@ -42,10 +42,10 @@ class DockerInjectorHPComponent(InjectorComponentSkeleton):
         }).replace("'", '"')
         super(DockerInjectorHPComponent, self).__init__(
             component_id=
-            'ariane.community.plugin.procos.components.cache.localhost',
-            component_name='procos@localhost',
+            'ariane.community.plugin.docker.components.cache.hplocalhost',
+            component_name='docker@hplocalhost',
             component_admin_queue=
-            'ariane.community.plugin.procos.components.cache.localhost',
+            'ariane.community.plugin.docker.components.cache.hplocalhost',
             refreshing=False, next_action=InjectorCachedComponent.action_create,
             json_last_refresh=datetime.datetime.now(),
             attached_gear_id=attached_gear_id,
@@ -96,12 +96,9 @@ class DockerInjectorComponent(InjectorComponentSkeleton):
 
 
 class InjectorComponentTest(unittest.TestCase):
-    procos_injector_service = None
     docker_injector_service = None
     gear = None
-    hp_gear = None
     refresh_requestor = None
-    refresh_hp_requestor = None
 
     @classmethod
     def setUpClass(cls):
@@ -128,50 +125,23 @@ class InjectorComponentTest(unittest.TestCase):
             'registry.cache.name': 'Ariane Docker plugin components cache',
             'cache.mgr.name': 'ARIANE_PLUGIN_DOCKER_COMPONENTS_CACHE_MGR'
         }
-        procos_gr_args = {
-            'registry.name': 'Ariane ProcOS plugin gears registry',
-            'registry.cache.id': 'ariane.community.plugin.procos.gears.cache',
-            'registry.cache.name': 'Ariane ProcOS plugin gears cache',
-            'cache.mgr.name': 'ARIANE_PLUGIN_PROCOS_GEARS_CACHE_MGR'
-        }
-        procos_co_args = {
-            'registry.name': 'Ariane ProcOS plugin components registry',
-            'registry.cache.id': 'ariane.community.plugin.procos.components.cache',
-            'registry.cache.name': 'Ariane ProcOS plugin components cache',
-            'cache.mgr.name': 'ARIANE_PLUGIN_PROCOS_COMPONENTS_CACHE_MGR'
-        }
-
         cls.docker_injector_service = InjectorService(driver_args=driver_args, gears_registry_args=docker_gr_args,
                                                       components_registry_args=docker_co_args)
-        cls.procos_injector_service = InjectorService(driver_args=driver_args, gears_registry_args=procos_gr_args,
-                                                      components_registry_args=procos_co_args)
         refresh_requestor_conf = {'request_q': 'ariane.community.plugin.docker.components.cache.localhost',
                                   'fire_and_forget': True}
         cls.refresh_requestor = cls.docker_injector_service.driver.make_requester(refresh_requestor_conf)
-
-        refresh_requestor_conf = {'request_q': 'ariane.community.plugin.procos.components.cache.localhost',
-                                  'fire_and_forget': True}
-        cls.refresh_hp_requestor = cls.procos_injector_service.driver.make_requester(refresh_requestor_conf)
 
         cls.gear = InjectorCachedGear(gear_id='ariane.community.plugin.docker.gears.cache.localhost',
                                       gear_name='docker@localhost',
                                       gear_description='Ariane docker remote injector for localhost',
                                       gear_admin_queue='ariane.community.plugin.docker.gears.cache.localhost',
                                       running=False)
-        cls.hp_gear = InjectorCachedGear(gear_id='ariane.community.plugin.procos.gears.cache.localhost',
-                                         gear_name='procos@localhost',
-                                         gear_description='Ariane procos remote injector for localhost',
-                                         gear_admin_queue='ariane.community.plugin.procos.gears.cache.localhost',
-                                         running=False)
 
     @classmethod
     def tearDownClass(cls):
         cls.gear.remove()
-        cls.hp_gear.remove()
         cls.refresh_requestor.stop()
-        cls.refresh_hp_requestor.stop()
         cls.docker_injector_service.stop()
-        cls.procos_injector_service.stop()
 
     def test_save_and_remove_component(self):
         component = DockerInjectorComponent.start(attached_gear_id=self.gear.id).proxy()
@@ -185,7 +155,19 @@ class InjectorComponentTest(unittest.TestCase):
         self.assertTrue(component.remove().get())
 
     def test_save_and_remove_component_2(self):
-        component = DockerInjectorHPComponent.start(2000, attached_gear_id=self.hp_gear.id).proxy()
+        component = DockerInjectorHPComponent.start(2000, attached_gear_id=self.gear.id).proxy()
+        my_big_object_field = component.my_big_object_field.get()
+        self.assertTrue(component.cache().get())
+        retrieved_component = InjectorCachedComponentService.find_component(
+            component.cache_id().get())
+        self.assertIsNotNone(retrieved_component)
+        self.assertTrue(InjectorCachedComponentService.get_components_cache_size() == 1)
+        retrieved_component_object = retrieved_component.blob
+        self.assertTrue(retrieved_component_object['my_object_field'] == my_big_object_field)
+        self.assertTrue(component.remove().get())
+
+    def test_save_and_remove_hp_component(self):
+        component = DockerInjectorHPComponent.start(2000000, attached_gear_id=self.gear.id).proxy()
         my_big_object_field = component.my_big_object_field.get()
         self.assertTrue(component.cache().get())
         retrieved_component = InjectorCachedComponentService.find_component(

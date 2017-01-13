@@ -95,6 +95,8 @@ class Requester(pykka.ThreadingActor):
         self.responseQ = None
         self.responseQS = None
         self.response = None
+        self.split_responses = None
+        self.split_responses_mid = None
         self.is_started = False
         self.trace = False
         self.max_payload = 0
@@ -209,15 +211,51 @@ class Requester(pykka.ThreadingActor):
         working_response = json.loads(msg.data.decode())
         working_properties = DriverTools.json2properties(working_response['properties'])
         working_body = b''+bytes(working_response['body'], 'utf8') if 'body' in working_response else None
-        working_body_decoded = base64.b64decode(working_body) if working_body is not None else \
-            bytes(json.dumps({}), 'utf8')
         if DriverTools.MSG_CORRELATION_ID in working_properties:
             if self.corr_id == working_properties[DriverTools.MSG_CORRELATION_ID]:
-                self.response = {
-                    'properties': working_properties,
-                    'body': working_body_decoded
-                }
+                if DriverTools.MSG_SPLIT_COUNT in working_properties and \
+                        int(working_properties[DriverTools.MSG_SPLIT_COUNT]) > 1:
+                    working_body_decoded = base64.b64decode(working_body) if working_body is not None else None
+                    if self.split_responses is None:
+                        self.split_responses = []
+                        self.split_responses_mid = working_properties[DriverTools.MSG_SPLIT_MID]
+                    if working_properties[DriverTools.MSG_SPLIT_MID] == self.split_responses_mid:
+                        response = {
+                            'properties': working_properties,
+                            'body': working_body_decoded
+                        }
+                        self.split_responses.insert(int(working_properties[DriverTools.MSG_SPLIT_OID]), response)
+
+                        if self.split_responses.__len__() == int(working_properties[DriverTools.MSG_SPLIT_COUNT]):
+                            properties = {}
+                            body = b''
+                            for num in range(0, self.split_responses.__len__()):
+                                properties.update(self.split_responses[num]['properties'])
+                                body += self.split_responses[num]['body']
+                            self.response = {
+                                'properties': properties,
+                                'body': body
+                            }
+                            self.split_responses = None
+                            self.split_responses_mid = None
+
+                    else:
+                        LOGGER.warn("natsd.Requester.on_response - discarded response : (" +
+                                    str(working_properties[DriverTools.MSG_CORRELATION_ID]) + "," +
+                                    str(working_properties[DriverTools.MSG_SPLIT_MID]) + ")")
+                        LOGGER.debug("natsd.Requester.on_response - discarded response : " + str({
+                            'properties': working_properties,
+                            'body': working_body_decoded
+                        }))
+                else:
+                    working_body_decoded = base64.b64decode(working_body) if working_body is not None else \
+                        bytes(json.dumps({}), 'utf8')
+                    self.response = {
+                        'properties': working_properties,
+                        'body': working_body_decoded
+                    }
             else:
+                working_body_decoded = base64.b64decode(working_body) if working_body is not None else None
                 LOGGER.warn("natsd.Requester.on_response - discarded response : " +
                             str(working_properties[DriverTools.MSG_CORRELATION_ID]))
                 LOGGER.debug("natsd.Requester.on_response - discarded response : " + str({
@@ -225,6 +263,7 @@ class Requester(pykka.ThreadingActor):
                     'body': working_body_decoded
                 }))
         else:
+            working_body_decoded = base64.b64decode(working_body) if working_body is not None else None
             LOGGER.warn("natsd.Requester.on_response - discarded response (no correlation ID)")
             LOGGER.debug("natsd.Requester.on_response - discarded response : " + str({
                 'properties': working_properties,
@@ -246,7 +285,7 @@ class Requester(pykka.ThreadingActor):
         if DriverTools.MSG_REPLY_TO in in_progress_properties_field:
             in_progress_properties_field.pop(DriverTools.MSG_REPLY_TO)
 
-        wip_body = base64.b64encode(b''+bytes(body, 'utf8')).decode("utf-8")
+        wip_body = body
         wip_body_len = sys.getsizeof(wip_body)
         consumed_body_offset = 0
 
@@ -280,30 +319,41 @@ class Requester(pykka.ThreadingActor):
                     tmp_splitted_msg_size = sys.getsizeof(msgb)
                     if tmp_splitted_msg_size < self.max_payload:
                         splitted_typed_properties = tmp_splitted_typed_properties
-                        splitted_msg_size = tmp_splitted_msg_size
                         in_progress_properties_field.pop(key)
                     else:
                         splitted_properties.pop(key)
+
+            msg_data = json.dumps({
+                'properties': splitted_typed_properties
+            })
+            msgb = b''+bytes(msg_data, 'utf8')
+            splitted_msg_size = sys.getsizeof(msgb)
 
             # then body
             splitted_body = None
             if wip_body_len > 0:
                 chunk_size = self.max_payload - splitted_msg_size
-                if chunk_size > wip_body_len - consumed_body_offset:
+                if chunk_size > (wip_body_len - consumed_body_offset):
                     chunk_size = wip_body_len - consumed_body_offset
-                splitted_body = wip_body[consumed_body_offset:chunk_size]
+                splitted_body = wip_body[consumed_body_offset:consumed_body_offset+chunk_size]
+                # print("splitted_body[" + str(consumed_body_offset) + ":" + str(consumed_body_offset+chunk_size) + "](" +
+                #       str(sys.getsizeof(splitted_body)) + ") = ")
+                # print(splitted_body)
                 msg_data = json.dumps({
                     'properties': splitted_typed_properties,
-                    'body': splitted_body
+                    'body': base64.b64encode(b''+bytes(splitted_body, 'utf8')).decode("utf-8")
                 })
                 msgb = b''+bytes(msg_data, 'utf8')
                 tmp_splitted_msg_size = sys.getsizeof(msgb)
                 while tmp_splitted_msg_size > self.max_payload:
                     chunk_size -= (tmp_splitted_msg_size - self.max_payload + 1)
-                    splitted_body = wip_body[consumed_body_offset:chunk_size]
+                    splitted_body = wip_body[consumed_body_offset:consumed_body_offset+chunk_size]
+                    # print("splitted_body[" + str(consumed_body_offset) + ":" + str(consumed_body_offset+chunk_size) + "](" +
+                    #       str(sys.getsizeof(splitted_body)) + ") = ")
+                    # print(splitted_body)
                     msg_data = json.dumps({
                         'properties': splitted_typed_properties,
-                        'body': splitted_body
+                        'body': base64.b64encode(b''+bytes(splitted_body, 'utf8')).decode("utf-8")
                     })
                     msgb = b''+bytes(msg_data, 'utf8')
                     tmp_splitted_msg_size = sys.getsizeof(msgb)
@@ -313,11 +363,12 @@ class Requester(pykka.ThreadingActor):
             if splitted_body is not None:
                 in_progress_messages.append({
                     'properties': splitted_properties,
-                    'body': splitted_body
+                    'body': base64.b64encode(b''+bytes(splitted_body, 'utf8')).decode("utf-8")
                 })
             else:
                 in_progress_messages.append({
                     'properties': splitted_properties,
+                    'body': ''
                 })
             msg_counter += 1
 
@@ -333,7 +384,8 @@ class Requester(pykka.ThreadingActor):
                 })
             else:
                 msg_data = json.dumps({
-                    'properties': typed_properties
+                    'properties': typed_properties,
+                    'body': ''
                 })
             msgb = b''+bytes(msg_data, 'utf8')
             messages.append(msgb)
@@ -348,7 +400,10 @@ class Requester(pykka.ThreadingActor):
         if self.fire_and_forget:
             fire_and_forget_changed = True
             self.fire_and_forget = False
+        previous_corr_id = self.corr_id
         self.call(my_args=args)
+        self.response = None
+        self.corr_id = previous_corr_id
         if fire_and_forget_changed:
             self.fire_and_forget = True
 
@@ -359,7 +414,10 @@ class Requester(pykka.ThreadingActor):
         if self.fire_and_forget:
             fire_and_forget_changed = True
             self.fire_and_forget = False
+        previous_corr_id = self.corr_id
         self.call(my_args=args)
+        self.response = None
+        self.corr_id = previous_corr_id
         if fire_and_forget_changed:
             self.fire_and_forget = True
 
@@ -421,25 +479,19 @@ class Requester(pykka.ThreadingActor):
             messages.append(msgb)
 
         if not self.fire_and_forget:
-            try:
-                if split_mid is not None and 'sessionID' in properties and properties['sessionID'] is not None and \
-                        properties['sessionID']:
-                    request_q += "_" + split_mid
-                    self._init_split_msg_group(split_mid, request_q)
+            if split_mid is not None and ('sessionID' not in properties or properties['sessionID'] is None or
+                                          not properties['sessionID']):
+                request_q += "_" + split_mid
+                self._init_split_msg_group(split_mid, request_q)
 
-                for msgb in messages:
-                    LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) +
+            for msgb in messages:
+                try:
+                    LOGGER.debug("natsd.Requester.call - publish splitted request " + str(typed_properties) +
                                  " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + request_q)
                     next(self.nc.publish_request(request_q, self.responseQ, msgb))
-                    LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
-
-                if split_mid is not None and 'sessionID' in properties and properties['sessionID'] is not None and \
-                        properties['sessionID']:
-                    self._end_split_msg_group(split_mid)
-                    request_q = request_q.split("_" + split_mid)[0]
-
-            except StopIteration as e:
-                pass
+                except StopIteration as e:
+                    pass
+                LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
         else:
             try:
                 LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) + " on " + request_q)
@@ -494,12 +546,13 @@ class Requester(pykka.ThreadingActor):
                              str(typed_properties))
             self.trace = False
             rc_ = int(self.response['properties']['RC'])
+
             if rc_ != 0:
                 try:
                     content = json.loads(self.response['body'].decode("UTF-8"))
                 except ValueError:
                     content = self.response['body'].decode("UTF-8")
-                return DriverResponse(
+                dr = DriverResponse(
                     rc=rc_,
                     error_message=self.response['properties']['SERVER_ERROR_MESSAGE']
                     if 'SERVER_ERROR_MESSAGE' in self.response['properties'] else '',
@@ -520,11 +573,20 @@ class Requester(pykka.ThreadingActor):
                     content = json.loads(self.response['body'].decode("UTF-8"))
                 except ValueError:
                     content = self.response['body'].decode("UTF-8")
-                return DriverResponse(
+                dr = DriverResponse(
                     rc=rc_,
                     response_properties=props,
                     response_content=content
                 )
+
+            if split_mid is not None and ('sessionID' not in properties or properties['sessionID'] is None or
+                                              not properties['sessionID']):
+                self._end_split_msg_group(split_mid)
+                request_q = request_q.split("_" + split_mid)[0]
+
+            return dr
+
+
 
 
 class Service(pykka.ThreadingActor):
