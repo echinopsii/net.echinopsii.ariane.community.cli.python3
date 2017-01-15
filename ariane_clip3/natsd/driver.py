@@ -176,6 +176,8 @@ class Requester(pykka.ThreadingActor):
         except StopIteration as e:
             pass
         try:
+            for task in asyncio.Task.all_tasks(self.loop):
+                task.cancel()
             self.loop.stop()
             while self.loop.is_running():
                 time.sleep(1)
@@ -196,6 +198,8 @@ class Requester(pykka.ThreadingActor):
         except StopIteration as e:
             pass
         try:
+            for task in asyncio.Task.all_tasks(self.loop):
+                task.cancel()
             self.loop.stop()
             while self.loop.is_running():
                 time.sleep(1)
@@ -651,16 +655,6 @@ class Service(pykka.ThreadingActor):
             LOGGER.warn("natsd.Service.on_request - Exception raised while treating msg {"+str(msg)+","+str(msg)+"}")
         LOGGER.debug("natsd.Service.on_request - request " + str(msg) + " treated")
 
-    def run(self):
-        LOGGER.debug("natsd.Service.run")
-        try:
-            yield from self.nc.connect(**self.options)
-            yield from self.nc.subscribe(self.serviceQ, cb=self.on_request)
-            self.is_started = True
-        except ErrNoServers as e:
-            print(e)
-            return
-
     def connect(self):
         LOGGER.debug("natsd.Service.connect")
         try:
@@ -712,6 +706,8 @@ class Service(pykka.ThreadingActor):
         except StopIteration as e:
             pass
         try:
+            for task in asyncio.Task.all_tasks(self.loop):
+                task.cancel()
             self.loop.stop()
             while self.loop.is_running():
                 time.sleep(1)
@@ -732,6 +728,8 @@ class Service(pykka.ThreadingActor):
         except StopIteration as e:
             pass
         try:
+            for task in asyncio.Task.all_tasks(self.loop):
+                task.cancel()
             self.loop.stop()
             while self.loop.is_running():
                 time.sleep(1)
