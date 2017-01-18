@@ -2384,12 +2384,15 @@ class EndpointService(object):
             EndpointService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
-    def find_endpoint(url=None, eid=None, selector=None):
+    def find_endpoint(url=None, eid=None, selector=None, cid=None, nid=None):
         """
         find endpoint according to endpoint url or endpoint ID. if both are defined then search will focus on ID only
         :param url: endpoint's url
         :param eid: endpoint id
         :param selector: endpoint selector like endpointURL =~ '.*tcp.*'
+        :param cid: define research context with container id.
+        Returned endpoints are owned by the container with id = cid
+        :param nid: define research context with node id. Returned endpoints are owned by the node with id = nid
         :return: the endpoint if found or None if not found
         """
         LOGGER.debug("EndpointService.find_endpoint")
@@ -2411,6 +2414,7 @@ class EndpointService(object):
             selector = None
 
         params = None
+        mapping_service_call = False
         return_set_of_endpoints = False
         if eid is not None and eid:
             params = SessionService.complete_transactional_req({'ID': eid})
@@ -2422,9 +2426,21 @@ class EndpointService(object):
                 params['endpointURL'] = url
                 params['OPERATION'] = 'getEndpointByURL'
         elif selector is not None and selector:
-            params = SessionService.complete_transactional_req({'selector': selector})
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                params['OPERATION'] = 'getEndpoints'
+            if cid is None and nid is None:
+                params = SessionService.complete_transactional_req({'selector': selector})
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params['OPERATION'] = 'getEndpoints'
+            else:
+                if nid is not None and nid:
+                    params = SessionService.complete_transactional_req({'nodeID': nid, 'selector': selector})
+                    if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                        params['OPERATION'] = 'getEndpointsBySelector'
+                        mapping_service_call = True
+                elif cid is not None and cid:
+                    params = SessionService.complete_transactional_req({'containerID': cid, 'selector': selector})
+                    if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                        params['OPERATION'] = 'getEndpointsBySelector'
+                        mapping_service_call = True
             return_set_of_endpoints = True
 
         if params is not None:
@@ -2433,7 +2449,10 @@ class EndpointService(object):
             else:
                 args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
 
-            response = EndpointService.requester.call(args)
+            if mapping_service_call:
+                response = MappingService.requester.call(args)
+            else:
+                response = EndpointService.requester.call(args)
 
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 response = response.get()
