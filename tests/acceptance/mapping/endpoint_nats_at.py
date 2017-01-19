@@ -230,9 +230,23 @@ class EndpointTest(unittest.TestCase):
         endpoint = Endpoint(url="mysql://test_transac_get_endpoints_container1:4385",
                             parent_node_id=self.node1.id)
         endpoint.save()
+        self.assertTrue(endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'"))
+        self.assertTrue(endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'", cid=self.container1.id))
+        self.assertTrue(endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'", nid=self.node1.id))
+        self.assertTrue(endpoint in EndpointService.get_endpoints())
         SessionService.commit()
+        self.assertTrue(endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'"))
+        self.assertTrue(endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'", cid=self.container1.id))
+        self.assertTrue(endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'", nid=self.node1.id))
         self.assertTrue(endpoint in EndpointService.get_endpoints())
         endpoint.remove()
+        self.assertFalse(EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'") is not None and
+                         endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'"))
+        self.assertFalse(EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'") is not None and
+                         endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'", cid=self.container1.id))
+        self.assertFalse(EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'") is not None and
+                         endpoint in EndpointService.find_endpoint(selector="endpointURL =~ 'mysql:.*'", nid=self.node1.id))
+        self.assertFalse(endpoint in EndpointService.get_endpoints())
         SessionService.commit()
         self.assertFalse(endpoint in EndpointService.get_endpoints())
         SessionService.close_session()
