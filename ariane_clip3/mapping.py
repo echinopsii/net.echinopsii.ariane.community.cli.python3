@@ -2466,7 +2466,8 @@ class EndpointService(object):
                     ret = Endpoint.json_2_endpoint(response.response_content)
             elif response.rc != 404:
                 err_msg = 'EndpointService.find_endpoint - Problem while searching endpoint (id:' + \
-                          str(eid) + ', primary admin gate url ' + str(url) + ' ). ' + \
+                          str(eid) + ', primary admin gate url: ' + str(url) + ', selector: ' + str(selector) + \
+                          ', cid: ' + str(cid) + ', nid: ' + str(nid) + '). ' + \
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
