@@ -124,7 +124,10 @@ class SessionService(object):
 
         if response.rc == 0:
             session_id = response.response_content['sessionID']
-            SessionService.session_registry[thread_id] = session_id
+            SessionService.session_registry[thread_id] = {
+                'session_id': session_id,
+                'op_count': 0
+            }
         else:
             err_msg = 'SessionService.open_session - Problem while opening session (client_id:' + \
                       str(client_id) + '). ' + \
@@ -140,27 +143,33 @@ class SessionService(object):
         LOGGER.debug("SessionService.commit")
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
-            session_id = SessionService.session_registry[thread_id]
+            session_id = SessionService.session_registry[thread_id]['session_id']
+            op_count = SessionService.session_registry[thread_id]['op_count']
+            if op_count > 0:
+                LOGGER.debug(str(op_count) + " operations to commit for session " + session_id)
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params = {'OPERATION': 'commit', 'sessionID': session_id}
+                    args = {'properties': params}
+                else:
+                    params = {'sessionID': session_id}
+                    args = {'http_operation': 'GET', 'operation_path': 'commit', 'parameters': params}
 
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                params = {'OPERATION': 'commit', 'sessionID': session_id}
-                args = {'properties': params}
+                response = SessionService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
+                if response.rc != 0:
+                    err_msg = 'SessionService.commit - Problem while committing on session (session_id:' + \
+                              str(session_id) + '). ' + \
+                              'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
+                              " (" + str(response.rc) + ")"
+                    LOGGER.warning(err_msg)
+                    # traceback.print_stack()
+                else:
+                    SessionService.session_registry[thread_id]['op_count'] = 0
             else:
-                params = {'sessionID': session_id}
-                args = {'http_operation': 'GET', 'operation_path': 'commit', 'parameters': params}
-
-            response = SessionService.requester.call(args)
-
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                response = response.get()
-
-            if response.rc != 0:
-                err_msg = 'SessionService.commit - Problem while committing on session (session_id:' + \
-                          str(session_id) + '). ' + \
-                          'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
-                          " (" + str(response.rc) + ")"
-                LOGGER.warning(err_msg)
-                # traceback.print_stack()
+                LOGGER.debug("No operations to commit for session " + session_id)
         else:
             err_msg = 'SessionService.commit - Problem while commiting on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
@@ -172,27 +181,33 @@ class SessionService(object):
         LOGGER.debug("SessionService.rollback")
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
-            session_id = SessionService.session_registry[thread_id]
+            session_id = SessionService.session_registry[thread_id]['session_id']
+            op_count = SessionService.session_registry[thread_id]['op_count']
+            if op_count > 0:
+                LOGGER.debug(str(op_count) + " operations to rollback for session " + session_id)
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    params = {'OPERATION': 'rollback', 'sessionID': session_id}
+                    args = {'properties': params}
+                else:
+                    params = {'sessionID': session_id}
+                    args = {'http_operation': 'GET', 'operation_path': 'rollback', 'parameters': params}
 
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                params = {'OPERATION': 'rollback', 'sessionID': session_id}
-                args = {'properties': params}
+                response = SessionService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
+                if response.rc != 0:
+                    err_msg = 'SessionService.rollback - Problem while rollbacking on session (session_id:' + \
+                              str(session_id) + '). ' + \
+                              'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
+                              " (" + str(response.rc) + ")"
+                    LOGGER.warning(err_msg)
+                    # traceback.print_stack()
+                else:
+                    SessionService.session_registry[thread_id]['op_count'] = 0
             else:
-                params = {'sessionID': session_id}
-                args = {'http_operation': 'GET', 'operation_path': 'rollback', 'parameters': params}
-
-            response = SessionService.requester.call(args)
-
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                response = response.get()
-
-            if response.rc != 0:
-                err_msg = 'SessionService.rollback - Problem while rollbacking on session (session_id:' + \
-                          str(session_id) + '). ' + \
-                          'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
-                          " (" + str(response.rc) + ")"
-                LOGGER.warning(err_msg)
-                # traceback.print_stack()
+                LOGGER.debug("No operations to rollback for session " + session_id)
         else:
             err_msg = 'SessionService.rollback - Problem while rollbacking on session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
@@ -204,7 +219,7 @@ class SessionService(object):
         LOGGER.debug("SessionService.close_session")
         thread_id = threading.current_thread().ident
         if thread_id in SessionService.session_registry:
-            session_id = SessionService.session_registry[thread_id]
+            session_id = SessionService.session_registry[thread_id]['session_id']
 
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params = {'OPERATION': 'closeSession', 'sessionID': session_id}
@@ -240,7 +255,10 @@ class SessionService(object):
         if thread_id in SessionService.session_registry:
             if args is None:
                 args = {}
-            args['sessionID'] = SessionService.session_registry[thread_id]
+            args['sessionID'] = SessionService.session_registry[thread_id]['session_id']
+            SessionService.session_registry[thread_id]['op_count'] += 1
+            LOGGER.debug("Session ( " + str(SessionService.session_registry[thread_id]['session_id']) +
+                         " ) op count : " + str(SessionService.session_registry[thread_id]['op_count']))
         return args
 
 
@@ -762,6 +780,8 @@ class ContainerService(object):
 
 
 class Container(object):
+
+    OWNER_MAPPING_PROPERTY = "Owner"
 
     PL_MAPPING_PROPERTIES = "Datacenter"
     PL_NAME_MAPPING_FIELD = "pname"
@@ -1629,7 +1649,7 @@ class Node(object):
         if json_obj is not None:
             self.id = json_obj['nodeID']
             self.name = json_obj['nodeName']
-            self.container_id = json_obj['nodeContainerID']
+            self.container_id = json_obj['nodeContainerID'] if 'nodeContainerID' in json_obj else None
             self.parent_node_id = json_obj['nodeParentNodeID'] if 'nodeParentNodeID' in json_obj else None
             self.child_nodes_id = json_obj['nodeChildNodesID']
             self.twin_nodes_id = json_obj['nodeTwinNodesID']
