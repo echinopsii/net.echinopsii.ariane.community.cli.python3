@@ -21,6 +21,7 @@ import copy
 import json
 import socket
 import timeit
+import traceback
 import uuid
 import logging
 import threading
@@ -170,11 +171,14 @@ class Requester(pykka.ThreadingActor):
         try:
             next(self.nc.unsubscribe(self.responseQS))
         except StopIteration as e:
+            LOGGER.debug("natsd.Requester.on_stop - StopIteration exception on unsubscribe : "
+                         + traceback.format_exc())
             pass
         try:
             next(self.nc.close())
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Requester.on_stop - StopIteration exception on close : "
+                         + traceback.format_exc())
         try:
             for task in asyncio.Task.all_tasks(self.loop):
                 task.cancel()
@@ -183,7 +187,8 @@ class Requester(pykka.ThreadingActor):
                 time.sleep(1)
             self.loop.close()
         except Exception as e:
-            pass
+            LOGGER.debug("natsd.Requester.on_stop - exception on aio clean : "
+                         + traceback.format_exc())
 
     def on_failure(self, exception_type, exception_value, traceback_):
         LOGGER.error("natsd.Requester.on_failure - " + exception_type.__str__() + "/" + exception_value.__str__())
@@ -192,11 +197,13 @@ class Requester(pykka.ThreadingActor):
         try:
             next(self.nc.unsubscribe(self.responseQS))
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Requester.on_failure - StopIteration exception on unsubscribe : "
+                         + traceback.format_exc())
         try:
             next(self.nc.close())
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Requester.on_failure - StopIteration exception on close : "
+                         + traceback.format_exc())
         try:
             for task in asyncio.Task.all_tasks(self.loop):
                 task.cancel()
@@ -205,7 +212,8 @@ class Requester(pykka.ThreadingActor):
                 time.sleep(1)
             self.loop.close()
         except Exception as e:
-            pass
+            LOGGER.debug("natsd.Requester.on_failure - exception on aio clean : "
+                         + traceback.format_exc())
 
     def on_response(self, msg):
         """
@@ -494,7 +502,8 @@ class Requester(pykka.ThreadingActor):
                                  " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + request_q)
                     next(self.nc.publish_request(request_q, self.responseQ, msgb))
                 except StopIteration as e:
-                    pass
+                    LOGGER.debug("natsd.Requester.call - StopIteration exception on publish : "
+                                 + traceback.format_exc())
                 LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
         else:
             try:
@@ -506,7 +515,8 @@ class Requester(pykka.ThreadingActor):
         try:
             next(self.nc.flush(1))
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Requester.call - StopIteration exception on flush : "
+                         + traceback.format_exc())
 
         start_time = timeit.default_timer()
         if not self.fire_and_forget:
@@ -700,11 +710,13 @@ class Service(pykka.ThreadingActor):
         try:
             next(self.nc.unsubscribe(self.serviceQS))
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Service.on_stop - StopIteration exception on unsubscribe : "
+                         + traceback.format_exc())
         try:
             next(self.nc.close())
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Service.on_stop - StopIteration exception on close : "
+                         + traceback.format_exc())
         try:
             for task in asyncio.Task.all_tasks(self.loop):
                 task.cancel()
@@ -713,7 +725,8 @@ class Service(pykka.ThreadingActor):
                 time.sleep(1)
             self.loop.close()
         except Exception as e:
-            pass
+            LOGGER.debug("natsd.Service.on_stop - Exception aio clean up : "
+                         + traceback.format_exc())
 
     def on_failure(self, exception_type, exception_value, traceback_):
         LOGGER.error("natsd.Requester.on_failure - " + exception_type.__str__() + "/" + exception_value.__str__())
@@ -722,11 +735,13 @@ class Service(pykka.ThreadingActor):
         try:
             next(self.nc.unsubscribe(self.serviceQS))
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Service.on_failure - StopIteration exception on unsubscribe : "
+                         + traceback.format_exc())
         try:
             next(self.nc.close())
         except StopIteration as e:
-            pass
+            LOGGER.debug("natsd.Service.on_failure - StopIteration exception on close : "
+                         + traceback.format_exc())
         try:
             for task in asyncio.Task.all_tasks(self.loop):
                 task.cancel()
@@ -735,7 +750,8 @@ class Service(pykka.ThreadingActor):
                 time.sleep(1)
             self.loop.close()
         except Exception as e:
-            pass
+            LOGGER.debug("natsd.Service.on_failure - Exception aio clean up : "
+                         + traceback.format_exc())
 
 class Driver(object):
     """
