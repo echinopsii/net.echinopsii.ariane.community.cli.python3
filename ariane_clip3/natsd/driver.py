@@ -510,7 +510,8 @@ class Requester(pykka.ThreadingActor):
                 LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) + " on " + request_q)
                 next(self.nc.publish(request_q, b''+bytes(msg_data, 'utf8')))
             except StopIteration as e:
-                pass
+                LOGGER.debug("natsd.Requester.call - StopIteration exception on publish : "
+                             + traceback.format_exc())
 
         try:
             next(self.nc.flush(1))
