@@ -164,6 +164,32 @@ class DriverTools(object):
         return params
 
     @staticmethod
+    def json_array2properties(json_array):
+        if json_array[0] == "array":
+            ret_array = []
+            for ar in json_array[1]:
+                ret_array.append(DriverTools.json_array2properties(ar))
+        elif json_array[0] == "map":
+            ret_array = []
+            for map in json_array[1]:
+                ret_array.append(DriverTools.json_map2properties(map))
+        else:
+            ret_array = json_array[1]
+        return ret_array
+
+    @staticmethod
+    def json_map2properties(json_map):
+        ret_map = {}
+        for prop_key, prop_value in json_map.items():
+            if prop_value[0] == "array":
+                ret_map[prop_key] = DriverTools.json_array2properties(prop_value[1])
+            elif prop_value[0] == "map":
+                ret_map[prop_key] = DriverTools.json_map2properties(prop_value[1])
+            else:
+                ret_map[prop_key] = prop_value[1]
+        return ret_map
+
+    @staticmethod
     def json2properties(json_props):
         LOGGER.debug("DriverTools.json2properties")
         properties = {}
@@ -171,7 +197,8 @@ class DriverTools(object):
             for prop in json_props:
                 if isinstance(prop['propertyValue'], list):
                     properties[prop['propertyName']] = prop['propertyValue'][1]
-                elif isinstance(prop['propertyValue'], map):
+
+                elif isinstance(prop['propertyValue'], dict):
                     map_property = {}
                     for prop_key, prop_value in prop['propertyValue'].items():
                         if prop_value.__len__() > 1:
@@ -180,21 +207,34 @@ class DriverTools(object):
                             LOGGER.warn("DriverTools.json2properties - " + prop_key +
                                         " will be ignored as its definition is incomplete...")
                     properties[prop['propertyName']] = map_property
+
                 elif prop['propertyType'] == 'array':
                     j_data = json.loads(prop['propertyValue'])
                     if j_data.__len__() > 1:
-                        properties[prop['propertyName']] = j_data[1]
+                        if j_data[0] == "map":
+                            t_data = []
+                            for amap in j_data[1]:
+                                t_data.append(DriverTools.json_map2properties(amap))
+                            properties[prop['propertyName']] = t_data
+                        elif j_data[0] == "array":
+                            t_data = []
+                            for ar in j_data[1]:
+                                t_data.append(DriverTools.json_array2properties(ar))
+                            properties[prop['propertyName']] = t_data
+                        else:
+                            properties[prop['propertyName']] = j_data[1]
                     else:
                         LOGGER.warn("DriverTools.json2properties - " + prop['propertyName'] +
                                     " will be ignored as its definition is incomplete...")
+
                 elif prop['propertyType'] == 'map':
                     j_data = json.loads(prop['propertyValue'])
-                    map_property = {}
-                    for prop_key, prop_value in j_data.items():
-                        map_property[prop_key] = prop_value[1]
+                    map_property = DriverTools.json_map2properties(j_data)
                     properties[prop['propertyName']] = map_property
+
                 else:
                     properties[prop['propertyName']] = prop['propertyValue']
+
         else:
             properties = json_props
         return properties
