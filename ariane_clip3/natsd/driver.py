@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import asyncio
+from asyncio.base_events import BaseEventLoop
 import base64
 import copy
 import json
@@ -35,7 +36,7 @@ import sys
 
 from ariane_clip3 import exceptions
 from ariane_clip3.driver_common import DriverTools, DriverResponse
-from ariane_clip3.exceptions import ArianeMessagingTimeoutError
+from ariane_clip3.exceptions import ArianeMessagingTimeoutError, ArianeError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +71,13 @@ class Requester(pykka.ThreadingActor):
             self.rpc_timeout = 0
         else:
             self.rpc_timeout = connection_args['rpc_timeout']
+
+        if 'rpc_timeout_err_count_max' not in connection_args or connection_args['rpc_timeout_err_count_max'] is None \
+                or not connection_args['rpc_timeout_err_count_max']:
+            self.rpc_retry_timeout_err_count_max = 3
+        else:
+            self.rpc_retry_timeout_err_count_max = connection_args['rpc_timeout_err_count_max']
+        self.rpc_retry_timeout_err_count = 0
 
         if 'rpc_retry' not in connection_args or connection_args['rpc_retry'] is None or \
                 not connection_args['rpc_retry']:
@@ -106,23 +114,6 @@ class Requester(pykka.ThreadingActor):
             self.responseQ = new_inbox()
             self.response = None
             self.corr_id = None
-
-    # @asyncio.coroutine
-    # def disconnected_cb(self):
-    #     print("Got disconnected!")
-
-    # @asyncio.coroutine
-    # def reconnected_cb(self):
-    #     # See who we are connected to on reconnect.
-    #     print("Got reconnected to {url}".format(url=self.nc.connected_url.netloc))
-
-    # @asyncio.coroutine
-    # def error_cb(self, e):
-    #     print("There was an error: {}".format(e))
-
-    # @asyncio.coroutine
-    # def closed_cb(self):
-    #     print("Connection is closed")
 
     def connect(self):
         LOGGER.debug("natsd.Requester.connect")
@@ -166,29 +157,64 @@ class Requester(pykka.ThreadingActor):
         """
         stop requester
         """
-        LOGGER.debug("natsd.Requester.on_stop")
+        LOGGER.warn("natsd.Requester.on_stop")
         self.is_started = False
         try:
+            LOGGER.debug("natsd.Requester.on_stop - unsubscribe from " + str(self.responseQS))
             next(self.nc.unsubscribe(self.responseQS))
         except StopIteration as e:
-            LOGGER.debug("natsd.Requester.on_stop - StopIteration exception on unsubscribe : "
-                         + traceback.format_exc())
             pass
         try:
+            LOGGER.debug("natsd.Requester.on_stop - close nats connection")
             next(self.nc.close())
         except StopIteration as e:
-            LOGGER.debug("natsd.Requester.on_stop - StopIteration exception on close : "
-                         + traceback.format_exc())
+            pass
+        LOGGER.debug("natsd.Requester.on_stop - nc is closed: " + str(self.nc.is_closed))
         try:
-            for task in asyncio.Task.all_tasks(self.loop):
+            LOGGER.debug("natsd.Requester.on_stop - cancelling aio tasks loop")
+            loop_to_stop = self.loop
+            for task in asyncio.Task.all_tasks(loop_to_stop):
+                LOGGER.debug("natsd.Requester.on_stop - cancelling task " + str(task))
                 task.cancel()
-            self.loop.stop()
-            while self.loop.is_running():
+            LOGGER.debug("natsd.Requester.on_stop - stopping aio loop stop")
+            loop_to_stop.stop()
+            count = 0
+            while loop_to_stop.is_running():
+                count += 1
+                if count % 10 == 0:
+                    LOGGER.debug("natsd.Requester.on_stop - waiting aio loop to be stopped (" +
+                                 str(asyncio.Task.all_tasks(loop_to_stop).__len__()) + " tasks left; " +
+                                 "current task: " + str(asyncio.Task.current_task(loop_to_stop)) + ")")
+                    for task in asyncio.Task.all_tasks(loop_to_stop):
+                        LOGGER.debug("natsd.Requester.on_stop - cancelling task " + str(task))
+                        task.cancel()
                 time.sleep(1)
-            self.loop.close()
+                if count == 120:
+                    LOGGER.error("natsd.Requester.on_stop - unable to stop aio loop after 120 sec (" +
+                                 str(asyncio.Task.all_tasks(loop_to_stop).__len__()) + " tasks left; " +
+                                 "current task: " + str(asyncio.Task.current_task(loop_to_stop)) + ")")
+                    break
+            if not loop_to_stop.is_running():
+                LOGGER.debug("natsd.Requester.on_stop - close aio loop")
+                loop_to_stop.close()
         except Exception as e:
-            LOGGER.debug("natsd.Requester.on_stop - exception on aio clean : "
-                         + traceback.format_exc())
+            LOGGER.warn("natsd.Requester.on_stop - exception on aio clean : "
+                        + traceback.format_exc())
+
+    def _restart_on_error(self):
+        LOGGER.debug("natsd.Requester._restart_on_error - restart begin !")
+        stop_thread = threading.Thread(target=self.on_stop, name=self.requestQ + " restarter.stop on error thread")
+        stop_thread.start()
+        while not self.nc.is_closed:
+            LOGGER.debug("natsd.Requester._restart_on_error - waiting nc to be closed")
+            time.sleep(1)
+        self.on_start()
+        self.rpc_retry_timeout_err_count = 0
+        LOGGER.debug("natsd.Requester._restart_on_error - restart end !")
+
+    def _restart_after_max_timeout_err_count(self):
+        restarter = threading.Thread(target=self._restart_on_error, name=self.requestQ + " restarter on error thread")
+        restarter.start()
 
     def on_failure(self, exception_type, exception_value, traceback_):
         LOGGER.error("natsd.Requester.on_failure - " + exception_type.__str__() + "/" + exception_value.__str__())
@@ -197,20 +223,19 @@ class Requester(pykka.ThreadingActor):
         try:
             next(self.nc.unsubscribe(self.responseQS))
         except StopIteration as e:
-            LOGGER.debug("natsd.Requester.on_failure - StopIteration exception on unsubscribe : "
-                         + traceback.format_exc())
+            pass
         try:
             next(self.nc.close())
         except StopIteration as e:
-            LOGGER.debug("natsd.Requester.on_failure - StopIteration exception on close : "
-                         + traceback.format_exc())
+            pass
         try:
-            for task in asyncio.Task.all_tasks(self.loop):
+            loop_to_stop = self.loop
+            for task in asyncio.Task.all_tasks(loop_to_stop):
                 task.cancel()
-            self.loop.stop()
-            while self.loop.is_running():
+            loop_to_stop.stop()
+            while loop_to_stop.is_running():
                 time.sleep(1)
-            self.loop.close()
+            loop_to_stop.close()
         except Exception as e:
             LOGGER.debug("natsd.Requester.on_failure - exception on aio clean : "
                          + traceback.format_exc())
@@ -348,9 +373,6 @@ class Requester(pykka.ThreadingActor):
                 if chunk_size > (wip_body_len - consumed_body_offset):
                     chunk_size = wip_body_len - consumed_body_offset
                 splitted_body = wip_body[consumed_body_offset:consumed_body_offset+chunk_size]
-                # print("splitted_body[" + str(consumed_body_offset) + ":" + str(consumed_body_offset+chunk_size) + "](" +
-                #       str(sys.getsizeof(splitted_body)) + ") = ")
-                # print(splitted_body)
                 msg_data = json.dumps({
                     'properties': splitted_typed_properties,
                     'body': base64.b64encode(b''+bytes(splitted_body, 'utf8')).decode("utf-8")
@@ -360,9 +382,6 @@ class Requester(pykka.ThreadingActor):
                 while tmp_splitted_msg_size > self.max_payload:
                     chunk_size -= (tmp_splitted_msg_size - self.max_payload + 1)
                     splitted_body = wip_body[consumed_body_offset:consumed_body_offset+chunk_size]
-                    # print("splitted_body[" + str(consumed_body_offset) + ":" + str(consumed_body_offset+chunk_size) + "](" +
-                    #       str(sys.getsizeof(splitted_body)) + ") = ")
-                    # print(splitted_body)
                     msg_data = json.dumps({
                         'properties': splitted_typed_properties,
                         'body': base64.b64encode(b''+bytes(splitted_body, 'utf8')).decode("utf-8")
@@ -439,6 +458,10 @@ class Requester(pykka.ThreadingActor):
         :param my_args: dict like {properties, body}
         :return response
         """
+        if not self.is_started:
+            raise ArianeError('natsd.Requester.call',
+                              'Requester not started !')
+
         LOGGER.debug("natsd.Requester.call")
         if my_args is None:
             raise exceptions.ArianeConfError("requestor call arguments")
@@ -502,22 +525,19 @@ class Requester(pykka.ThreadingActor):
                                  " (size: " + str(sys.getsizeof(msgb)) + " bytes) on " + request_q)
                     next(self.nc.publish_request(request_q, self.responseQ, msgb))
                 except StopIteration as e:
-                    LOGGER.debug("natsd.Requester.call - StopIteration exception on publish : "
-                                 + traceback.format_exc())
+                    pass
                 LOGGER.debug("natsd.Requester.call - waiting answer from " + self.responseQ)
         else:
             try:
                 LOGGER.debug("natsd.Requester.call - publish request " + str(typed_properties) + " on " + request_q)
                 next(self.nc.publish(request_q, b''+bytes(msg_data, 'utf8')))
             except StopIteration as e:
-                LOGGER.debug("natsd.Requester.call - StopIteration exception on publish : "
-                             + traceback.format_exc())
+                pass
 
         try:
             next(self.nc.flush(1))
         except StopIteration as e:
-            LOGGER.debug("natsd.Requester.call - StopIteration exception on flush : "
-                         + traceback.format_exc())
+            pass
 
         start_time = timeit.default_timer()
         if not self.fire_and_forget:
@@ -546,10 +566,16 @@ class Requester(pykka.ThreadingActor):
                         LOGGER.warn("natsd.Requester.call - Retry (" + str(my_args['retry_count']) + ")")
                         return self.call(my_args)
                     else:
+                        self.rpc_retry_timeout_err_count += 1
+                        if self.rpc_retry_timeout_err_count >= self.rpc_retry_timeout_err_count_max:
+                            self._restart_after_max_timeout_err_count()
                         raise ArianeMessagingTimeoutError('natsd.Requester.call',
                                                           'Request timeout (' + str(self.rpc_timeout) + '*' +
                                                           str(self.rpc_retry) + ' sec) occured')
                 else:
+                    self.rpc_retry_timeout_err_count += 1
+                    if self.rpc_retry_timeout_err_count >= self.rpc_retry_timeout_err_count_max:
+                        self._restart_after_max_timeout_err_count()
                     raise ArianeMessagingTimeoutError('natsd.Requester.call',
                                                       'Request timeout (' + str(self.rpc_timeout) + '*' +
                                                       str(self.rpc_retry) + ' sec) occured')
@@ -711,13 +737,11 @@ class Service(pykka.ThreadingActor):
         try:
             next(self.nc.unsubscribe(self.serviceQS))
         except StopIteration as e:
-            LOGGER.debug("natsd.Service.on_stop - StopIteration exception on unsubscribe : "
-                         + traceback.format_exc())
+            pass
         try:
             next(self.nc.close())
         except StopIteration as e:
-            LOGGER.debug("natsd.Service.on_stop - StopIteration exception on close : "
-                         + traceback.format_exc())
+            pass
         try:
             for task in asyncio.Task.all_tasks(self.loop):
                 task.cancel()
@@ -736,13 +760,11 @@ class Service(pykka.ThreadingActor):
         try:
             next(self.nc.unsubscribe(self.serviceQS))
         except StopIteration as e:
-            LOGGER.debug("natsd.Service.on_failure - StopIteration exception on unsubscribe : "
-                         + traceback.format_exc())
+            pass
         try:
             next(self.nc.close())
         except StopIteration as e:
-            LOGGER.debug("natsd.Service.on_failure - StopIteration exception on close : "
-                         + traceback.format_exc())
+            pass
         try:
             for task in asyncio.Task.all_tasks(self.loop):
                 task.cancel()

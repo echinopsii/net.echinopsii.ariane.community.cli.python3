@@ -67,10 +67,7 @@ class scorpiusRVRDNetworkTest:
         
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_INBOX_PORT', 'propertyValue': 0}
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
-        
-        containerProperty = {'ID': containerID, 'propertyName': 'RVRD_LICENSE_TICKET', 'propertyValue': 217318}
-        r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
-        
+
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_VERSION', 'propertyValue': '8.4.0'}
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
         
@@ -98,7 +95,6 @@ class scorpiusRVRDNetworkTest:
         #                          'RVRD_HOSTNAME': 'tibrvrdl06prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                          'RVRD_INBOX_PORT': '0',
         #                          'RVRD_IPADDR': '192.168.44.8',
-        #                          'RVRD_LICENSE_TICKET': '217318',
         #                          'RVRD_NAME': 'rvrd',
         #                          'RVRD_PID': '666',
         #                          'RVRD_VERSION': '8.4.0',
@@ -129,7 +125,6 @@ class scorpiusRVRDNetworkTest:
         #                                          'RVRD_HOSTNAME': 'tibrvrdl06prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                                          'RVRD_INBOX_PORT': '0',
         #                                          'RVRD_IPADDR': '192.168.44.8',
-        #                                          'RVRD_LICENSE_TICKET': '217318',
         #                                          'RVRD_NAME': 'rvrd',
         #                                          'RVRD_PID': '666',
         #                                          'RVRD_VERSION': '8.4.0',
@@ -191,7 +186,6 @@ class scorpiusRVRDNetworkTest:
         #                                          'RVRD_HOSTNAME': 'tibrvrdl06prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                                          'RVRD_INBOX_PORT': '0',
         #                                          'RVRD_IPADDR': '192.168.44.8',
-        #                                          'RVRD_LICENSE_TICKET': '217318',
         #                                          'RVRD_NAME': 'rvrd',
         #                                          'RVRD_PID': '666',
         #                                          'RVRD_VERSION': '8.4.0',
@@ -271,7 +265,6 @@ class scorpiusRVRDNetworkTest:
         #                                          'RVRD_HOSTNAME': 'tibrvrdl06prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                                          'RVRD_INBOX_PORT': '0',
         #                                          'RVRD_IPADDR': '192.168.44.8',
-        #                                          'RVRD_LICENSE_TICKET': '217318',
         #                                          'RVRD_NAME': 'rvrd',
         #                                          'RVRD_PID': '666',
         #                                          'RVRD_VERSION': '8.4.0',
@@ -587,10 +580,7 @@ class scorpiusRVRDNetworkTest:
         
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_INBOX_PORT', 'propertyValue': 0}
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
-        
-        containerProperty = {'ID': containerID, 'propertyName': 'RVRD_LICENSE_TICKET', 'propertyValue': 217318}
-        r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
-        
+
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_VERSION', 'propertyValue': '8.4.0'}
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
         
@@ -617,7 +607,6 @@ class scorpiusRVRDNetworkTest:
         #                                          'RVRD_HOSTNAME': 'tibrvrdl06prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                                          'RVRD_INBOX_PORT': '0',
         #                                          'RVRD_IPADDR': '192.168.44.8',
-        #                                          'RVRD_LICENSE_TICKET': '217318',
         #                                          'RVRD_NAME': 'rvrd',
         #                                          'RVRD_PID': '666',
         #                                          'RVRD_VERSION': '8.4.0',
@@ -646,7 +635,6 @@ class scorpiusRVRDNetworkTest:
         #                                          'RVRD_HOSTNAME': 'tibrvrdl07prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                                          'RVRD_INBOX_PORT': '0',
         #                                          'RVRD_IPADDR': '192.168.45.8',
-        #                                          'RVRD_LICENSE_TICKET': '217318',
         #                                          'RVRD_NAME': 'rvrd',
         #                                          'RVRD_PID': '696',
         #                                          'RVRD_VERSION': '8.4.0',
@@ -715,7 +703,6 @@ class scorpiusRVRDNetworkTest:
         #                          'RVRD_HOSTNAME': 'tibrvrdl07prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                          'RVRD_INBOX_PORT': '0',
         #                          'RVRD_IPADDR': '192.168.45.8',
-        #                          'RVRD_LICENSE_TICKET': '217318',
         #                          'RVRD_NAME': 'rvrd',
         #                          'RVRD_PID': '696',
         #                          'RVRD_VERSION': '8.4.0',
@@ -875,7 +862,6 @@ class scorpiusRVRDNetworkTest:
         #                          'RVRD_HOSTNAME': 'tibrvrdl07prd01.lab02.dev.dekatonshivr.echinopsii.net',
         #                          'RVRD_INBOX_PORT': '0',
         #                          'RVRD_IPADDR': '192.168.45.8',
-        #                          'RVRD_LICENSE_TICKET': '217318',
         #                          'RVRD_NAME': 'rvrd',
         #                          'RVRD_PID': '696',
         #                          'RVRD_VERSION': '8.4.0',
@@ -1229,10 +1215,7 @@ class scorpiusRVRDNetworkTest:
         
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_INBOX_PORT', 'propertyValue': 0}
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
-        
-        containerProperty = {'ID': containerID, 'propertyName': 'RVRD_LICENSE_TICKET', 'propertyValue': 217318}
-        r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
-        
+
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_VERSION', 'propertyValue': '8.4.0'}
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
         
@@ -1390,9 +1373,6 @@ class scorpiusRVRDNetworkTest:
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
         
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_INBOX_PORT', 'propertyValue': 0}
-        r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
-        
-        containerProperty = {'ID': containerID, 'propertyName': 'RVRD_LICENSE_TICKET', 'propertyValue': 217318}
         r = self.session.get(self.url + 'ariane/rest/mapping/domain/containers/update/properties/add', params=containerProperty)
         
         containerProperty = {'ID': containerID, 'propertyName': 'RVRD_VERSION', 'propertyValue': '8.4.0'}
