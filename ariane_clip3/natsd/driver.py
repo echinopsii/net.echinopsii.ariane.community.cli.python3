@@ -157,7 +157,7 @@ class Requester(pykka.ThreadingActor):
         """
         stop requester
         """
-        LOGGER.warn("natsd.Requester.on_stop")
+        LOGGER.debug("natsd.Requester.on_stop")
         self.is_started = False
         try:
             LOGGER.debug("natsd.Requester.on_stop - unsubscribe from " + str(self.responseQS))
