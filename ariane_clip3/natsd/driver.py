@@ -586,6 +586,7 @@ class Requester(pykka.ThreadingActor):
                 LOGGER.debug('natsd.Requester.call - slow RPC time (' + str(rpc_time) + ') on request ' +
                              str(typed_properties))
             self.trace = False
+            self.rpc_retry_timeout_err_count = 0
             rc_ = int(self.response['properties']['RC'])
 
             if rc_ != 0:
