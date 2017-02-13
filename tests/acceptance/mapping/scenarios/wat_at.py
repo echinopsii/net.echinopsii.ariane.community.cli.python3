@@ -1,7 +1,9 @@
+
 __author__ = 'mffrench'
 
 import unittest
 import requests
+from acceptance.mapping.scenarios.sagittariusRVRDNetwork import sagittariusRVRDNetworkTest
 from acceptance.mapping.scenarios.sagittariusRVDs import sagittariusRVDsTest
 from acceptance.mapping.scenarios.sagittariusAppHisto import sagittariusAppHistoTest
 from acceptance.mapping.scenarios.scorpiusRVRDNetwork import scorpiusRVRDNetworkTest
@@ -16,6 +18,8 @@ class WatTest(unittest.TestCase):
         srvurl = "http://localhost:6969/"
         s = requests.Session()
         s.auth = (user, password)
+        print("import sagittarius RVRDs into mapping")
+        sagittariusRVRDNetworkTest(s, srvurl).test()
         print("import sagittarius RVDs into mapping")
         sagittariusRVDsTest(s, srvurl).test()
         print("import sagittarius app histo into mapping")
