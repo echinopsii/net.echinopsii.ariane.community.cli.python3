@@ -24,6 +24,7 @@ from ariane_clip3.driver_factory import DriverFactory
 from ariane_clip3 import driver_factory
 from ariane_clip3 import exceptions
 from ariane_clip3.driver_common import DriverTools
+from ariane_clip3.exceptions import ArianeMappingOverloadError
 
 __author__ = 'mffrench'
 
@@ -128,6 +129,7 @@ class SessionService(object):
                 'session_id': session_id,
                 'op_count': 0
             }
+            LOGGER.debug("SessionService.open_session - session_id: " + str(session_id))
         else:
             err_msg = 'SessionService.open_session - Problem while opening session (client_id:' + \
                       str(client_id) + '). ' + \
@@ -240,8 +242,8 @@ class SessionService(object):
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
                 # traceback.print_stack()
-            else:
-                SessionService.session_registry.pop(thread_id)
+            # server side session are auto cleaned
+            SessionService.session_registry.pop(thread_id)
         else:
             err_msg = 'SessionService.close_session - Problem while closing session' + \
                       'Reason: no session found for thread_id:' + str(thread_id) + '.'
@@ -325,6 +327,8 @@ class ClusterService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("ClusterService.find_cluster", ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -362,6 +366,8 @@ class ClusterService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("ClusterService.get_clusters", ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -426,6 +432,8 @@ class Cluster(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Cluster.sync", ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
         elif 'clusterID' not in json_obj:
             err_msg = 'Cluster.sync - Problem while syncing cluster (id: ' + str(self.id) + '). ' \
@@ -474,6 +482,8 @@ class Cluster(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Cluster.add_container", ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     self.containers_id.append(container.id)
@@ -521,6 +531,8 @@ class Cluster(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Cluster.del_container", ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     self.containers_id.remove(container.id)
@@ -619,6 +631,8 @@ class Cluster(object):
             LOGGER.warning('Cluster.save - Problem while saving cluster' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Cluster.save", ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         else:
             self.id = response.response_content['clusterID']
@@ -662,6 +676,8 @@ class Cluster(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Cluster.remove", ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
                 return self
             else:
@@ -736,6 +752,9 @@ class ContainerService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("ContainerService.find_container",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
         return ret
 
@@ -775,6 +794,9 @@ class ContainerService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("ContainerService.get_containers",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -896,6 +918,8 @@ class Container(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Container.sync", ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
         elif 'containerID' not in json_obj:
             err_msg = 'Container.sync - Problem while syncing container (id: ' + str(self.id) + '). ' \
@@ -967,6 +991,8 @@ class Container(object):
                     '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Container.add_property", ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -1005,6 +1031,8 @@ class Container(object):
                     '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Container.del_property", ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -1047,6 +1075,9 @@ class Container(object):
                         '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Container.add_child_container",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     child_container.sync()
@@ -1090,6 +1121,9 @@ class Container(object):
                         '.Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Container.del_child_container",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     child_container.sync()
@@ -1311,6 +1345,9 @@ class Container(object):
             LOGGER.warning('Container.save - Problem while saving container' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Container.save",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         else:
             self.id = response.response_content['containerID']
@@ -1378,6 +1415,9 @@ class Container(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Container.remove",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
                 return self
             else:
@@ -1519,6 +1559,9 @@ class NodeService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("NodeService.find_node",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
         return ret
 
@@ -1558,6 +1601,9 @@ class NodeService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("NodeService.get_nodes",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -1639,6 +1685,9 @@ class Node(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Node.sync",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
         elif 'nodeID' not in json_obj:
             err_msg = 'Node.sync - Problem while syncing node (id: ' + str(self.id) + '). ' \
@@ -1768,6 +1817,9 @@ class Node(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Node.add_property",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -1806,6 +1858,9 @@ class Node(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Node.del_property",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -1849,6 +1904,9 @@ class Node(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Node.add_twin_node",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     twin_node.sync()
@@ -1893,6 +1951,9 @@ class Node(object):
                         'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Node.del_twin_node",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     twin_node.sync()
@@ -1984,6 +2045,9 @@ class Node(object):
             LOGGER.warning('Node.save - Problem while saving node' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Node.save",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         else:
             self.id = response.response_content['nodeID']
@@ -2032,6 +2096,9 @@ class Node(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Node.remove",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
                 return self
             else:
@@ -2091,6 +2158,9 @@ class GateService(object):
                       '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("GateService.find_gate",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -2130,6 +2200,9 @@ class GateService(object):
                       '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("GateService.get_gates",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -2189,6 +2262,9 @@ class Gate(Node):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Gate.sync",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
         elif ('node' not in json_obj and 'nodeID' not in json_obj) or \
              ('node' in json_obj and 'nodeID' not in json_obj['node']):
@@ -2329,6 +2405,9 @@ class Gate(Node):
             LOGGER.warning('Gate.save - Problem while saving node' + self.name +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Gate.save",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         else:
             self.id = response.response_content['node']['nodeID']
@@ -2376,6 +2455,9 @@ class Gate(Node):
                     " (" + str(response.rc) + ")"
                 )
                 # traceback.print_stack()
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Gate.remove",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 return self
             else:
                 if self.container is not None:
@@ -2491,6 +2573,9 @@ class EndpointService(object):
                           'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                           " (" + str(response.rc) + ")"
                 LOGGER.warning(err_msg)
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("EndpointService.find_endpoint",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
         return ret
 
@@ -2530,6 +2615,9 @@ class EndpointService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("EndpointService.get_endpoints",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -2605,6 +2693,9 @@ class Endpoint(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Endpoint.sync",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
         elif 'endpointID' not in json_obj:
             err_msg = 'Endpoint.sync - Problem while syncing endpoint (id: ' + str(self.id) + '). ' \
@@ -2717,6 +2808,9 @@ class Endpoint(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Endpoint.add_property",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -2755,6 +2849,9 @@ class Endpoint(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Endpoint.del_property",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -2798,6 +2895,9 @@ class Endpoint(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Endpoint.add_twin_endpoint",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     twin_endpoint.sync()
@@ -2842,6 +2942,9 @@ class Endpoint(object):
                         '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                         " (" + str(response.rc) + ")"
                     )
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Endpoint.del_twin_endpoint",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
                 else:
                     twin_endpoint.sync()
@@ -2919,6 +3022,9 @@ class Endpoint(object):
             LOGGER.warning('Endpoint.save - Problem while saving endpoint ' + self.url +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Endpoint.save",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         else:
             self.id = response.response_content['endpointID']
@@ -2966,6 +3072,9 @@ class Endpoint(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Endpoint.remove",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
                 return self
             else:
@@ -3055,6 +3164,9 @@ class LinkService(object):
             err_msg = 'LinkService.find_link - Problem while searching link (id:' + str(lid) + '). ' + \
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("LinkService.find_link",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             LOGGER.warning(err_msg)
             # traceback.print_stack()
         return ret
@@ -3095,6 +3207,9 @@ class LinkService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("LinkService.get_links",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -3152,6 +3267,9 @@ class Link(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Link.sync",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
         elif 'linkID' not in json_obj:
             err_msg = 'Link.sync - Problem while syncing link (id: ' + str(self.id) + '). ' \
@@ -3259,6 +3377,9 @@ class Link(object):
                            + str(self.trp_id) + ' }' +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Link.save",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
 
         else:
@@ -3301,6 +3422,9 @@ class Link(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Link.remove",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
                 return self
             else:
@@ -3359,6 +3483,9 @@ class TransportService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Transport.find_transport",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -3398,6 +3525,9 @@ class TransportService(object):
                       'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                       " (" + str(response.rc) + ")"
             LOGGER.warning(err_msg)
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Transport.get_transports",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         return ret
 
@@ -3467,6 +3597,9 @@ class Transport(object):
                               'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
                               " (" + str(response.rc) + ")"
                     LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("Transport.sync",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
                     # traceback.print_stack()
         elif 'transportID' not in json_obj:
             err_msg = 'Transport.sync - Problem while syncing transport (id: ' + str(self.id) + '). ' \
@@ -3527,6 +3660,9 @@ class Transport(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Transport.add_property",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -3565,6 +3701,9 @@ class Transport(object):
                     'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Transport.del_property",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
             else:
                 self.sync()
@@ -3641,6 +3780,9 @@ class Transport(object):
             LOGGER.warning('Transport.save - Problem while saving transport {' + self.name + '}' +
                            '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                            " (" + str(response.rc) + ")")
+            if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                raise ArianeMappingOverloadError("Transport.save",
+                                                 ArianeMappingOverloadError.ERROR_MSG)
             # traceback.print_stack()
         else:
             self.id = response.response_content['transportID']
@@ -3678,6 +3820,9 @@ class Transport(object):
                     '. Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) +
                     " (" + str(response.rc) + ")"
                 )
+                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                    raise ArianeMappingOverloadError("Transport.remove",
+                                                     ArianeMappingOverloadError.ERROR_MSG)
                 # traceback.print_stack()
                 return self
             else:
