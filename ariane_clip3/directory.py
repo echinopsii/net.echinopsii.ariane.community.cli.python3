@@ -238,6 +238,8 @@ class Location(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def add_routing_area(self, routing_area, sync=True):
         """
         add a routing area to this location.
@@ -693,6 +695,8 @@ class RoutingArea(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def add_location(self, location, sync=True):
         """
         add a location to this routing area.
@@ -1032,6 +1036,8 @@ class Subnet(object):
         :return: this object dict to string
         """
         return str(self.__dict__)
+
+    __repr__ = __str__
 
     def add_location(self, location, sync=True):
         """
@@ -1451,6 +1457,8 @@ class IPAddress(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __init__(self, ipa_id=None, ip_address=None, fqdn=None, ipa_osi_id=None,
                  ipa_subnet_id=None):
         """
@@ -1691,6 +1699,8 @@ class NIC(object):
         :return: this object dict to string
         """
         return str(self.__dict__)
+
+    __repr__ = __str__
 
     def __init__(self, nic_id=None, name=None, mac_address=None, duplex=None,
                  speed=None, mtu=None, nic_osi_id=None, nic_ipa_id=None):
@@ -2011,6 +2021,8 @@ class OSInstance(object):
         :return: this object dict to string
         """
         return str(self.__dict__)
+
+    __repr__ = __str__
 
     def add_subnet(self, subnet, sync=True):
         """
@@ -2914,6 +2926,8 @@ class OSType(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def add_os_instance(self, os_instance, sync=True):
         """
         add a OS instance to this OS type.
@@ -3254,6 +3268,8 @@ class Application(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def add_os_instance(self, os_instance, sync=True):
         """
         add a OS instance to this application.
@@ -3583,6 +3599,8 @@ class Company(object):
         :return: this object dict to string
         """
         return str(self.__dict__)
+
+    __repr__ = __str__
 
     def add_application(self, application, sync=True):
         """
@@ -3987,6 +4005,8 @@ class Environment(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def add_os_instance(self, os_instance, sync=True):
         """
         add a OS instance to this environment.
@@ -4306,6 +4326,8 @@ class Team(object):
         :return: this object dict to string
         """
         return str(self.__dict__)
+
+    __repr__ = __str__
 
     def add_os_instance(self, os_instance, sync=True):
         """

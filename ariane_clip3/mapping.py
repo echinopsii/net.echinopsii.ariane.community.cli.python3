@@ -575,6 +575,8 @@ class Cluster(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __eq__(self, other):
         """
         :param other:
@@ -651,7 +653,7 @@ class Cluster(object):
         remove this object from Ariane server
         :return: null if successfully removed else self
         """
-        LOGGER.debug("Cluster.remove")
+        LOGGER.debug("Cluster.remove - " + self.name)
         if self.id is None:
             return None
         else:
@@ -1204,6 +1206,8 @@ class Container(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __eq__(self, other):
         """
         :param other:
@@ -1390,7 +1394,7 @@ class Container(object):
         remove this object from Ariane server
         :return: null if successfully removed else self
         """
-        LOGGER.debug("Container.remove")
+        LOGGER.debug("Container.remove - " + self.gate_uri)
         if self.gate_uri is None:
             return None
         else:
@@ -1768,6 +1772,8 @@ class Node(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __eq__(self, other):
         """
         :param other:
@@ -2072,7 +2078,7 @@ class Node(object):
         remove this node from Ariane server
         :return: null if successfully removed else self
         """
-        LOGGER.debug("Node.remove")
+        LOGGER.debug("Node.remove - " + self.id + " - " + self.name)
         if self.id is None:
             return None
         else:
@@ -2321,6 +2327,8 @@ class Gate(Node):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __eq__(self, other):
         """
         :param other:
@@ -2430,7 +2438,7 @@ class Gate(Node):
         remove this gate from Ariane server
         :return: null if successfully removed else self
         """
-        LOGGER.debug("Gate.remove")
+        LOGGER.debug("Gate.remove - " + self.id + " - " + self.name)
         if self.id is None:
             return None
         else:
@@ -2759,6 +2767,8 @@ class Endpoint(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __eq__(self, other):
         """
         :param other:
@@ -3047,7 +3057,7 @@ class Endpoint(object):
         remove this endpoint from Ariane server
         :return:
         """
-        LOGGER.debug("Endpoint.remove")
+        LOGGER.debug("Endpoint.remove - " + self.id + " - " + self.url)
         if self.id is None:
             return None
         else:
@@ -3322,6 +3332,8 @@ class Link(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __eq__(self, other):
         """
         :param other:
@@ -3397,7 +3409,7 @@ class Link(object):
         remove this link from Ariane server
         :return:
         """
-        LOGGER.debug("Link.remove")
+        LOGGER.debug("Link.remove - " + self.id + " - { " + self.sep_id + ", " + self.tep_id + " }")
         if self.id is None:
             return None
         else:
@@ -3729,6 +3741,8 @@ class Transport(object):
         """
         return str(self.__dict__)
 
+    __repr__ = __str__
+
     def __eq__(self, other):
         """
         :param other:
@@ -3795,7 +3809,7 @@ class Transport(object):
         remove this transport from Ariane server
         :return:
         """
-        LOGGER.debug("Transport.remove")
+        LOGGER.debug("Transport.remove - " + self.id + " - " + self.name)
         if self.id is None:
             return None
         else:
