@@ -828,6 +828,8 @@ class Container(object):
     OSI_MAPPING_PROPERTIES = "Server"
     OSI_NAME_MAPPING_FIELD = "hostname"
     OSI_TYPE_MAPPING_FIELD = "os"
+    OSI_IS_ROUTER_FIELD = "isrouter"
+    OSI_KERNEL_PROC_NAME = "[0] kernel"
 
     TEAM_SUPPORT_MAPPING_PROPERTIES = "supportTeam"
     TEAM_NAME_MAPPING_FIELD = "name"
