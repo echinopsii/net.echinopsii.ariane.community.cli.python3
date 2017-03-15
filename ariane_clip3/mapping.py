@@ -2479,6 +2479,8 @@ class Gate(Node):
 
 class EndpointService(object):
     requester = None
+    local_cache_by_id = {}
+    local_cache_by_params = {}
 
     def __init__(self, mapping_driver):
         """
@@ -2496,7 +2498,7 @@ class EndpointService(object):
             EndpointService.requester = mapping_driver.make_requester(args)
 
     @staticmethod
-    def find_endpoint(url=None, eid=None, selector=None, cid=None, nid=None):
+    def find_endpoint(url=None, eid=None, selector=None, cid=None, nid=None, local_cache=True):
         """
         find endpoint according to endpoint url or endpoint ID. if both are defined then search will focus on ID only
         :param url: endpoint's url
@@ -2505,6 +2507,9 @@ class EndpointService(object):
         :param cid: define research context with container id.
         Returned endpoints are owned by the container with id = cid
         :param nid: define research context with node id. Returned endpoints are owned by the node with id = nid
+        :param local_cache: define if returned unit(*) result should be cached as a local entity
+        and then removed from cache when endpoint.remove() is called.
+        (*) endpoints set results are not cached
         :return: the endpoint if found or None if not found
         """
         LOGGER.debug("EndpointService.find_endpoint")
@@ -2526,29 +2531,35 @@ class EndpointService(object):
             selector = None
 
         params = None
+        search_params = None
         mapping_service_call = False
         return_set_of_endpoints = False
         if eid is not None and eid:
+            search_params = {'ID': eid}
             params = SessionService.complete_transactional_req({'ID': eid})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['OPERATION'] = 'getEndpoint'
         elif url is not None and url:
+            search_params = {'URL': url}
             params = SessionService.complete_transactional_req({'URL': url})
             if MappingService.driver_type != DriverFactory.DRIVER_REST:
                 params['endpointURL'] = url
                 params['OPERATION'] = 'getEndpointByURL'
         elif selector is not None and selector:
             if cid is None and nid is None:
+                search_params = {'selector': selector}
                 params = SessionService.complete_transactional_req({'selector': selector})
                 if MappingService.driver_type != DriverFactory.DRIVER_REST:
                     params['OPERATION'] = 'getEndpoints'
             else:
                 if nid is not None and nid:
+                    search_params = {'nodeID': nid, 'selector': selector}
                     params = SessionService.complete_transactional_req({'nodeID': nid, 'selector': selector})
                     if MappingService.driver_type != DriverFactory.DRIVER_REST:
                         params['OPERATION'] = 'getEndpointsBySelector'
                         mapping_service_call = True
                 elif cid is not None and cid:
+                    search_params = {'containerID': cid, 'selector': selector}
                     params = SessionService.complete_transactional_req({'containerID': cid, 'selector': selector})
                     if MappingService.driver_type != DriverFactory.DRIVER_REST:
                         params['OPERATION'] = 'getEndpointsBySelector'
@@ -2556,37 +2567,58 @@ class EndpointService(object):
             return_set_of_endpoints = True
 
         if params is not None:
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                args = {'properties': params}
+            if str(search_params) in EndpointService.local_cache_by_params.keys():
+                ret = EndpointService.local_cache_by_params[str(search_params)]
             else:
-                args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
-
-            if mapping_service_call:
-                response = MappingService.requester.call(args)
-            else:
-                response = EndpointService.requester.call(args)
-
-            if MappingService.driver_type != DriverFactory.DRIVER_REST:
-                response = response.get()
-
-            if response.rc == 0:
-                if return_set_of_endpoints:
-                    ret = []
-                    for endpoint in response.response_content['endpoints']:
-                        ret.append(Endpoint.json_2_endpoint(endpoint))
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    args = {'properties': params}
                 else:
-                    ret = Endpoint.json_2_endpoint(response.response_content)
-            elif response.rc != 404:
-                err_msg = 'EndpointService.find_endpoint - Problem while searching endpoint (id:' + \
-                          str(eid) + ', primary admin gate url: ' + str(url) + ', selector: ' + str(selector) + \
-                          ', cid: ' + str(cid) + ', nid: ' + str(nid) + '). ' + \
-                          'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
-                          " (" + str(response.rc) + ")"
-                LOGGER.warning(err_msg)
-                if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
-                    raise ArianeMappingOverloadError("EndpointService.find_endpoint",
-                                                     ArianeMappingOverloadError.ERROR_MSG)
-                # traceback.print_stack()
+                    args = {'http_operation': 'GET', 'operation_path': 'get', 'parameters': params}
+
+                if mapping_service_call:
+                    response = MappingService.requester.call(args)
+                else:
+                    response = EndpointService.requester.call(args)
+
+                if MappingService.driver_type != DriverFactory.DRIVER_REST:
+                    response = response.get()
+
+                if response.rc == 0:
+                    if return_set_of_endpoints:
+                        ret = []
+                        for endpoint in response.response_content['endpoints']:
+                            ep = Endpoint.json_2_endpoint(endpoint)
+                            ret.append(ep)
+                            if local_cache:
+                                if ep.id not in EndpointService.local_cache_by_id:
+                                    EndpointService.local_cache_by_id[ep.id] = []
+                                eid_search_params = {'ID': ep.id}
+                                EndpointService.local_cache_by_params[str(eid_search_params)] = ep
+                                EndpointService.local_cache_by_id[ep.id].append(str(eid_search_params))
+                    else:
+                        ret = Endpoint.json_2_endpoint(response.response_content)
+                        if local_cache:
+                            if ret.id not in EndpointService.local_cache_by_id.keys():
+                                EndpointService.local_cache_by_id[ret.id] = []
+                            EndpointService.local_cache_by_params[str(search_params)] = ret
+                            EndpointService.local_cache_by_id[ret.id].append(str(search_params))
+                            if eid is None or not eid:
+                                eid_search_params = {'ID': ret.id}
+                                EndpointService.local_cache_by_params[str(eid_search_params)] = ret
+                                EndpointService.local_cache_by_id[ret.id].append(str(eid_search_params))
+
+                elif response.rc != 404:
+                    err_msg = 'EndpointService.find_endpoint - Problem while searching endpoint (id:' + \
+                              str(eid) + ', primary admin gate url: ' + str(url) + ', selector: ' + str(selector) + \
+                              ', cid: ' + str(cid) + ', nid: ' + str(nid) + '). ' + \
+                              'Reason: ' + str(response.response_content) + ' - ' + str(response.error_message) + \
+                              " (" + str(response.rc) + ")"
+                    LOGGER.warning(err_msg)
+                    if response.rc == 500 and ArianeMappingOverloadError.ERROR_MSG in response.error_message:
+                        raise ArianeMappingOverloadError("EndpointService.find_endpoint",
+                                                         ArianeMappingOverloadError.ERROR_MSG)
+                    # traceback.print_stack()
+
         return ret
 
     @staticmethod
@@ -3063,6 +3095,12 @@ class Endpoint(object):
         if self.id is None:
             return None
         else:
+            if self.id in EndpointService.local_cache_by_id:
+                for search_params in EndpointService.local_cache_by_id[self.id]:
+                    if search_params in EndpointService.local_cache_by_params.keys():
+                        EndpointService.local_cache_by_params.pop(search_params)
+                EndpointService.local_cache_by_id.pop(self.id)
+
             params = SessionService.complete_transactional_req({
                 'ID': self.id
             })
